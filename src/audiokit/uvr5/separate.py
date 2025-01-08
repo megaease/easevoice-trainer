@@ -7,6 +7,7 @@ import torch
 import librosa
 import numpy as np
 from tqdm import tqdm
+import soundfile as sf
 
 sys.path.append("..")
 
@@ -16,6 +17,7 @@ from src.audiokit.uvr5.lib_v5.vr_network.model_param_init import ModelParameters
 import src.audiokit.uvr5.lib_v5.vr_network.nets as nets
 from src.utils.response import ResponseStatus, EaseVoiceResponse
 import src.audiokit.uvr5.lib_v5.vr_network.spec_utils as spec_utils
+from src.audiokit.uvr5.lib_v5.vr_network.nets_new import CascadedNet
 
 
 class SeparateAttributes:
@@ -51,6 +53,8 @@ class SeparateVR(SeparateAttributes):
         }
         self._parent_directory = get_parent_abs_path(__file__)
         self.mp = ModelParameters("{}/{}/4band_v2.json".format(self._parent_directory, uvr5_params_root))
+        self.accompaniment_head = "accompaniments_"
+        self.vocal_head = "vocals_"
 
         model = nets.CascadedASPPNet(self.mp.param["bins"] * 2)
         cpk = torch.load(self.model_path, map_location=CPU)
@@ -129,6 +133,70 @@ class SeparateVR(SeparateAttributes):
             )
         else:
             wav_accompaniment = spec_utils.cmb_spectrogram_to_wave(y_spec_m, self.mp)
+        if self.audio_format in ["wav", "flac"]:
+            sf.write(
+                os.path.join(
+                    self.output_accompaniment_dir,
+                    self.accompaniment_head + "{}_{}.{}".format(file_name, self.data["agg"], self.audio_format),
+                ),
+                (np.array(wav_accompaniment) * 32768).astype("int16"),
+                self.mp.param["sr"],
+            )
+        else:
+            path = os.path.join(
+                self.output_accompaniment_dir, self.accompaniment_head + "{}_{}.wav".format(file_name, self.data["agg"])
+            )
+            sf.write(
+                path,
+                (np.array(wav_accompaniment) * 32768).astype("int16"),
+                self.mp.param["sr"],
+            )
+            if os.path.exists(path):
+                opt_format_path = path[:-4] + ".%s" % self.audio_format
+                os.system("ffmpeg -i %s -vn %s -q:a 2 -y" % (path, opt_format_path))
+                if os.path.exists(opt_format_path):
+                    try:
+                        os.remove(path)
+                    except:
+                        pass
+
+        # separate vocal
+        if self.data["high_end_process"].startswith("mirroring"):
+            input_high_end_ = spec_utils.mirroring(
+                self.data["high_end_process"], v_spec_m, input_high_end, self.mp
+            )
+            wav_vocals = spec_utils.cmb_spectrogram_to_wave(
+                v_spec_m, self.mp, input_high_end_head, input_high_end_
+            )
+        else:
+            wav_vocals = spec_utils.cmb_spectrogram_to_wave(v_spec_m, self.mp)
+
+        if self.audio_format in ["wav", "flac"]:
+            sf.write(
+                os.path.join(
+                    self.output_vocal_dir,
+                    self.vocal_head + "{}_{}.{}".format(file_name, self.data["agg"], format),
+                ),
+                (np.array(wav_vocals) * 32768).astype("int16"),
+                self.mp.param["sr"],
+            )
+        else:
+            path = os.path.join(
+                self.output_vocal_dir, self.vocal_head + "{}_{}.wav".format(file_name, self.data["agg"])
+            )
+            sf.write(
+                path,
+                (np.array(wav_vocals) * 32768).astype("int16"),
+                self.mp.param["sr"],
+            )
+            if os.path.exists(path):
+                opt_format_path = path[:-4] + ".%s" % format
+                os.system("ffmpeg -i %s -vn %s -q:a 2 -y" % (path, opt_format_path))
+                if os.path.exists(opt_format_path):
+                    try:
+                        os.remove(path)
+                    except:
+                        pass
 
     def inference(self, x_spec, device, model, aggressiveness, data):
         def _execute(_x_mag_pad, _roi_size, _n_window, _device, _model, _aggressiveness, _is_half=True):
@@ -210,6 +278,21 @@ class SeparateVR(SeparateAttributes):
 
         return left, right, roi_size
 
+
+class SeparateVREcho(SeparateVR):
+    def __init__(self, model_name: str, input_dir: str, output_dir: str, audio_format: str, **kwargs):
+        super().__init__(model_name, input_dir, output_dir, audio_format, **kwargs)
+        self.mp = ModelParameters("{}/{}/4band_v3.json".format(self._parent_directory, uvr5_params_root))
+        nout = 64 if "DeReverb" in self.model_path else 48
+        model = CascadedNet(self.mp.param["bins"] * 2, nout)
+        cpk = torch.load(self.model_path, map_location="cpu")
+        model.load_state_dict(cpk)
+        model.eval()
+        if self.cfg.is_half:
+            model.half().to(self.cfg.device)
+        else:
+            model.to(self.cfg.device)
+        self.model = model
 
 class SeparateMDXNet(SeparateAttributes):
     pass
