@@ -1,13 +1,14 @@
 [project]
 name = "easevoice-trainer"
 version = "0.1.0"
-description = "Add your description here"
+description = "EaseVoice Trainer"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "audioread==3.0.0",
     "beartype==0.14.1",
     "einops==0.6.0",
+    "fastapi>=0.115.6",
     "librosa==0.9.2",
     "numpy==1.23.5",
     "pyrubberband==0.3.0",
