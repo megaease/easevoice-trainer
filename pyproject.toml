@@ -18,6 +18,6 @@ dependencies = [
     "scipy==1.9.3",
     "six>=1.17.0",
     "soundfile==0.11.0 ; sys_platform != 'darwin'",
-    "torch>=2.5.1",
+    "torch>=2.2.2",
     "tqdm>=4.67.1",
 ]
