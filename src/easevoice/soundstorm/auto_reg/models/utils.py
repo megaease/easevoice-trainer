@@ -33,7 +33,7 @@ def make_pad_mask(lengths: torch.Tensor, max_len: int = 0) -> torch.Tensor:
             [False, False, False, False, False]])
     """
     assert lengths.ndim == 1, lengths.ndim
-    max_len = max(max_len, lengths.max())
+    max_len = max(max_len, lengths.max())  # pyright: ignore
     n = lengths.size(0)
     seq_range = torch.arange(0, max_len, device=lengths.device)
     expaned_lengths = seq_range.unsqueeze(0).expand(n, max_len)
@@ -179,7 +179,7 @@ def dpo_loss(policy_chosen_logps: torch.FloatTensor,
     chosen_rewards = beta * (policy_chosen_logps - reference_chosen_logps).detach()
     rejected_rewards = beta * (policy_rejected_logps - reference_rejected_logps).detach()
 
-    return losses.mean(), chosen_rewards, rejected_rewards
+    return losses.mean(), chosen_rewards, rejected_rewards  # pyright: ignore
 
 
 def get_batch_logps(logits_target: torch.FloatTensor, logits_reject: torch.FloatTensor, labels_target: torch.LongTensor, labels_reject: torch.LongTensor, average_log_prob: bool = False) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
@@ -189,7 +189,7 @@ def get_batch_logps(logits_target: torch.FloatTensor, logits_reject: torch.Float
     per_token_logps_target = torch.gather(logits_target.log_softmax(-1), dim=2, index=labels_target.unsqueeze(2)).squeeze(2)
     per_token_logps_reject = torch.gather(logits_reject.log_softmax(-1), dim=2, index=labels_reject.unsqueeze(2)).squeeze(2)
 
-    return per_token_logps_target.sum(-1), per_token_logps_reject.sum(-1)
+    return per_token_logps_target.sum(-1), per_token_logps_reject.sum(-1)  # pyright: ignore
 
 
 def make_reject_y(y_o, y_lens):

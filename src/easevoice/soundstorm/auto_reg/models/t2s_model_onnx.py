@@ -3,14 +3,15 @@
 import torch
 from tqdm import tqdm
 
-from AR.modules.embedding_onnx import SinePositionalEmbedding
-from AR.modules.embedding_onnx import TokenEmbedding
-from AR.modules.transformer_onnx import LayerNorm
-from AR.modules.transformer_onnx import TransformerEncoder
-from AR.modules.transformer_onnx import TransformerEncoderLayer
 from torch import nn
 from torch.nn import functional as F
 from torchmetrics.classification import MulticlassAccuracy
+
+from ..modules.embedding_onnx import SinePositionalEmbedding
+from ..modules.embedding_onnx import TokenEmbedding
+from ..modules.transformer_onnx import LayerNorm
+from ..modules.transformer_onnx import TransformerEncoder
+from ..modules.transformer_onnx import TransformerEncoderLayer
 
 default_config = {
     "embedding_dim": 512,
@@ -29,7 +30,7 @@ inf_tensor_value = torch.FloatTensor([-float("Inf")]).float()
 
 def logits_to_probs(
     logits,
-    previous_tokens=None,
+    previous_tokens,
     temperature: float = 1.0,
     top_k=None,
     top_p=None,
@@ -276,7 +277,7 @@ class Text2SemanticDecoder(nn.Module):
             if stop:
                 break
         y[0, -1] = 0
-        return y, idx
+        return y, idx  # pyright: ignore
 
     def infer(self, x, prompts, bert_feature):
         top_k = self.top_k
@@ -336,4 +337,4 @@ class Text2SemanticDecoder(nn.Module):
                 break
             y = torch.concat([y, samples], dim=1)
             cache["first_infer"] = 0
-        return y, idx
+        return y, idx  # pyright: ignore

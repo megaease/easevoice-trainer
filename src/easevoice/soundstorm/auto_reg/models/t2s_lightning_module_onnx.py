@@ -1,16 +1,16 @@
 # modified from https://github.com/yangdongchao/SoundStorm/blob/master/soundstorm/s1/AR/models/t2s_lightning_module.py
 # reference: https://github.com/lifeiteng/vall-e
-from AR.modules.optim import ScaledAdam
-from AR.modules.lr_schedulers import WarmupCosineLRSchedule
-from AR.models.t2s_model_onnx import Text2SemanticDecoder
 from pytorch_lightning import LightningModule
 import torch
-from typing import Dict
+from typing import Any, Dict, cast
 import os
 import sys
 
-now_dir = os.getcwd()
-sys.path.append(now_dir)
+from ..modules.optim import ScaledAdam
+from ..modules.lr_schedulers import WarmupCosineLRSchedule
+from ..models.t2s_model_onnx import Text2SemanticDecoder
+
+sys.path.append(os.getcwd())
 
 
 class Text2SemanticLightningModule(LightningModule):
@@ -33,16 +33,10 @@ class Text2SemanticLightningModule(LightningModule):
             self.eval_dir = output_dir / "eval"
             self.eval_dir.mkdir(parents=True, exist_ok=True)
 
-    def training_step(self, batch: Dict, batch_idx: int):
-        opt = self.optimizers()
-        scheduler = self.lr_schedulers()
-        loss, acc = self.model.forward(
-            batch["phoneme_ids"],
-            batch["phoneme_ids_len"],
-            batch["semantic_ids"],
-            batch["semantic_ids_len"],
-            batch["bert_feature"],
-        )
+    def training_step(self, batch: Dict, batch_idx: int):  # pyright: ignore
+        opt: Any = self.optimizers()
+        scheduler: Any = self.lr_schedulers()
+        loss, acc = self.model.forward(batch["phoneme_ids"], batch["phoneme_ids_len"], batch["semantic_ids"], batch["semantic_ids_len"], batch["bert_feature"])  # pyright: ignore
         self.manual_backward(loss)
         if batch_idx > 0 and batch_idx % 4 == 0:
             opt.step()
