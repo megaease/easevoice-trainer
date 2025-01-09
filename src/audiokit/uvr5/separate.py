@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
 import os
-import sys
 
 import torch
 import librosa
@@ -9,10 +8,9 @@ import numpy as np
 from tqdm import tqdm
 import soundfile as sf
 import torch.nn as nn
+import onnxruntime as ort
 
-sys.path.append("..")
-
-from src.utils.config import uvr5_root, cfg, uvr5_params_root, CPU
+from src.utils.config import uvr5_root, cfg, uvr5_params_root, CPU, uvr5_onnx_name
 from src.utils.path import format_path, get_parent_abs_path
 from src.audiokit.uvr5.lib_v5.vr_network.model_param_init import ModelParameters
 import src.audiokit.uvr5.lib_v5.vr_network.nets as nets
@@ -20,6 +18,7 @@ from src.utils.response import ResponseStatus, EaseVoiceResponse
 import src.audiokit.uvr5.lib_v5.vr_network.spec_utils as spec_utils
 from src.audiokit.uvr5.lib_v5.vr_network.nets_new import CascadedNet
 from src.audiokit.uvr5.lib_v5.vr_network.bs_roformer import BSRoformer
+from src.audiokit.uvr5.lib_v5.vr_network.mdxnet import ConvTDFNetTrim
 
 
 class SeparateBase:
@@ -110,7 +109,7 @@ class SeparateVR(SeparateBase):
             band_params = self.mp.param["band"][index]
             if index == band_n:
                 (x_wave[index], _,) = librosa.core.load(
-                    file_name,
+                    os.path.join(self.input_dir, file_name),
                     sr=band_params["sr"],
                     mono=False,
                     dtype=np.float32,
@@ -288,7 +287,144 @@ class SeparateVREcho(SeparateVR):
 
 
 class SeparateMDXNet(SeparateBase):
-    pass
+    def __init__(self, model_name: str, input_dir: str, output_dir: str, audio_format: str, **kwargs):
+        super().__init__(model_name, input_dir, output_dir, audio_format, **kwargs)
+        self.onnx = f"{uvr5_root}/{uvr5_onnx_name}"
+        self.shifts = 10  # 'Predict with randomised equivariant stabilisation'
+        self.mixing = "min_mag"  # ['default','min_mag','max_mag']
+        self.chunks = 15
+        self.margin = 44100
+        self.dim_t = 9
+        self.dim_f = 3072
+        self.n_fft = 6144
+        self.denoise = True
+        self.model_ = ConvTDFNetTrim(
+            device=self.cfg.device,
+            model_name="Conv-TDF",
+            target_name="vocals",
+            L=11,
+            dim_f=self.dim_f,
+            dim_t=self.dim_t,
+            n_fft=self.n_fft,
+        )
+        self.model = ort.InferenceSession(
+            os.path.join(self.onnx, self.model_.target_name + ".onnx"),
+            providers=[
+                "CUDAExecutionProvider",
+                "DmlExecutionProvider",
+                "CPUExecutionProvider",
+            ],
+        )
+
+    def demix(self, mix):
+        samples = mix.shape[-1]
+        margin = self.margin
+        chunk_size = self.chunks * 44100
+        assert not margin == 0, "margin cannot be zero!"
+        if margin > chunk_size:
+            margin = chunk_size
+
+        segmented_mix = {}
+
+        if self.chunks == 0 or samples < chunk_size:
+            chunk_size = samples
+
+        counter = -1
+        for skip in range(0, samples, chunk_size):
+            counter += 1
+
+            s_margin = 0 if counter == 0 else margin
+            end = min(skip + chunk_size + margin, samples)
+
+            start = skip - s_margin
+
+            segmented_mix[skip] = mix[:, start:end].copy()
+            if end == samples:
+                break
+
+        sources = self.demix_base(segmented_mix, margin_size=margin)
+        """
+        mix:(2,big_sample)
+        segmented_mix:offset->(2,small_sample)
+        sources:(1,2,big_sample)
+        """
+        return sources
+
+    def demix_base(self, mixes, margin_size):
+        chunked_sources = []
+        progress_bar = tqdm(total=len(mixes))
+        progress_bar.set_description("Processing")
+        for mix in mixes:
+            cmix = mixes[mix]
+            sources = []
+            n_sample = cmix.shape[1]
+            model = self.model_
+            trim = model.n_fft // 2
+            gen_size = model.chunk_size - 2 * trim
+            pad = gen_size - n_sample % gen_size
+            mix_p = np.concatenate(
+                (np.zeros((2, trim)), cmix, np.zeros((2, pad)), np.zeros((2, trim))), 1
+            )
+            mix_waves = []
+            i = 0
+            while i < n_sample + pad:
+                waves = np.array(mix_p[:, i: i + model.chunk_size])
+                mix_waves.append(waves)
+                i += gen_size
+            mix_waves = torch.tensor(mix_waves, dtype=torch.float32).to(torch.device("cpu"))
+            with torch.no_grad():
+                _ort = self.model
+                spek = model.stft(mix_waves)
+                if self.denoise:
+                    spec_pred = (
+                            -_ort.run(None, {"input": -spek.cpu().numpy()})[0] * 0.5
+                            + _ort.run(None, {"input": spek.cpu().numpy()})[0] * 0.5
+                    )
+                    tar_waves = model.istft(torch.tensor(spec_pred))
+                else:
+                    tar_waves = model.istft(
+                        torch.tensor(_ort.run(None, {"input": spek.cpu().numpy()})[0])
+                    )
+                tar_signal = (
+                    tar_waves[:, :, trim:-trim]
+                    .transpose(0, 1)
+                    .reshape(2, -1)
+                    .numpy()[:, :-pad]
+                )
+
+                start = 0 if mix == 0 else margin_size
+                end = None if mix == list(mixes.keys())[::-1][0] else -margin_size
+                if margin_size == 0:
+                    end = None
+                sources.append(tar_signal[:, start:end])
+
+                progress_bar.update(1)
+
+            chunked_sources.append(sources)
+        _sources = np.concatenate(chunked_sources, axis=-1)
+        # del self.model
+        progress_bar.close()
+        return _sources
+
+    def separate(self, file_name: str) -> EaseVoiceResponse:
+        mix, rate = librosa.load(os.path.join(self.input_dir, file_name), mono=False, sr=44100)
+        if mix.ndim == 1:
+            mix = np.asfortranarray([mix, mix])
+        mix = mix.T
+        sources = self.demix(mix.T)
+        opt = sources[0].T
+        self.write_output(
+            data=mix - opt,
+            sr=rate,
+            name=file_name,
+            is_vocal=True,
+        )
+        self.write_output(
+            data=opt,
+            sr=rate,
+            name=file_name,
+            is_vocal=False,
+        )
 
 
 class SeparateMDXC(SeparateBase):
