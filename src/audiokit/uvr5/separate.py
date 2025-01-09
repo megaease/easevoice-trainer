@@ -8,6 +8,7 @@ import librosa
 import numpy as np
 from tqdm import tqdm
 import soundfile as sf
+import torch.nn as nn
 
 sys.path.append("..")
 
@@ -18,6 +19,7 @@ import src.audiokit.uvr5.lib_v5.vr_network.nets as nets
 from src.utils.response import ResponseStatus, EaseVoiceResponse
 import src.audiokit.uvr5.lib_v5.vr_network.spec_utils as spec_utils
 from src.audiokit.uvr5.lib_v5.vr_network.nets_new import CascadedNet
+from src.audiokit.uvr5.lib_v5.vr_network.bs_roformer import BSRoformer
 
 
 class SeparateAttributes:
@@ -37,6 +39,39 @@ class SeparateAttributes:
         if self.output_dir is not None:
             os.makedirs(self.output_vocal_dir, exist_ok=True)
             os.makedirs(self.output_accompaniment_dir, exist_ok=True)
+        self.accompaniment_head = "accompaniments_"
+        self.vocal_head = "vocals_"
+
+    def separate(self, file_name: str) -> EaseVoiceResponse:
+        pass
+
+    def write_output(self, data: np.ndarray, sr: int, name: str, is_vocal: bool, extend_path: str = None):
+        path = "{}_{}".format(name, extend_path) if extend_path else name
+        if self.audio_format in ["wav", "flac"]:
+            sf.write(
+                os.path.join(
+                    self.output_vocal_dir if is_vocal else self.output_accompaniment_dir,
+                    self.vocal_head if is_vocal else self.accompaniment_head,
+                    f"{path}.{self.audio_format}",
+                ),
+                data,
+                sr,
+            )
+        else:
+            file_path = os.path.join(
+                self.output_vocal_dir if is_vocal else self.output_accompaniment_dir,
+                self.vocal_head if is_vocal else self.accompaniment_head,
+                f"{path}.wav",
+            )
+            sf.write(path, data, sr)
+            opt_format_path = file_path[:-4] + f".{self.audio_format}"
+            if os.path.exists(path):
+                os.system(f"ffmpeg -i {path} -vn {opt_format_path} -q:a 2 -y")
+                if os.path.exists(opt_format_path):
+                    try:
+                        os.remove(file_path)
+                    except:
+                        pass
 
 
 class SeparateVR(SeparateAttributes):
@@ -53,8 +88,6 @@ class SeparateVR(SeparateAttributes):
         }
         self._parent_directory = get_parent_abs_path(__file__)
         self.mp = ModelParameters("{}/{}/4band_v2.json".format(self._parent_directory, uvr5_params_root))
-        self.accompaniment_head = "accompaniments_"
-        self.vocal_head = "vocals_"
 
         model = nets.CascadedASPPNet(self.mp.param["bins"] * 2)
         cpk = torch.load(self.model_path, map_location=CPU)
@@ -69,7 +102,6 @@ class SeparateVR(SeparateAttributes):
     def separate(self, file_name: str) -> EaseVoiceResponse:
         if self.input_dir is None or self.output_dir is None:
             return EaseVoiceResponse(ResponseStatus.FAILED, "Input or output directory is not provided")
-        base_name = os.path.basename(file_name)
         x_wave, y_wave, x_spec_s, y_spec_s = {}, {}, {}, {}
         band_n = len(self.mp.param["band"])
         input_high_end = None
@@ -133,32 +165,13 @@ class SeparateVR(SeparateAttributes):
             )
         else:
             wav_accompaniment = spec_utils.cmb_spectrogram_to_wave(y_spec_m, self.mp)
-        if self.audio_format in ["wav", "flac"]:
-            sf.write(
-                os.path.join(
-                    self.output_accompaniment_dir,
-                    self.accompaniment_head + "{}_{}.{}".format(file_name, self.data["agg"], self.audio_format),
-                ),
-                (np.array(wav_accompaniment) * 32768).astype("int16"),
-                self.mp.param["sr"],
-            )
-        else:
-            path = os.path.join(
-                self.output_accompaniment_dir, self.accompaniment_head + "{}_{}.wav".format(file_name, self.data["agg"])
-            )
-            sf.write(
-                path,
-                (np.array(wav_accompaniment) * 32768).astype("int16"),
-                self.mp.param["sr"],
-            )
-            if os.path.exists(path):
-                opt_format_path = path[:-4] + ".%s" % self.audio_format
-                os.system("ffmpeg -i %s -vn %s -q:a 2 -y" % (path, opt_format_path))
-                if os.path.exists(opt_format_path):
-                    try:
-                        os.remove(path)
-                    except:
-                        pass
+        self.write_output(
+            extend_path="{}".format(self.data["agg"]),
+            data=(np.array(wav_accompaniment) * 32768).astype("int16"),
+            sr=self.mp.param["sr"],
+            name=self.accompaniment_head,
+            is_vocal=False,
+        )
 
         # separate vocal
         if self.data["high_end_process"].startswith("mirroring"):
@@ -171,32 +184,14 @@ class SeparateVR(SeparateAttributes):
         else:
             wav_vocals = spec_utils.cmb_spectrogram_to_wave(v_spec_m, self.mp)
 
-        if self.audio_format in ["wav", "flac"]:
-            sf.write(
-                os.path.join(
-                    self.output_vocal_dir,
-                    self.vocal_head + "{}_{}.{}".format(file_name, self.data["agg"], format),
-                ),
-                (np.array(wav_vocals) * 32768).astype("int16"),
-                self.mp.param["sr"],
-            )
-        else:
-            path = os.path.join(
-                self.output_vocal_dir, self.vocal_head + "{}_{}.wav".format(file_name, self.data["agg"])
-            )
-            sf.write(
-                path,
-                (np.array(wav_vocals) * 32768).astype("int16"),
-                self.mp.param["sr"],
-            )
-            if os.path.exists(path):
-                opt_format_path = path[:-4] + ".%s" % format
-                os.system("ffmpeg -i %s -vn %s -q:a 2 -y" % (path, opt_format_path))
-                if os.path.exists(opt_format_path):
-                    try:
-                        os.remove(path)
-                    except:
-                        pass
+        self.write_output(
+            extend_path="{}".format(self.data["agg"]),
+            data=(np.array(wav_vocals) * 32768).astype("int16"),
+            sr=self.mp.param["sr"],
+            name=self.vocal_head,
+            is_vocal=True,
+        )
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Separation completed")
 
     def inference(self, x_spec, device, model, aggressiveness, data):
         def _execute(_x_mag_pad, _roi_size, _n_window, _device, _model, _aggressiveness, _is_half=True):
@@ -294,9 +289,172 @@ class SeparateVREcho(SeparateVR):
             model.to(self.cfg.device)
         self.model = model
 
+
 class SeparateMDXNet(SeparateAttributes):
     pass
 
 
 class SeparateMDXC(SeparateAttributes):
-    pass
+    def __init__(self, model_name: str, input_dir: str, output_dir: str, audio_format: str, **kwargs):
+        super().__init__(model_name, input_dir, output_dir, audio_format, **kwargs)
+        model = self.get_model_from_config()
+        state_dict = torch.load(self.model_path, map_location="cpu")
+        model.load_state_dict(state_dict)
+        if self.cfg.is_half:
+            self.model = model.half().to(self.cfg.device)
+        else:
+            self.model = model.to(self.cfg.device)
+
+    @staticmethod
+    def get_model_from_config():
+        config = {
+            "attn_dropout": 0.1,
+            "depth": 12,
+            "dim": 512,
+            "dim_freqs_in": 1025,
+            "dim_head": 64,
+            "ff_dropout": 0.1,
+            "flash_attn": True,
+            "freq_transformer_depth": 1,
+            "freqs_per_bands": (
+                2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 12, 12, 12, 12, 12, 12, 12,
+                12, 24, 24, 24, 24, 24, 24, 24, 24, 48, 48, 48, 48, 48, 48, 48, 48, 128, 129),
+            "heads": 8,
+            "linear_transformer_depth": 0,
+            "mask_estimator_depth": 2,
+            "multi_stft_hop_size": 147,
+            "multi_stft_normalized": False,
+            "multi_stft_resolution_loss_weight": 1.0,
+            "multi_stft_resolutions_window_sizes": (4096, 2048, 1024, 512, 256),
+            "num_stems": 1,
+            "stereo": True,
+            "stft_hop_length": 441,
+            "stft_n_fft": 2048,
+            "stft_normalized": False,
+            "stft_win_length": 2048,
+            "time_transformer_depth": 1,
+
+        }
+
+        model = BSRoformer(
+            **dict(config)
+        )
+
+        return model
+
+    def demix_track(self, model, mix, device):
+        C = 352800
+        # num_overlap
+        N = 1
+        fade_size = C // 10
+        step = int(C // N)
+        border = C - step
+        batch_size = 4
+
+        length_init = mix.shape[-1]
+
+        progress_bar = tqdm(total=length_init // step + 1)
+        progress_bar.set_description("Processing")
+
+        # Do pad from the beginning and end to account floating window results better
+        if length_init > 2 * border and (border > 0):
+            mix = nn.functional.pad(mix, (border, border), mode='reflect')
+
+        # Prepare windows arrays (do 1 time for speed up). This trick repairs click problems on the edges of segment
+        window_size = C
+        fadein = torch.linspace(0, 1, fade_size)
+        fadeout = torch.linspace(1, 0, fade_size)
+        window_start = torch.ones(window_size)
+        window_middle = torch.ones(window_size)
+        window_finish = torch.ones(window_size)
+        window_start[-fade_size:] *= fadeout  # First audio chunk, no fadein
+        window_finish[:fade_size] *= fadein  # Last audio chunk, no fadeout
+        window_middle[-fade_size:] *= fadeout
+        window_middle[:fade_size] *= fadein
+
+        with torch.amp.autocast('cuda'):
+            with torch.inference_mode():
+                req_shape = (1,) + tuple(mix.shape)
+
+                result = torch.zeros(req_shape, dtype=torch.float32)
+                counter = torch.zeros(req_shape, dtype=torch.float32)
+                i = 0
+                batch_data = []
+                batch_locations = []
+                while i < mix.shape[1]:
+                    part = mix[:, i:i + C].to(device)
+                    length = part.shape[-1]
+                    if length < C:
+                        if length > C // 2 + 1:
+                            part = nn.functional.pad(input=part, pad=(0, C - length), mode='reflect')
+                        else:
+                            part = nn.functional.pad(input=part, pad=(0, C - length, 0, 0), mode='constant', value=0)
+                    if self.cfg.is_half:
+                        part = part.half()
+                    batch_data.append(part)
+                    batch_locations.append((i, length))
+                    i += step
+                    progress_bar.update(1)
+
+                    if len(batch_data) >= batch_size or (i >= mix.shape[1]):
+                        arr = torch.stack(batch_data, dim=0)
+                        x = model(arr)
+
+                        window = window_middle
+                        if i - step == 0:  # First audio chunk, no fadein
+                            window = window_start
+                        elif i >= mix.shape[1]:  # Last audio chunk, no fadeout
+                            window = window_finish
+
+                        for j in range(len(batch_locations)):
+                            start, l = batch_locations[j]
+                            result[..., start:start + l] += x[j][..., :l].cpu() * window[..., :l]
+                            counter[..., start:start + l] += window[..., :l]
+
+                        batch_data = []
+                        batch_locations = []
+
+                estimated_sources = result / counter
+                estimated_sources = estimated_sources.cpu().numpy()
+                np.nan_to_num(estimated_sources, copy=False, nan=0.0)
+
+                if length_init > 2 * border and (border > 0):
+                    # Remove pad
+                    estimated_sources = estimated_sources[..., border:-border]
+
+        progress_bar.close()
+
+        return {k: v for k, v in zip(['vocals', 'other'], estimated_sources)}
+
+    def separate(self, file_name: str) -> EaseVoiceResponse:
+        self.model.eval()
+        path = os.path.join(self.input_dir, file_name)
+
+        try:
+            mix, sr = librosa.load(path, sr=44100, mono=False)
+        except Exception as e:
+            return EaseVoiceResponse(ResponseStatus.FAILED, "Failed to load audio file")
+
+        # Convert mono to stereo if needed
+        if len(mix.shape) == 1:
+            mix = np.stack([mix, mix], axis=0)
+
+        mix_orig = mix.copy()
+
+        mixture = torch.tensor(mix, dtype=torch.float32)
+        res = self.demix_track(self.model, mixture, self.cfg.device)
+
+        estimates = res['vocals'].T
+        self.write_output(
+            data=estimates,
+            sr=sr,
+            name=file_name,
+            is_vocal=True,
+        )
+        self.write_output(
+            data=mix_orig.T - estimates,
+            sr=sr,
+            name=file_name,
+            is_vocal=False,
+        )
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Separation completed")
