@@ -13,7 +13,7 @@ import onnxruntime as ort
 from src.utils.config import uvr5_root, cfg, uvr5_params_root, CPU, uvr5_onnx_name
 from src.utils.path import format_path, get_parent_abs_path
 from src.audiokit.uvr5.lib_v5.vr_network.model_param_init import ModelParameters
-import src.audiokit.uvr5.lib_v5.vr_network.nets as nets
+import src.audiokit.uvr5.lib_v5.vr_network.nets_61968KB as Nets
 from src.utils.response import ResponseStatus, EaseVoiceResponse
 import src.audiokit.uvr5.lib_v5.vr_network.spec_utils as spec_utils
 from src.audiokit.uvr5.lib_v5.vr_network.nets_new import CascadedNet
@@ -88,7 +88,7 @@ class SeparateVR(SeparateBase):
         self._parent_directory = get_parent_abs_path(__file__)
         self.mp = ModelParameters("{}/{}/4band_v2.json".format(self._parent_directory, uvr5_params_root))
 
-        model = nets.determine_model_capacity(self.mp.param['bins'] * 2, 123821)
+        model = Nets.CascadedASPPNet(self.mp.param['bins'] * 2)
         cpk = torch.load(self.model_path, map_location=CPU)
         model.load_state_dict(cpk)
         model.eval()
@@ -124,12 +124,13 @@ class SeparateVR(SeparateBase):
                     target_sr=band_params["sr"],
                     res_type=band_params["res_type"],
                 )
-            x_spec_s[index] = spec_utils.wave_to_spectrogram(
+            x_spec_s[index] = spec_utils.wave_to_spectrogram_mt(
                 x_wave[index],
                 band_params["hl"],
                 band_params["n_fft"],
-                self.mp,
-                index,
+                self.mp.param["mid_side"],
+                self.mp.param["mid_side_b2"],
+                self.mp.param["reverse"],
             )
             if index == band_n and self.data["high_end_process"] != "none":
                 input_high_end_head = (band_params["n_fft"] // 2 - band_params["crop_stop"]) + (

@@ -1,7 +1,8 @@
-import layers
 import torch
 import torch.nn.functional as F
 from torch import nn
+
+from src.audiokit.uvr5.lib_v5.vr_network import layers_123821KB as layers
 
 
 class BaseASPPNet(nn.Module):
@@ -38,18 +39,18 @@ class BaseASPPNet(nn.Module):
 class CascadedASPPNet(nn.Module):
     def __init__(self, n_fft):
         super(CascadedASPPNet, self).__init__()
-        self.stg1_low_band_net = BaseASPPNet(2, 16)
-        self.stg1_high_band_net = BaseASPPNet(2, 16)
+        self.stg1_low_band_net = BaseASPPNet(2, 32)
+        self.stg1_high_band_net = BaseASPPNet(2, 32)
 
-        self.stg2_bridge = layers.Conv2DBNActiv(18, 8, 1, 1, 0)
-        self.stg2_full_band_net = BaseASPPNet(8, 16)
+        self.stg2_bridge = layers.Conv2DBNActiv(34, 16, 1, 1, 0)
+        self.stg2_full_band_net = BaseASPPNet(16, 32)
 
-        self.stg3_bridge = layers.Conv2DBNActiv(34, 16, 1, 1, 0)
-        self.stg3_full_band_net = BaseASPPNet(16, 32)
+        self.stg3_bridge = layers.Conv2DBNActiv(66, 32, 1, 1, 0)
+        self.stg3_full_band_net = BaseASPPNet(32, 64)
 
-        self.out = nn.Conv2d(32, 2, 1, bias=False)
-        self.aux1_out = nn.Conv2d(16, 2, 1, bias=False)
-        self.aux2_out = nn.Conv2d(16, 2, 1, bias=False)
+        self.out = nn.Conv2d(64, 2, 1, bias=False)
+        self.aux1_out = nn.Conv2d(32, 2, 1, bias=False)
+        self.aux2_out = nn.Conv2d(32, 2, 1, bias=False)
 
         self.max_bin = n_fft // 2
         self.output_bin = n_fft // 2 + 1
@@ -104,8 +105,8 @@ class CascadedASPPNet(nn.Module):
                     mask[:, :, : aggressiveness["split_bin"]],
                     1 + aggressiveness["value"] / 3,
                 )
-                mask[:, :, aggressiveness["split_bin"] :] = torch.pow(
-                    mask[:, :, aggressiveness["split_bin"] :],
+                mask[:, :, aggressiveness["split_bin"]:] = torch.pow(
+                    mask[:, :, aggressiveness["split_bin"]:],
                     1 + aggressiveness["value"],
                 )
 
@@ -115,7 +116,7 @@ class CascadedASPPNet(nn.Module):
         h = self.forward(x_mag, aggressiveness)
 
         if self.offset > 0:
-            h = h[:, :, :, self.offset : -self.offset]
+            h = h[:, :, :, self.offset: -self.offset]
             assert h.size()[3] > 0
 
         return h

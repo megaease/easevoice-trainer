@@ -1,11 +1,12 @@
-import layers
 import torch
 import torch.nn.functional as F
 from torch import nn
 
+from src.audiokit.uvr5.lib_v5.vr_network import layers_33966KB as layers
+
 
 class BaseASPPNet(nn.Module):
-    def __init__(self, nin, ch, dilations=(4, 8, 16)):
+    def __init__(self, nin, ch, dilations=(4, 8, 16, 32)):
         super(BaseASPPNet, self).__init__()
         self.enc1 = layers.Encoder(nin, ch, 3, 2, 1)
         self.enc2 = layers.Encoder(ch, ch * 2, 3, 2, 1)

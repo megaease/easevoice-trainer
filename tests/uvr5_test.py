@@ -10,8 +10,8 @@ class TestUvr5(unittest.TestCase):
         from src.utils.response import ResponseStatus
 
         model_name = "HP3_all_vocals"
-        input_dir = "/Users/haotingyi/Documents/workspaces/megaease/easevoice-trainer/tests/resources"
-        output_dir = "/Users/haotingyi/Documents/workspaces/megaease/easevoice-trainer/tests/output"
+        input_dir = "./resources"
+        output_dir = "./output"
         audio_format = "wav"
         response = AudioService.uvr5(model_name, input_dir, output_dir, audio_format)
         self.assertEqual(response.status, ResponseStatus.SUCCESS)
