@@ -22,7 +22,7 @@ from src.audiokit.uvr5.lib_v5.vr_network.nets_new import CascadedNet
 from src.audiokit.uvr5.lib_v5.vr_network.bs_roformer import BSRoformer
 
 
-class SeparateAttributes:
+class SeparateBase:
     def __init__(self, model_name: str, input_dir: str, output_dir: str, audio_format: str, **kwargs):
         self.model_name = model_name
         self.model_path = f"{uvr5_root}/{model_name}.pth"
@@ -74,7 +74,7 @@ class SeparateAttributes:
                         pass
 
 
-class SeparateVR(SeparateAttributes):
+class SeparateVR(SeparateBase):
     def __init__(self, model_name: str, input_dir: str, output_dir: str, audio_format: str, **kwargs):
         super().__init__(model_name, input_dir, output_dir, audio_format, **kwargs)
         self.data = {
@@ -89,7 +89,7 @@ class SeparateVR(SeparateAttributes):
         self._parent_directory = get_parent_abs_path(__file__)
         self.mp = ModelParameters("{}/{}/4band_v2.json".format(self._parent_directory, uvr5_params_root))
 
-        model = nets.CascadedASPPNet(self.mp.param["bins"] * 2)
+        model = nets.determine_model_capacity(self.mp.param['bins'] * 2, 123821)
         cpk = torch.load(self.model_path, map_location=CPU)
         model.load_state_dict(cpk)
         model.eval()
@@ -199,9 +199,6 @@ class SeparateVR(SeparateAttributes):
             with torch.no_grad():
                 predicts = []
 
-                iterations = [_n_window]
-
-                total_iterations = sum(iterations)
                 for i in tqdm(range(_n_window)):
                     start = i * _roi_size
                     x_mag_window = _x_mag_pad[
@@ -221,10 +218,10 @@ class SeparateVR(SeparateAttributes):
             return predict
 
         def preprocess(_x_spec):
-            x_mag = np.abs(_x_spec)
-            x_phase = np.angle(_x_spec)
+            _x_mag = np.abs(_x_spec)
+            _x_phase = np.angle(_x_spec)
 
-            return x_mag, x_phase
+            return _x_mag, _x_phase
 
         x_mag, x_phase = preprocess(x_spec)
 
@@ -290,11 +287,11 @@ class SeparateVREcho(SeparateVR):
         self.model = model
 
 
-class SeparateMDXNet(SeparateAttributes):
+class SeparateMDXNet(SeparateBase):
     pass
 
 
-class SeparateMDXC(SeparateAttributes):
+class SeparateMDXC(SeparateBase):
     def __init__(self, model_name: str, input_dir: str, output_dir: str, audio_format: str, **kwargs):
         super().__init__(model_name, input_dir, output_dir, audio_format, **kwargs)
         model = self.get_model_from_config()
@@ -343,12 +340,12 @@ class SeparateMDXC(SeparateAttributes):
         return model
 
     def demix_track(self, model, mix, device):
-        C = 352800
+        c = 352800
         # num_overlap
-        N = 1
-        fade_size = C // 10
-        step = int(C // N)
-        border = C - step
+        n = 1
+        fade_size = c // 10
+        step = int(c // n)
+        border = c - step
         batch_size = 4
 
         length_init = mix.shape[-1]
@@ -361,7 +358,7 @@ class SeparateMDXC(SeparateAttributes):
             mix = nn.functional.pad(mix, (border, border), mode='reflect')
 
         # Prepare windows arrays (do 1 time for speed up). This trick repairs click problems on the edges of segment
-        window_size = C
+        window_size = c
         fadein = torch.linspace(0, 1, fade_size)
         fadeout = torch.linspace(1, 0, fade_size)
         window_start = torch.ones(window_size)
@@ -382,13 +379,13 @@ class SeparateMDXC(SeparateAttributes):
                 batch_data = []
                 batch_locations = []
                 while i < mix.shape[1]:
-                    part = mix[:, i:i + C].to(device)
+                    part = mix[:, i:i + c].to(device)
                     length = part.shape[-1]
-                    if length < C:
-                        if length > C // 2 + 1:
-                            part = nn.functional.pad(input=part, pad=(0, C - length), mode='reflect')
+                    if length < c:
+                        if length > c // 2 + 1:
+                            part = nn.functional.pad(input=part, pad=(0, c - length), mode='reflect')
                         else:
-                            part = nn.functional.pad(input=part, pad=(0, C - length, 0, 0), mode='constant', value=0)
+                            part = nn.functional.pad(input=part, pad=(0, c - length, 0, 0), mode='constant', value=0)
                     if self.cfg.is_half:
                         part = part.half()
                     batch_data.append(part)
@@ -432,7 +429,7 @@ class SeparateMDXC(SeparateAttributes):
 
         try:
             mix, sr = librosa.load(path, sr=44100, mono=False)
-        except Exception as e:
+        except Exception:
             return EaseVoiceResponse(ResponseStatus.FAILED, "Failed to load audio file")
 
         # Convert mono to stereo if needed
