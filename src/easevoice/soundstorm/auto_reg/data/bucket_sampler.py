@@ -4,13 +4,12 @@ import itertools
 import math
 import random
 from random import shuffle
-from typing import Iterator
+from typing import Iterator, Protocol
 from typing import Optional
 from typing import TypeVar
 
 import torch
 import torch.distributed as dist
-from torch.utils.data import Dataset
 from torch.utils.data import Sampler
 
 __all__ = [
@@ -18,6 +17,14 @@ __all__ = [
 ]
 
 T_co = TypeVar("T_co", covariant=True)
+
+
+class DataSet(Protocol):
+    def __len__(self) -> int:
+        ...
+
+    def get_sample_length(self, idx: int) -> float:
+        ...
 
 
 class DistributedBucketSampler(Sampler[T_co]):
@@ -31,7 +38,7 @@ class DistributedBucketSampler(Sampler[T_co]):
 
     def __init__(
         self,
-        dataset: Dataset,
+        dataset: DataSet,
         num_replicas: Optional[int] = None,
         rank: Optional[int] = None,
         shuffle: bool = True,
@@ -146,7 +153,7 @@ class DistributedBucketSampler(Sampler[T_co]):
         indices = indices[self.rank: self.total_size: self.num_replicas]
         assert len(indices) == self.num_samples
 
-        return iter(indices)
+        return iter(indices)  # pyright: ignore
 
     def __len__(self) -> int:
         return self.num_samples

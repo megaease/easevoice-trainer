@@ -1,30 +1,20 @@
 # modified from https://github.com/yangdongchao/SoundStorm/blob/master/soundstorm/s1/AR/data/dataset.py
 # reference: https://github.com/lifeiteng/vall-e
-from text import cleaned_text_to_sequence
-import pdb
-import sys
-
-# sys.path.append("/data/docker/liujing04/gpt-vits/mq-vits-s1bert_no_bert")
 import traceback
 import os
-from typing import Dict
+from typing import Dict, Optional
 from typing import List
 
 import numpy as np
 import pandas as pd
 import torch
-import json
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
-from transformers import AutoTokenizer
 
-version = os.environ.get('version', None)
-
-
-# from config import exp_dir
+from ....text import cleaned_text_to_sequence
 
 
-def batch_sequences(sequences: List[np.array], axis: int = 0, pad_value: int = 0):
+def batch_sequences(sequences: List[np.ndarray], axis: int = 0, pad_value: int = 0):
     seq = sequences[0]
     ndim = seq.ndim
     if axis < 0:
@@ -52,7 +42,7 @@ class Text2SemanticDataset(Dataset):
         self,
         phoneme_path: str,
         semantic_path: str,
-        max_sample: int = None,
+        max_sample: Optional[int] = None,
         max_sec: int = 100,
         pad_val: int = 1024,
         # min value of phoneme/sec
@@ -141,7 +131,7 @@ class Text2SemanticDataset(Dataset):
 
             semantic_str = self.semantic_data.iloc[i, 1]
             # get token list
-            semantic_ids = [int(idx) for idx in semantic_str.split(" ")]
+            semantic_ids = [int(idx) for idx in semantic_str.split(" ")]  # pyright: ignore
             # (T), 是否需要变成 (1, T) -> 不需要，因为需要求 len
             # 过滤掉太长的样本
             if (
@@ -153,7 +143,7 @@ class Text2SemanticDataset(Dataset):
             phoneme = phoneme.split(" ")
 
             try:
-                phoneme_ids = cleaned_text_to_sequence(phoneme, version)
+                phoneme_ids = cleaned_text_to_sequence(phoneme)
             except:
                 traceback.print_exc()
                 # print(f"{item_name} not in self.phoneme_data !")
@@ -230,13 +220,9 @@ class Text2SemanticDataset(Dataset):
         path_bert = "%s/%s.pt" % (self.path3, item_name)
         if os.path.exists(path_bert) == True:
             bert_feature = torch.load(path_bert, map_location="cpu")
-        else:
-            flag = 1
-        if flag == 1:
-            # bert_feature=torch.zeros_like(phoneme_ids,dtype=torch.float32)
-            bert_feature = None
-        else:
             assert bert_feature.shape[-1] == len(phoneme_ids)
+        else:
+            bert_feature = None
         return {
             "idx": idx,
             "phoneme_ids": phoneme_ids,
@@ -261,20 +247,20 @@ class Text2SemanticDataset(Dataset):
 
         for item in examples:
             sample_index.append(item["idx"])
-            phoneme_ids.append(np.array(item["phoneme_ids"], dtype=np.int64))
-            semantic_ids.append(np.array(item["semantic_ids"], dtype=np.int64))
+            phoneme_ids.append(np.array(item["phoneme_ids"], dtype=np.int64))  # pyright: ignore
+            semantic_ids.append(np.array(item["semantic_ids"], dtype=np.int64))  # pyright: ignore
             phoneme_ids_lens.append(item["phoneme_ids_len"])
             semantic_ids_lens.append(item["semantic_ids_len"])
 
         # pad 0
-        phoneme_ids = batch_sequences(phoneme_ids)
-        semantic_ids = batch_sequences(semantic_ids, pad_value=self.PAD)
+        phoneme_ids = batch_sequences(phoneme_ids)  # pyright: ignore
+        semantic_ids = batch_sequences(semantic_ids, pad_value=self.PAD)  # pyright: ignore
 
         # # convert each batch to torch.tensor
-        phoneme_ids = torch.tensor(phoneme_ids)
-        semantic_ids = torch.tensor(semantic_ids)
-        phoneme_ids_lens = torch.tensor(phoneme_ids_lens)
-        semantic_ids_lens = torch.tensor(semantic_ids_lens)
+        phoneme_ids = torch.tensor(phoneme_ids)  # pyright: ignore
+        semantic_ids = torch.tensor(semantic_ids)  # pyright: ignore
+        phoneme_ids_lens = torch.tensor(phoneme_ids_lens)  # pyright: ignore
+        semantic_ids_lens = torch.tensor(semantic_ids_lens)  # pyright: ignore
         bert_padded = torch.FloatTensor(len(examples), 1024, max(phoneme_ids_lens))
         bert_padded.zero_()
 
@@ -313,13 +299,3 @@ if __name__ == "__main__":
     for i, batch in enumerate(dataloader):
         if i % 1000 == 0:
             print(i)
-        # if i == 0:
-        #     print('batch["ids"]:', batch["ids"])
-        # print('batch["phoneme_ids"]:', batch["phoneme_ids"],
-        #       batch["phoneme_ids"].shape)
-        # print('batch["phoneme_ids_len"]:', batch["phoneme_ids_len"],
-        #       batch["phoneme_ids_len"].shape)
-        # print('batch["semantic_ids"]:', batch["semantic_ids"],
-        #       batch["semantic_ids"].shape)
-        # print('batch["semantic_ids_len"]:', batch["semantic_ids_len"],
-        #       batch["semantic_ids_len"].shape)
