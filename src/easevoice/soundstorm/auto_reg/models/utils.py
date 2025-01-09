@@ -1,8 +1,10 @@
 # modified from https://github.com/yangdongchao/SoundStorm/blob/master/soundstorm/s1/AR/models/utils.py
 # reference: https://github.com/lifeiteng/vall-e
+from typing import Optional, Tuple
 import torch
 import torch.nn.functional as F
 from typing import Tuple
+
 
 def sequence_mask(length, max_length=None):
     if max_length is None:
@@ -97,9 +99,6 @@ def topk_sampling(logits, top_k=10, top_p=1.0, temperature=1.0):
     return token
 
 
-from typing import Optional, Tuple
-
-
 def multinomial_sample_one_no_sync(
     probs_sort,
 ):  # Does multinomial sampling without a cuda synchronization
@@ -143,7 +142,7 @@ def logits_to_probs(
 
     if top_k is not None:
         v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
-        pivot = v[: , -1].unsqueeze(-1)
+        pivot = v[:, -1].unsqueeze(-1)
         logits = torch.where(logits < pivot, -float("Inf"), logits)
 
     probs = torch.nn.functional.softmax(logits, dim=-1)
@@ -160,6 +159,7 @@ def sample(
     )
     idx_next = multinomial_sample_one_no_sync(probs)
     return idx_next, probs
+
 
 def dpo_loss(policy_chosen_logps: torch.FloatTensor,
              policy_rejected_logps: torch.FloatTensor,
@@ -181,6 +181,7 @@ def dpo_loss(policy_chosen_logps: torch.FloatTensor,
 
     return losses.mean(), chosen_rewards, rejected_rewards
 
+
 def get_batch_logps(logits_target: torch.FloatTensor, logits_reject: torch.FloatTensor, labels_target: torch.LongTensor, labels_reject: torch.LongTensor, average_log_prob: bool = False) -> Tuple[torch.FloatTensor, torch.FloatTensor]:
 
     # dummy token; we'll ignore the losses on these tokens later
@@ -190,6 +191,7 @@ def get_batch_logps(logits_target: torch.FloatTensor, logits_reject: torch.Float
 
     return per_token_logps_target.sum(-1), per_token_logps_reject.sum(-1)
 
+
 def make_reject_y(y_o, y_lens):
     def repeat_P(y):
         range_idx, _ = torch.randint(0, len(y), size=(2,)).sort()
@@ -198,6 +200,7 @@ def make_reject_y(y_o, y_lens):
         range_text = y[range_idx[0]:range_idx[1]]
         new_y = torch.cat([pre, range_text, range_text, shf])
         return new_y
+
     def lost_P(y):
         range_idx, _ = torch.randint(0, len(y), size=(2,)).sort()
         pre = y[:range_idx[0]]
@@ -214,7 +217,7 @@ def make_reject_y(y_o, y_lens):
             new_y = repeat_P(y_o[b])
             reject_y.append(new_y)
             reject_y_lens.append(len(new_y))
-        elif process_item_idx==1:
+        elif process_item_idx == 1:
             new_y = lost_P(y_o[b])
             reject_y.append(new_y)
             reject_y_lens.append(len(new_y))
@@ -223,7 +226,7 @@ def make_reject_y(y_o, y_lens):
         pad_length = max_length - reject_y_lens[b]
         reject_y[b] = torch.cat([reject_y[b], torch.zeros(pad_length, dtype=y_o.dtype, device=y_o.device)], dim=0)
 
-    reject_y = torch.stack(reject_y, dim = 0)
+    reject_y = torch.stack(reject_y, dim=0)
     reject_y_lens = torch.tensor(reject_y_lens, device=y_lens.device)
 
     return reject_y, reject_y_lens

@@ -119,7 +119,7 @@ class DistributedBucketSampler(Sampler[T_co]):
             shuffled_bucket = list(itertools.chain(*shuffled_bucket))
             n_batch = int(math.ceil(len(shuffled_bucket) / grouped_batch_size))
             batches = [
-                shuffled_bucket[b * grouped_batch_size : (b + 1) * grouped_batch_size]
+                shuffled_bucket[b * grouped_batch_size: (b + 1) * grouped_batch_size]
                 for b in range(n_batch)
             ]
             shuffle(batches)
@@ -143,7 +143,7 @@ class DistributedBucketSampler(Sampler[T_co]):
         assert len(indices) == self.total_size
 
         # subsample
-        indices = indices[self.rank : self.total_size : self.num_replicas]
+        indices = indices[self.rank: self.total_size: self.num_replicas]
         assert len(indices) == self.num_samples
 
         return iter(indices)

@@ -6,6 +6,7 @@ from torch.nn.functional import (
     _in_projection_packed,
 )
 
+
 def multi_head_attention_forward_patched(
     query,
     key,

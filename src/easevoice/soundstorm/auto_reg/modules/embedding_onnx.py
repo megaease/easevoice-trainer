@@ -25,7 +25,7 @@ class TokenEmbedding(nn.Module):
         return self.word_embeddings.weight
 
     def embedding(self, index: int) -> torch.Tensor:
-        return self.word_embeddings.weight[index : index + 1]
+        return self.word_embeddings.weight[index: index + 1]
 
     def forward(self, x: torch.Tensor):
         x = self.word_embeddings(x)
@@ -50,7 +50,7 @@ class SinePositionalEmbedding(nn.Module):
         self.div_term = torch.exp(torch.arange(0, self.embedding_dim, 2) * -(math.log(10000.0) / self.embedding_dim))
 
     def extend_pe(self, x):
-        position = torch.cumsum(torch.ones_like(x[:,:,0]), dim=1).transpose(0, 1)
+        position = torch.cumsum(torch.ones_like(x[:, :, 0]), dim=1).transpose(0, 1)
         scpe = (position * self.div_term).unsqueeze(0)
         pe = torch.cat([torch.sin(scpe), torch.cos(scpe)]).permute(1, 2, 0)
         pe = pe.contiguous().view(1, -1, self.embedding_dim)

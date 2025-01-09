@@ -25,7 +25,7 @@ class TokenEmbedding(nn.Module):
         return self.word_embeddings.weight
 
     def embedding(self, index: int) -> torch.Tensor:
-        return self.word_embeddings.weight[index : index + 1]
+        return self.word_embeddings.weight[index: index + 1]
 
     def forward(self, x: torch.Tensor):
         x = self.word_embeddings(x)

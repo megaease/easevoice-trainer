@@ -270,11 +270,11 @@ def multi_head_attention_forward_patched(
             cache["k"][cache["stage"]] = k
             # print(0,cache["k"].shape)
             cache["v"][cache["stage"]] = v
-        else:  ###12个layer每个都要留自己的cache_kv
+        else:  # 12个layer每个都要留自己的cache_kv
             # print(1,cache["k"].shape)
             cache["k"][cache["stage"]] = torch.cat(
                 [cache["k"][cache["stage"]], k], 0
-            )  ##本来时序是1，但是proj的时候可能transpose了所以时序到0维了
+            )  # 本来时序是1，但是proj的时候可能transpose了所以时序到0维了
             cache["v"][cache["stage"]] = torch.cat([cache["v"][cache["stage"]], v], 0)
             # print(2, cache["k"].shape)
             src_len = cache["k"][cache["stage"]].shape[0]

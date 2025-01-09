@@ -154,6 +154,7 @@ class TransformerEncoder(nn.Module):
 
 class TransformerEncoderLayer(nn.Module):
     __constants__ = ["batch_first", "norm_first"]
+
     def __init__(
         self,
         d_model: int,
