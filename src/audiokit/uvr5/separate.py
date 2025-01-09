@@ -45,13 +45,14 @@ class SeparateBase:
         pass
 
     def write_output(self, data: np.ndarray, sr: int, name: str, is_vocal: bool, extend_path: str = None):
+        name = name.split(".")[0]
         path = "{}_{}".format(name, extend_path) if extend_path else name
+        head = self.vocal_head if is_vocal else self.accompaniment_head
         if self.audio_format in ["wav", "flac"]:
             sf.write(
                 os.path.join(
                     self.output_vocal_dir if is_vocal else self.output_accompaniment_dir,
-                    self.vocal_head if is_vocal else self.accompaniment_head,
-                    f"{path}.{self.audio_format}",
+                    f"{head}{path}.{self.audio_format}",
                 ),
                 data,
                 sr,
@@ -59,8 +60,7 @@ class SeparateBase:
         else:
             file_path = os.path.join(
                 self.output_vocal_dir if is_vocal else self.output_accompaniment_dir,
-                self.vocal_head if is_vocal else self.accompaniment_head,
-                f"{path}.wav",
+                f"{head}{path}.wav",
             )
             sf.write(path, data, sr)
             opt_format_path = file_path[:-4] + f".{self.audio_format}"
@@ -168,7 +168,7 @@ class SeparateVR(SeparateBase):
             extend_path="{}".format(self.data["agg"]),
             data=(np.array(wav_accompaniment) * 32768).astype("int16"),
             sr=self.mp.param["sr"],
-            name=self.accompaniment_head,
+            name=file_name,
             is_vocal=False,
         )
 
@@ -187,7 +187,7 @@ class SeparateVR(SeparateBase):
             extend_path="{}".format(self.data["agg"]),
             data=(np.array(wav_vocals) * 32768).astype("int16"),
             sr=self.mp.param["sr"],
-            name=self.vocal_head,
+            name=file_name,
             is_vocal=True,
         )
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Separation completed")

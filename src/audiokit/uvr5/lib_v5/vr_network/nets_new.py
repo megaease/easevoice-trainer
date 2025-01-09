@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as functional
-import layers_new as layers
+import src.audiokit.uvr5.lib_v5.vr_network.layers_new as layers
 
 class BaseNet(nn.Module):
 
@@ -114,7 +114,7 @@ class CascadedNet(nn.Module):
 
         return mask
 
-    def predict(self, x):
+    def predict(self, x, aggressiveness=None):
         mask = self.forward(x)
         pred_mag = x * mask
 

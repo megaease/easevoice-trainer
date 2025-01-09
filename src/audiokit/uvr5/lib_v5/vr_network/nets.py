@@ -2,7 +2,8 @@ import torch
 from torch import nn
 import torch.nn.functional as functional
 
-import layers
+import src.audiokit.uvr5.lib_v5.vr_network.layers as layers
+
 
 class BaseASPPNet(nn.Module):
 
@@ -46,8 +47,8 @@ class BaseASPPNet(nn.Module):
 
         return h
 
-def determine_model_capacity(n_fft_bins, nn_architecture):
 
+def determine_model_capacity(n_fft_bins, nn_architecture):
     sp_model_arch = [31191, 33966, 129605]
     hp_model_arch = [123821, 123812]
     hp2_model_arch = [537238, 537227]
@@ -96,6 +97,7 @@ def determine_model_capacity(n_fft_bins, nn_architecture):
 
     return model
 
+
 class CascadedASPPNet(nn.Module):
 
     def __init__(self, n_fft, model_capacity_data, nn_architecture):
@@ -118,17 +120,20 @@ class CascadedASPPNet(nn.Module):
 
         self.offset = 128
 
-    def forward(self, x):
+    def forward(self, x, aggressiveness=None):
         mix = x.detach()
         x = x.clone()
 
-        x = x[:, :, :self.max_bin]
+        x = x[:, :, : self.max_bin]
 
         bandw = x.size()[2] // 2
-        aux1 = torch.cat([
-            self.stg1_low_band_net(x[:, :, :bandw]),
-            self.stg1_high_band_net(x[:, :, bandw:])
-        ], dim=2)
+        aux1 = torch.cat(
+            [
+                self.stg1_low_band_net(x[:, :, :bandw]),
+                self.stg1_high_band_net(x[:, :, bandw:]),
+            ],
+            dim=2,
+        )
 
         h = torch.cat([x, aux1], dim=1)
         aux2 = self.stg2_full_band_net(self.stg2_bridge(h))
@@ -140,27 +145,41 @@ class CascadedASPPNet(nn.Module):
         mask = functional.pad(
             input=mask,
             pad=(0, 0, 0, self.output_bin - mask.size()[2]),
-            mode='replicate')
+            mode="replicate",
+        )
 
         if self.training:
             aux1 = torch.sigmoid(self.aux1_out(aux1))
             aux1 = functional.pad(
                 input=aux1,
                 pad=(0, 0, 0, self.output_bin - aux1.size()[2]),
-                mode='replicate')
+                mode="replicate",
+            )
             aux2 = torch.sigmoid(self.aux2_out(aux2))
             aux2 = functional.pad(
                 input=aux2,
                 pad=(0, 0, 0, self.output_bin - aux2.size()[2]),
-                mode='replicate')
+                mode="replicate",
+            )
             return mask * mix, aux1 * mix, aux2 * mix
         else:
-            return mask# * mix
+            if aggressiveness:
+                mask[:, :, : aggressiveness["split_bin"]] = torch.pow(
+                    mask[:, :, : aggressiveness["split_bin"]],
+                    1 + aggressiveness["value"] / 3,
+                )
+                mask[:, :, aggressiveness["split_bin"] :] = torch.pow(
+                    mask[:, :, aggressiveness["split_bin"] :],
+                    1 + aggressiveness["value"],
+                )
 
-    def predict_mask(self, x):
-        mask = self.forward(x)
+            return mask * mix
+
+    def predict(self, x_mag, aggressiveness=None):
+        h = self.forward(x_mag, aggressiveness)
 
         if self.offset > 0:
-            mask = mask[:, :, :, self.offset:-self.offset]
+            h = h[:, :, :, self.offset : -self.offset]
+            assert h.size()[3] > 0
 
-        return mask
+        return h

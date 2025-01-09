@@ -2,7 +2,7 @@ import torch
 from torch import nn
 import torch.nn.functional as functional
 
-import spec_utils
+import src.audiokit.uvr5.lib_v5.vr_network.spec_utils as spec_utils
 
 class Conv2DBNActiv(nn.Module):
 

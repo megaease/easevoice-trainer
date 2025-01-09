@@ -11,3 +11,9 @@ def format_path(path_str: str):
 
 def get_parent_abs_path(path_str: str):
     return os.path.dirname(os.path.abspath(path_str))
+
+
+def get_base_path():
+    current_path = os.path.abspath(__file__)
+    src_path = os.path.join(os.path.dirname(current_path), '..', '..', '..')
+    return os.path.abspath(src_path)
