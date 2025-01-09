@@ -12,7 +12,7 @@ from torch.nn.modules.linear import NonDynamicallyQuantizableLinear
 from torch.nn.parameter import Parameter
 
 from torch.nn import functional as F
-from AR.modules.patched_mha_with_cache_onnx import multi_head_attention_forward_patched
+from .patched_mha_with_cache_onnx import multi_head_attention_forward_patched
 
 
 class MultiheadAttention(Module):
@@ -175,4 +175,4 @@ class MultiheadAttention(Module):
             average_attn_weights=average_attn_weights,
             cache=cache,
         )
-        return attn_output.transpose(1, 0)
+        return attn_output.transpose(1, 0)  # pyright: ignore

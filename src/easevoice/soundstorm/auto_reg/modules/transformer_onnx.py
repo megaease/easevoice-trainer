@@ -2,7 +2,7 @@
 import copy
 import numbers
 from functools import partial
-from typing import Any
+from typing import Any, Type
 from typing import Callable
 from typing import List
 from typing import Optional
@@ -10,8 +10,8 @@ from typing import Tuple
 from typing import Union
 
 import torch
-from AR.modules.activation_onnx import MultiheadAttention
-from AR.modules.scaling import BalancedDoubleSwish
+from .activation_onnx import MultiheadAttention
+from .scaling import BalancedDoubleSwish
 from torch import nn
 from torch import Tensor
 from torch.nn import functional as F
@@ -63,7 +63,7 @@ class LayerNorm(nn.Module):
         if isinstance(input, tuple):
             input, embedding = input
             return (
-                F.layer_norm(
+                F.layer_norm(  # pyright: ignore
                     input,
                     self.normalized_shape,
                     self.weight,
@@ -166,11 +166,11 @@ class TransformerEncoderLayer(nn.Module):
         norm_first: bool = False,
         device=None,
         dtype=None,
-        linear1_self_attention_cls: nn.Module = nn.Linear,
-        linear2_self_attention_cls: nn.Module = nn.Linear,
-        linear1_feedforward_cls: nn.Module = nn.Linear,
-        linear2_feedforward_cls: nn.Module = nn.Linear,
-        layer_norm_cls: nn.Module = LayerNorm,
+        linear1_self_attention_cls: Type[nn.Module] = nn.Linear,
+        linear2_self_attention_cls: Type[nn.Module] = nn.Linear,
+        linear1_feedforward_cls: Type[nn.Module] = nn.Linear,
+        linear2_feedforward_cls: Type[nn.Module] = nn.Linear,
+        layer_norm_cls: Type[nn.Module] = LayerNorm,
         layer_norm_eps: float = 1e-5,
         adaptive_layer_norm=False,
     ) -> None:
@@ -181,9 +181,9 @@ class TransformerEncoderLayer(nn.Module):
             nhead,
             dropout=dropout,
             batch_first=batch_first,
-            linear1_cls=linear1_self_attention_cls,
-            linear2_cls=linear2_self_attention_cls,
-            **factory_kwargs,
+            linear1_cls=linear1_self_attention_cls,  # pyright: ignore
+            linear2_cls=linear2_self_attention_cls,  # pyright: ignore
+            **factory_kwargs,  # pyright: ignore
         )
         self.linear1 = linear1_feedforward_cls(
             d_model, dim_feedforward, **factory_kwargs
@@ -196,7 +196,7 @@ class TransformerEncoderLayer(nn.Module):
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(dropout)
         if isinstance(activation, str):
-            activation = _get_activation_fn(activation)
+            activation = _get_activation_fn(activation)  # pyright: ignore
         elif isinstance(activation, partial):
             activation = activation(d_model)
         elif activation == BalancedDoubleSwish:
@@ -205,7 +205,7 @@ class TransformerEncoderLayer(nn.Module):
 
         norm1 = layer_norm_cls(d_model, eps=layer_norm_eps, **factory_kwargs)
         if layer_norm_cls == IdentityNorm:
-            norm2 = BalancedBasicNorm(d_model, eps=layer_norm_eps, **factory_kwargs)
+            norm2 = BalancedBasicNorm(d_model, eps=layer_norm_eps, **factory_kwargs)  # pyright: ignore
         else:
             norm2 = layer_norm_cls(d_model, eps=layer_norm_eps, **factory_kwargs)
 
@@ -257,7 +257,7 @@ class TransformerEncoderLayer(nn.Module):
         return self.dropout1(x)
 
     def _ff_block(self, x: Tensor) -> Tensor:
-        x = self.linear2(self.dropout(self.activation(self.linear1(x))))
+        x = self.linear2(self.dropout(self.activation(self.linear1(x))))  # pyright: ignore
         return self.dropout2(x)
 
 
@@ -271,7 +271,7 @@ class AdaptiveLayerNorm(nn.Module):
         self.d_model = d_model
         self.eps = self.norm.eps
 
-    def forward(self, input: Tensor, embedding: Tensor = None) -> Tensor:
+    def forward(self, input: Tensor, embedding: Optional[Tensor] = None) -> Tensor:
         if isinstance(input, tuple):
             input, embedding = input
             weight, bias = torch.split(
@@ -279,7 +279,7 @@ class AdaptiveLayerNorm(nn.Module):
                 split_size_or_sections=self.d_model,
                 dim=-1,
             )
-            return (weight * self.norm(input) + bias, embedding)
+            return (weight * self.norm(input) + bias, embedding)  # pyright: ignore
 
         weight, bias = torch.split(
             self.project_layer(embedding),

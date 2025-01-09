@@ -16,7 +16,7 @@
 import contextlib
 import logging
 from collections import defaultdict
-from typing import List
+from typing import Any, List
 from typing import Tuple
 
 import torch
@@ -110,7 +110,7 @@ class BatchedOptimizer(Optimizer):
                 torch.zeros_like(p) if p.grad is None else p.grad for p in batch
             ])
             p_stacked.grad = grad
-            stacked_params_dict[key] = p_stacked
+            stacked_params_dict[key] = p_stacked  # pyright: ignore
             tuples.append((p_stacked, state, batch_names))
 
         yield tuples  # <-- calling code will do the actual optimization here!
@@ -204,7 +204,7 @@ class ScaledAdam(BatchedOptimizer):
         super(ScaledAdam, self).__setstate__(state)
 
     @torch.no_grad()
-    def step(self, closure=None):
+    def step(self, closure=None):  # pyright: ignore
         """Performs a single optimization step.
 
         Arguments:
@@ -326,7 +326,7 @@ class ScaledAdam(BatchedOptimizer):
 
         tot_sumsq = torch.tensor(0.0, device=first_p.device)
         for (p, state, param_names) in tuples:
-            grad = p.grad
+            grad: Any = p.grad
             if grad.is_sparse:
                 raise RuntimeError(
                     "ScaledAdam optimizer does not support sparse gradients")
@@ -338,7 +338,7 @@ class ScaledAdam(BatchedOptimizer):
         tot_norm = tot_sumsq.sqrt()
         if "model_norms" not in first_state:
             first_state["model_norms"] = torch.zeros(
-                clipping_update_period, device=p.device)
+                clipping_update_period, device=p.device)  # pyright: ignore
         first_state["model_norms"][step % clipping_update_period] = tot_norm
 
         if step % clipping_update_period == 0:
@@ -385,7 +385,7 @@ class ScaledAdam(BatchedOptimizer):
                     f"Scaling gradients by {ans}, model_norm_threshold={model_norm_threshold}"
                 )
                 if self.show_dominant_parameters:
-                    assert p.shape[0] == len(param_names)
+                    assert p.shape[0] == len(param_names)  # pyright: ignore
                     self._show_gradient_dominating_parameter(tuples, tot_sumsq)
             return ans
 
@@ -408,7 +408,7 @@ class ScaledAdam(BatchedOptimizer):
         all_sumsq_orig = {}
         for (p, state, batch_param_names) in tuples:
             # p is a stacked batch parameters.
-            batch_grad = p.grad
+            batch_grad: Any = p.grad
             if p.numel() == p.shape[0]:  # a batch of scalars
                 batch_sumsq_orig = batch_grad**2
                 # Dummpy values used by following `zip` statement.
@@ -426,7 +426,7 @@ class ScaledAdam(BatchedOptimizer):
                 all_sumsq_orig[name] = (proportion_orig, sumsq_orig, rms, grad)
 
         assert torch.isclose(
-            sum([value[0] for value in all_sumsq_orig.values()]).cpu(),
+            sum([value[0] for value in all_sumsq_orig.values()]).cpu(),  # pyright: ignore
             torch.tensor(1.0), )
         sorted_by_proportion = {
             k: v
@@ -463,7 +463,7 @@ class ScaledAdam(BatchedOptimizer):
         size_update_period = group["size_update_period"]
         beta1 = group["betas"][0]
 
-        grad = p.grad
+        grad: Any = p.grad
         if clipping_scale != 1.0:
             grad = grad * clipping_scale
         step = state["step"]

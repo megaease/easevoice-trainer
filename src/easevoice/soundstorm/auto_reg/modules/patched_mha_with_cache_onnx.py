@@ -1,9 +1,9 @@
 from torch.nn.functional import *
+import torch
+from torch import Tensor
+from typing import Any, Optional, Tuple
 from torch.nn.functional import (
-    _mha_shape_check,
     _canonical_mask,
-    _none_or_dtype,
-    _in_projection_packed,
 )
 
 
@@ -33,7 +33,7 @@ def multi_head_attention_forward_patched(
     static_v: Optional[Tensor] = None,
     average_attn_weights: bool = True,
     is_causal: bool = False,
-    cache=None,
+    cache: Any = None,
 ) -> Tuple[Tensor, Optional[Tensor]]:
 
     # set up shape vars
@@ -70,7 +70,7 @@ def multi_head_attention_forward_patched(
         target_type=q.dtype,
         check_other=False,
     )
-    attn_mask = attn_mask.unsqueeze(0)
+    attn_mask = attn_mask.unsqueeze(0)  # pyright: ignore
 
     q = q.view(-1, num_heads, head_dim).transpose(0, 1)
     k = k.view(-1, num_heads, head_dim).transpose(0, 1)
@@ -90,4 +90,4 @@ def multi_head_attention_forward_patched(
     attn_output = linear(attn_output, out_proj_weight, out_proj_bias)
     attn_output = attn_output.view(-1, 1, attn_output.size(1))
 
-    return attn_output
+    return attn_output  # pyright: ignore

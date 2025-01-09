@@ -75,7 +75,7 @@ class DoubleSwishFunction(torch.autograd.Function):
         return y
 
     @staticmethod
-    def backward(ctx, y_grad: Tensor) -> Tensor:
+    def backward(ctx, y_grad: Tensor) -> Tensor:  # pyright: ignore
         (d,) = ctx.saved_tensors
         # the same constants as used in forward pass.
         floor = -0.043637
@@ -89,9 +89,9 @@ class DoubleSwish(torch.nn.Module):
         """Return double-swish activation function which is an approximation to Swish(Swish(x)),
         that we approximate closely with x * sigmoid(x-1).
         """
-        if torch.jit.is_scripting() or torch.jit.is_tracing():
+        if torch.jit.is_scripting() or torch.jit.is_tracing():  # pyright: ignore
             return x * torch.sigmoid(x - 1.0)
-        return DoubleSwishFunction.apply(x)
+        return DoubleSwishFunction.apply(x)  # pyright: ignore
 
 
 class ActivationBalancerFunction(torch.autograd.Function):
@@ -114,7 +114,7 @@ class ActivationBalancerFunction(torch.autograd.Function):
         return x
 
     @staticmethod
-    def backward(ctx, x_grad: Tensor) -> Tuple[Tensor, None, None, None]:
+    def backward(ctx, x_grad: Tensor) -> Tuple[Tensor, None, None, None]:  # pyright: ignore
         if len(ctx.saved_tensors) == 3:
             xgt0, scale_factor, sign_factor = ctx.saved_tensors
             for _ in range(ctx.channel_dim, x_grad.ndim - 1):
@@ -196,7 +196,7 @@ def _compute_sign_factor(
     sign_factor = factor1 - factor2
     # require min_positive != 0 or max_positive != 1:
     assert not isinstance(sign_factor, float)
-    return sign_factor
+    return sign_factor  # pyright: ignore
 
 
 class ActivationBalancer(torch.nn.Module):
@@ -271,8 +271,8 @@ class ActivationBalancer(torch.nn.Module):
         self.register_buffer("count", torch.tensor(0, dtype=torch.int64))
 
     def forward(self, x: Tensor) -> Tensor:
-        if torch.jit.is_scripting() or not x.requires_grad or torch.jit.is_tracing():
-            return _no_op(x)
+        if torch.jit.is_scripting() or not x.requires_grad or torch.jit.is_tracing():  # pyright: ignore
+            return _no_op(x)  # pyright: ignore
 
         count = self.cpu_count
         self.cpu_count += 1
@@ -310,14 +310,14 @@ class ActivationBalancer(torch.nn.Module):
                 gain_factor=self.scale_gain_factor / prob,
                 max_factor=self.max_factor,
             )
-            return ActivationBalancerFunction.apply(
+            return ActivationBalancerFunction.apply(  # pyright: ignore
                 x,
                 scale_factor,
                 sign_factor,
                 self.channel_dim,
             )
         else:
-            return _no_op(x)
+            return _no_op(x)  # pyright: ignore
 
 
 def BalancedDoubleSwish(

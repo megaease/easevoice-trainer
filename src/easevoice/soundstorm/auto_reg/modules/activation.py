@@ -12,7 +12,7 @@ from torch.nn.modules.linear import NonDynamicallyQuantizableLinear
 from torch.nn.parameter import Parameter
 
 from torch.nn import functional as F
-from AR.modules.patched_mha_with_cache import multi_head_attention_forward_patched
+from .patched_mha_with_cache import multi_head_attention_forward_patched
 
 F.multi_head_attention_forward = multi_head_attention_forward_patched
 
@@ -320,7 +320,7 @@ class MultiheadAttention(Module):
             )
             # We have to use list comprehensions below because TorchScript does not support
             # generator expressions.
-            if torch.overrides.has_torch_function(tensor_args):
+            if torch.overrides.has_torch_function(tensor_args):  # pyright: ignore
                 why_not_fast_path = "some Tensor argument has_torch_function"
             elif not all(
                 [
@@ -398,7 +398,7 @@ class MultiheadAttention(Module):
                 k_proj_weight=self.k_proj_weight,
                 v_proj_weight=self.v_proj_weight,
                 average_attn_weights=average_attn_weights,
-                cache=cache,
+                cache=cache,  # pyright: ignore
             )
         else:
             attn_output, attn_output_weights = F.multi_head_attention_forward(
@@ -420,7 +420,7 @@ class MultiheadAttention(Module):
                 need_weights=need_weights,
                 attn_mask=attn_mask,
                 average_attn_weights=average_attn_weights,
-                cache=cache,
+                cache=cache,  # pyright: ignore
             )
         if self.batch_first and is_batched:
             return attn_output.transpose(1, 0), attn_output_weights

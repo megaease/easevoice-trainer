@@ -41,7 +41,7 @@ class WarmupCosineLRSchedule(torch.optim.lr_scheduler._LRScheduler):
             # g['lr'] = lr
             g["lr"] = self.end_lr  # 锁定用线性
 
-    def step(self):
+    def step(self):  # pyright: ignore
         if self._current_step < self.warmup_steps:
             lr = self.init_lr + self._warmup_rate * self._current_step
 

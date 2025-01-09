@@ -1,14 +1,14 @@
 from torch.nn.functional import *
 from torch.nn.functional import (
-    _mha_shape_check,
+    _mha_shape_check,  # pyright: ignore
     _canonical_mask,
     _none_or_dtype,
-    _in_projection_packed,
+    _in_projection_packed,  # pyright: ignore
 )
 from torch.nn import functional as F
 import torch
-# Tensor = torch.Tensor
-# from typing import Callable, List, Optional, Tuple, Union
+from torch import Tensor
+from typing import Optional, Tuple
 
 
 def multi_head_attention_forward_patched(
@@ -124,8 +124,8 @@ def multi_head_attention_forward_patched(
         out_proj_weight,
         out_proj_bias,
     )
-    if has_torch_function(tens_ops):
-        return handle_torch_function(
+    if has_torch_function(tens_ops):  # pyright: ignore
+        return handle_torch_function(  # pyright: ignore
             multi_head_attention_forward,
             tens_ops,
             query,
@@ -254,7 +254,7 @@ def multi_head_attention_forward_patched(
             b_q = b_k = b_v = None
         else:
             b_q, b_k, b_v = in_proj_bias.chunk(3)
-        q, k, v = _in_projection(
+        q, k, v = _in_projection(  # pyright: ignore
             query,
             key,
             value,
@@ -335,7 +335,7 @@ def multi_head_attention_forward_patched(
     #
     q = q.view(tgt_len, bsz * num_heads, head_dim).transpose(0, 1)
     if static_k is None:
-        k = k.view(k.shape[0], bsz * num_heads, head_dim).transpose(0, 1)
+        k = k.view(k.shape[0], bsz * num_heads, head_dim).transpose(0, 1)  # pyright: ignore
     else:
         # TODO finish disentangling control flow so we don't do in-projections when statics are passed
         assert (
@@ -346,7 +346,7 @@ def multi_head_attention_forward_patched(
         ), f"expecting static_k.size(2) of {head_dim}, but got {static_k.size(2)}"
         k = static_k
     if static_v is None:
-        v = v.view(v.shape[0], bsz * num_heads, head_dim).transpose(0, 1)
+        v = v.view(v.shape[0], bsz * num_heads, head_dim).transpose(0, 1)  # pyright: ignore
     else:
         # TODO finish disentangling control flow so we don't do in-projections when statics are passed
         assert (
@@ -361,10 +361,10 @@ def multi_head_attention_forward_patched(
     if add_zero_attn:
         zero_attn_shape = (bsz * num_heads, 1, head_dim)
         k = torch.cat(
-            [k, torch.zeros(zero_attn_shape, dtype=k.dtype, device=k.device)], dim=1
+            [k, torch.zeros(zero_attn_shape, dtype=k.dtype, device=k.device)], dim=1  # pyright: ignore
         )
         v = torch.cat(
-            [v, torch.zeros(zero_attn_shape, dtype=v.dtype, device=v.device)], dim=1
+            [v, torch.zeros(zero_attn_shape, dtype=v.dtype, device=v.device)], dim=1  # pyright: ignore
         )
         if attn_mask is not None:
             attn_mask = pad(attn_mask, (0, 1))
@@ -400,7 +400,7 @@ def multi_head_attention_forward_patched(
 
     if need_weights:
         B, Nt, E = q.shape
-        q_scaled = q / math.sqrt(E)
+        q_scaled = q / math.sqrt(E)  # pyright: ignore
 
         assert not (
             is_causal and attn_mask is None
@@ -445,8 +445,8 @@ def multi_head_attention_forward_patched(
                 attn_mask = attn_mask.view(bsz, num_heads, -1, src_len)
 
         q = q.view(bsz, num_heads, tgt_len, head_dim)
-        k = k.view(bsz, num_heads, src_len, head_dim)
-        v = v.view(bsz, num_heads, src_len, head_dim)
+        k = k.view(bsz, num_heads, src_len, head_dim)  # pyright: ignore
+        v = v.view(bsz, num_heads, src_len, head_dim)  # pyright: ignore
 
         # with torch.backends.cuda.sdp_kernel(enable_flash=True, enable_math=True, enable_mem_efficient=True):
         attn_output = scaled_dot_product_attention(
