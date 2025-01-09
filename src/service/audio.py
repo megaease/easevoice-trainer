@@ -16,22 +16,23 @@ class AudioService(object):
     def uvr5(model_name: str, input_dir: str, output_dir: str, audio_format: str, **kwargs) -> EaseVoiceResponse:
         trace_data = {}
         try:
-            base_separtor = SeparateBase(
+            base_separator = SeparateBase(
                 model_name=model_name,
                 input_dir=input_dir,
                 output_dir=output_dir,
                 audio_format=audio_format,
+                reverse_output="HP3" in model_name,
                 **kwargs
             )
             if model_name == "onnx_dereverb_By_FoxJoy":
-                separator = SeparateMDXNet(base_separtor)
+                separator = SeparateMDXNet(base_separator)
             elif model_name == "Bs_Roformer" or "bs_roformer" in model_name.lower():
-                separator = SeparateMDXC(base_separtor)
+                separator = SeparateMDXC(base_separator)
             else:
                 if "DeEcho" in model_name:
-                    separator = SeparateVREcho(base_separtor)
+                    separator = SeparateVREcho(base_separator)
                 else:
-                    separator = SeparateVR(base_separtor)
+                    separator = SeparateVR(base_separator)
 
             files = [name for name in os.listdir(input_dir)]
             for file_name in files:
@@ -51,7 +52,7 @@ class AudioService(object):
                     need_reformat = 1
                     traceback.print_exc()
                 if need_reformat == 1:
-                    tmp_path = "%s/%s.reformatted.wav" % (input_dir, file_name)
+                    tmp_path = "%s/%s.reformatted.wav" % (input_dir, file_name.split(".")[0])
                     os.system(f'ffmpeg -i "{input_path}" -vn -acodec pcm_s16le -ac 2 -ar 44100 "{tmp_path}" -y')
                 try:
                     if done == 0:

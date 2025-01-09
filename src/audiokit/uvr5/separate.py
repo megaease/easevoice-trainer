@@ -40,6 +40,7 @@ class SeparateBase:
             os.makedirs(self.output_accompaniment_dir, exist_ok=True)
         self.accompaniment_head = "accompaniments_"
         self.vocal_head = "vocals_"
+        self.reverse_output = kwargs.get("reverse_output", False)
 
     def separate(self, file_name: str) -> EaseVoiceResponse:
         pass
@@ -47,6 +48,7 @@ class SeparateBase:
     def write_output(self, data: np.ndarray, sr: int, name: str, is_vocal: bool, extend_path: str = None):
         name = name.split(".")[0]
         path = "{}_{}".format(name, extend_path) if extend_path else name
+        is_vocal = is_vocal if not self.reverse_output else not is_vocal
         head = self.vocal_head if is_vocal else self.accompaniment_head
         if self.audio_format in ["wav", "flac"]:
             sf.write(
@@ -75,7 +77,7 @@ class SeparateBase:
 
 class SeparateVR(SeparateBase):
     def __init__(self, base_instance: SeparateBase, **kwargs):
-        super().__init__(base_instance.model_name, base_instance.input_dir, base_instance.output_dir, base_instance.audio_format, **kwargs)
+        super().__init__(base_instance.model_name, base_instance.input_dir, base_instance.output_dir, base_instance.audio_format, **base_instance.kwargs, **kwargs)
         self.data = {
             # Processing Options
             "postprocess": False,
@@ -273,7 +275,17 @@ class SeparateVR(SeparateBase):
 
 class SeparateVREcho(SeparateVR):
     def __init__(self, base_instance: SeparateBase, **kwargs):
-        super().__init__(base_instance, **kwargs)
+        SeparateBase.__init__(self, base_instance.model_name, base_instance.input_dir, base_instance.output_dir, base_instance.audio_format, **base_instance.kwargs, **kwargs)
+        self._parent_directory = get_parent_abs_path(__file__)
+        self.data = {
+            # Processing Options
+            "postprocess": False,
+            "tta": kwargs.get("tta", False),
+            # Constants
+            "window_size": 512,
+            "agg": kwargs.get("agg", 10),
+            "high_end_process": "mirroring",
+        }
         self.mp = ModelParameters("{}/{}/4band_v3.json".format(self._parent_directory, uvr5_params_root))
         nout = 64 if "DeReverb" in self.model_path else 48
         model = CascadedNet(self.mp.param["bins"] * 2, nout)
@@ -289,7 +301,7 @@ class SeparateVREcho(SeparateVR):
 
 class SeparateMDXNet(SeparateBase):
     def __init__(self, base_instance: SeparateBase, **kwargs):
-        super().__init__(base_instance.model_name, base_instance.input_dir, base_instance.output_dir, base_instance.audio_format, **kwargs)
+        super().__init__(base_instance.model_name, base_instance.input_dir, base_instance.output_dir, base_instance.audio_format, **base_instance.kwargs, **kwargs)
         self.onnx = f"{uvr5_root}/{uvr5_onnx_name}"
         self.shifts = 10  # 'Predict with randomised equivariant stabilisation'
         self.mixing = "min_mag"  # ['default','min_mag','max_mag']
@@ -431,7 +443,7 @@ class SeparateMDXNet(SeparateBase):
 
 class SeparateMDXC(SeparateBase):
     def __init__(self, base_instance: SeparateBase, **kwargs):
-        super().__init__(base_instance.model_name, base_instance.input_dir, base_instance.output_dir, base_instance.audio_format, **kwargs)
+        super().__init__(base_instance.model_name, base_instance.input_dir, base_instance.output_dir, base_instance.audio_format, **base_instance.kwargs, **kwargs)
         model = self.get_model_from_config()
         state_dict = torch.load(self.model_path, map_location="cpu")
         model.load_state_dict(state_dict)

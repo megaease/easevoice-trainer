@@ -9,7 +9,7 @@ class TestUvr5(unittest.TestCase):
         from src.service.audio import AudioService
         from src.utils.response import ResponseStatus
 
-        model_name = "HP3_all_vocals"
+        model_name = "onnx_dereverb_By_FoxJoy"
         input_dir = "./resources"
         output_dir = "./output"
         audio_format = "wav"
