@@ -1,18 +1,19 @@
-import layers
 import torch
 import torch.nn.functional as F
 from torch import nn
 
+import src.audiokit.uvr5.lib_v5.vr_network.layers as layers
+
 
 class BaseASPPNet(nn.Module):
-    def __init__(self, nin, ch, dilations=(4, 8, 16)):
+    def __init__(self, nin, ch, enlarge, dilations=(4, 8, 16)):
         super(BaseASPPNet, self).__init__()
         self.enc1 = layers.Encoder(nin, ch, 3, 2, 1)
         self.enc2 = layers.Encoder(ch, ch * 2, 3, 2, 1)
         self.enc3 = layers.Encoder(ch * 2, ch * 4, 3, 2, 1)
         self.enc4 = layers.Encoder(ch * 4, ch * 8, 3, 2, 1)
 
-        self.aspp = layers.ASPPModule(ch * 8, ch * 16, dilations)
+        self.aspp = layers.ASPPModule(ch * 8, ch * 16, dilations, enlarge=enlarge)
 
         self.dec4 = layers.Decoder(ch * (8 + 16), ch * 8, 3, 1, 1)
         self.dec3 = layers.Decoder(ch * (4 + 8), ch * 4, 3, 1, 1)
@@ -36,20 +37,20 @@ class BaseASPPNet(nn.Module):
 
 
 class CascadedASPPNet(nn.Module):
-    def __init__(self, n_fft):
+    def __init__(self, n_fft, params):
         super(CascadedASPPNet, self).__init__()
-        self.stg1_low_band_net = BaseASPPNet(2, 16)
-        self.stg1_high_band_net = BaseASPPNet(2, 16)
+        self.stg1_low_band_net = BaseASPPNet(params[0][0], params[0][1], params[0][2])
+        self.stg1_high_band_net = BaseASPPNet(params[1][0], params[1][1], params[1][2])
 
-        self.stg2_bridge = layers.Conv2DBNActiv(18, 8, 1, 1, 0)
-        self.stg2_full_band_net = BaseASPPNet(8, 16)
+        self.stg2_bridge = layers.Conv2DBNActiv(params[2][0], params[2][1], params[2][2], params[2][3], params[2][4])
+        self.stg2_full_band_net = BaseASPPNet(params[3][0], params[3][1], params[3][2])
 
-        self.stg3_bridge = layers.Conv2DBNActiv(34, 16, 1, 1, 0)
-        self.stg3_full_band_net = BaseASPPNet(16, 32)
+        self.stg3_bridge = layers.Conv2DBNActiv(params[4][0], params[4][1], params[4][2], params[4][3], params[4][4])
+        self.stg3_full_band_net = BaseASPPNet(params[5][0], params[5][1], params[5][2])
 
-        self.out = nn.Conv2d(32, 2, 1, bias=False)
-        self.aux1_out = nn.Conv2d(16, 2, 1, bias=False)
-        self.aux2_out = nn.Conv2d(16, 2, 1, bias=False)
+        self.out = nn.Conv2d(params[6][0], params[6][1], params[6][2], bias=params[6][3])
+        self.aux1_out = nn.Conv2d(params[7][0], params[7][1], params[7][2], bias=params[7][3])
+        self.aux2_out = nn.Conv2d(params[8][0], params[8][1], params[8][2], bias=params[8][3])
 
         self.max_bin = n_fft // 2
         self.output_bin = n_fft // 2 + 1
@@ -104,8 +105,8 @@ class CascadedASPPNet(nn.Module):
                     mask[:, :, : aggressiveness["split_bin"]],
                     1 + aggressiveness["value"] / 3,
                 )
-                mask[:, :, aggressiveness["split_bin"] :] = torch.pow(
-                    mask[:, :, aggressiveness["split_bin"] :],
+                mask[:, :, aggressiveness["split_bin"]:] = torch.pow(
+                    mask[:, :, aggressiveness["split_bin"]:],
                     1 + aggressiveness["value"],
                 )
 
@@ -115,7 +116,91 @@ class CascadedASPPNet(nn.Module):
         h = self.forward(x_mag, aggressiveness)
 
         if self.offset > 0:
-            h = h[:, :, :, self.offset : -self.offset]
+            h = h[:, :, :, self.offset: -self.offset]
             assert h.size()[3] > 0
 
         return h
+
+
+def get_nets_model(n_fft, size=61968) -> CascadedASPPNet:
+    params = {
+        33966: [
+            [2, 16, True],
+            [2, 16, True],
+            [18, 8, 1, 1, 0],
+            [8, 16, True],
+            [34, 16, 1, 1, 0],
+            [16, 32, True],
+            [32, 2, 1, False],
+            [16, 2, 1, False],
+            [16, 2, 1, False],
+        ],
+        61968: [
+            [2, 32, False],
+            [2, 32, False],
+            [34, 16, 1, 1, 0],
+            [16, 32, False],
+            [66, 32, 1, 1, 0],
+            [32, 64, False],
+            [64, 2, 1, False],
+            [32, 2, 1, False],
+            [32, 2, 1, False],
+        ],
+        123812: [
+            [2, 32, False],
+            [2, 32, False],
+            [34, 16, 1, 1, 0],
+            [16, 32, False],
+            [66, 32, 1, 1, 0],
+            [32, 64, False],
+            [64, 2, 1, False],
+            [32, 2, 1, False],
+            [32, 2, 1, False],
+        ],
+        123821: [
+            [2, 32, False],
+            [2, 32, False],
+            [34, 16, 1, 1, 0],
+            [16, 32, False],
+            [66, 32, 1, 1, 0],
+            [32, 64, False],
+            [64, 2, 1, False],
+            [32, 2, 1, False],
+            [32, 2, 1, False],
+        ],
+        537227: [
+            [2, 64, True],
+            [2, 64, True],
+            [66, 32, 1, 1, 0],
+            [32, 64, True],
+            [130, 64, 1, 1, 0],
+            [64, 128, True],
+            [128, 2, 1, False],
+            [64, 2, 1, False],
+            [64, 2, 1, False],
+        ],
+        537238: [
+            [2, 64, True],
+            [2, 64, True],
+            [66, 32, 1, 1, 0],
+            [32, 64, True],
+            [130, 64, 1, 1, 0],
+            [64, 128, True],
+            [128, 2, 1, False],
+            [64, 2, 1, False],
+            [64, 2, 1, False],
+        ],
+        16983: [
+            [2, 16, False],
+            [2, 16, False],
+            [18, 8, 1, 1, 0],
+            [8, 16, False],
+            [34, 16, 1, 1, 0],
+            [16, 32, False],
+            [32, 2, 1, False],
+            [16, 2, 1, False],
+            [16, 2, 1, False],
+        ]
+    }
+    param = params[size]
+    return CascadedASPPNet(n_fft, param)

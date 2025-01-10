@@ -13,7 +13,7 @@ import onnxruntime as ort
 from src.utils.config import uvr5_root, cfg, uvr5_params_root, CPU, uvr5_onnx_name
 from src.utils.path import format_path, get_parent_abs_path
 from src.audiokit.uvr5.lib_v5.vr_network.model_param_init import ModelParameters
-import src.audiokit.uvr5.lib_v5.vr_network.nets_61968KB as Nets
+import src.audiokit.uvr5.lib_v5.vr_network.nets as Nets
 from src.utils.response import ResponseStatus, EaseVoiceResponse
 import src.audiokit.uvr5.lib_v5.vr_network.spec_utils as spec_utils
 from src.audiokit.uvr5.lib_v5.vr_network.nets_new import CascadedNet
@@ -90,7 +90,7 @@ class SeparateVR(SeparateBase):
         self._parent_directory = get_parent_abs_path(__file__)
         self.mp = ModelParameters("{}/{}/4band_v2.json".format(self._parent_directory, uvr5_params_root))
 
-        model = Nets.CascadedASPPNet(self.mp.param['bins'] * 2)
+        model = Nets.get_nets_model(self.mp.param['bins'] * 2)
         cpk = torch.load(self.model_path, map_location=CPU)
         model.load_state_dict(cpk)
         model.eval()
