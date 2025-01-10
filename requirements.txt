@@ -17,3 +17,6 @@ transformers
 ffmpeg-python
 onnxruntime; sys_platform == 'darwin'
 onnxruntime-gpu; sys_platform != 'darwin'
+fastapi
+uvicorn
+pydantic

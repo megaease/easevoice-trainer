@@ -22,4 +22,5 @@ dependencies = [
     "tqdm>=4.67.1",
     "transformers",
     "ffmpeg-python",
+    "uvicorn>=0.34.0",
 ]
