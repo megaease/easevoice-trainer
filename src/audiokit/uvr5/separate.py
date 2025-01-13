@@ -10,7 +10,7 @@ import soundfile as sf
 import torch.nn as nn
 import onnxruntime as ort
 
-from src.utils.config import uvr5_root, cfg, uvr5_params_root, CPU, uvr5_onnx_name
+from src.utils.config import uvr5_root, cfg, uvr5_params_root, CPU, uvr5_onnx_name, vocals_output, accompaniments_output
 from src.utils.path import format_path, get_parent_abs_path
 from src.audiokit.uvr5.lib_v5.vr_network.model_param_init import ModelParameters
 import src.audiokit.uvr5.lib_v5.vr_network.nets as Nets
@@ -24,12 +24,12 @@ from src.audiokit.uvr5.lib_v5.vr_network.mdxnet import ConvTDFNetTrim
 class SeparateBase:
     def __init__(self, model_name: str, input_dir: str, output_dir: str, audio_format: str, **kwargs):
         self.model_name = model_name
-        self.model_path = f"{uvr5_root}/{model_name}.pth"
+        self.model_path = os.path.join(uvr5_root, f"{model_name}.pth")
         self.cfg = cfg
         self.input_dir = format_path(input_dir)
         self.output_dir = format_path(output_dir)
-        self.output_vocal_dir = f"{self.output_dir}/vocals"
-        self.output_accompaniment_dir = f"{self.output_dir}/accompaniment"
+        self.output_vocal_dir = os.path.join(self.output_dir, vocals_output)
+        self.output_accompaniment_dir = os.path.join(self.output_dir, accompaniments_output)
         self.audio_format = audio_format
         self.kwargs = kwargs
         self.file_list = []
