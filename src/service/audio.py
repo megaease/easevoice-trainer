@@ -130,6 +130,7 @@ class AudioService(object):
         )
         for file in file_list:
             name = os.path.basename(file)
+            name = name.split(".")[0]
             try:
                 audio = load_audio(file, 32000)
                 if audio.shape[0] == 0:
