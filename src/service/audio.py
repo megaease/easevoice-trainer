@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
+import multiprocessing
 import os
 import traceback
 from multiprocessing import Process
@@ -7,6 +8,7 @@ from multiprocessing import Process
 import ffmpeg
 import torch
 import numpy as np
+from joblib.externals.loky.backend.queues import Queue
 from scipy.io import wavfile
 
 from src.audiokit.uvr5.separate import SeparateBase, SeparateMDXNet, SeparateMDXC, SeparateVR, SeparateVREcho
@@ -73,21 +75,51 @@ class AudioService(object):
         finally:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Success", trace_data)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "UVR5 Success", trace_data)
 
-    def slicer(self, threshold: int, min_length: int, min_interval: int, hop_size: int, max_silent_kept: int, normalize_max: float, alpha_mix: float, num_process: int):
+    def slicer(
+            self,
+            threshold: int = -34,
+            min_length: int = 4000,
+            min_interval: int = 300,
+            hop_size: int = 10,
+            max_silent_kept: int = 500,
+            normalize_max: float = 0.9,
+            alpha_mix: float = 0.25,
+            num_process: int = 4,
+    ) -> EaseVoiceResponse:
         os.makedirs(os.path.join(self.output_dir, slices_output), exist_ok=True)
-        files = [os.path.join(self.output_dir, vocals_output, name) for name in sorted(list(os.listdir(os.path.join(self.output_dir, vocals_output))))]
+        files = []
+        for name in sorted(list(os.listdir(os.path.join(self.output_dir, vocals_output)))):
+            file_path = os.path.join(self.output_dir, vocals_output, name)
+            if os.path.isfile(file_path) and file_path.split(".")[-1] in ["wav", "flac", "mp3", "m4a"]:
+                files.append(file_path)
+
         process = []
+        queue = multiprocessing.Queue()
         for i in range(num_process):
             file_list = files[i::num_process]
-            p = Process(target=self.slice_audio, args=(threshold, min_length, min_interval, hop_size, max_silent_kept, normalize_max, alpha_mix, file_list))
+            if len(file_list) == 0:
+                continue
+            p = Process(target=self.slice_audio, args=(threshold, min_length, min_interval, hop_size, max_silent_kept, normalize_max, alpha_mix, file_list, queue))
             p.start()
             process.append(p)
         for p in process:
             p.join()
 
-    def slice_audio(self, threshold: int, min_length: int, min_interval: int, hop_size: int, max_silent_kept: int, normalize_max: float, alpha_mix: float, file_list: list):
+        results = {}
+        all_success = True
+        while not queue.empty():
+            resp = queue.get()
+            results.update(resp.data)
+            if resp.status == ResponseStatus.FAILED:
+                all_success = False
+
+        if not all_success:
+            return EaseVoiceResponse(ResponseStatus.FAILED, "Slice Failed", results)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Slice Success", results)
+
+    def slice_audio(self, threshold: int, min_length: int, min_interval: int, hop_size: int, max_silent_kept: int, normalize_max: float, alpha_mix: float, file_list: list, queue: Queue):
         slicer = Slicer(
             sr=32000,
             threshold=int(threshold),
@@ -97,8 +129,8 @@ class AudioService(object):
             max_sil_kept=int(max_silent_kept),
         )
         for file in file_list:
+            name = os.path.basename(file)
             try:
-                name = os.path.basename(file)
                 audio = load_audio(file, 32000)
                 if audio.shape[0] == 0:
                     continue
@@ -109,6 +141,9 @@ class AudioService(object):
                     chunk = (chunk / nor_max * (normalize_max * alpha_mix)) + (1 - alpha_mix) * chunk
                     output_path = os.path.join(self.output_dir, slices_output, "%s_%010d_%010d.wav" % (name, start, end))
                     wavfile.write(output_path, 32000, (chunk * 32767).astype(np.int16))
+                queue.put(EaseVoiceResponse(ResponseStatus.SUCCESS, "Success", {"file_name": name}))
             except:
                 print(file, " slice failed ", traceback.format_exc())
+                queue.put(EaseVoiceResponse(ResponseStatus.FAILED, traceback.format_exc(), {"file_name": name}))
+
         return

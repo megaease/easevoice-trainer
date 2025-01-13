@@ -16,7 +16,7 @@ def load_audio(file, sr) -> np.ndarray:
         # This launches a subprocess to decode audio while down-mixing and resampling as necessary.
         # Requires the ffmpeg CLI and `ffmpeg-python` package to be installed.
         file = format_path(file)
-        if os.path.exists(file) == False:
+        if not os.path.exists(file):
             raise RuntimeError(
                 "You input a wrong audio path that does not exists, please fix it!"
             )
