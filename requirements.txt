@@ -20,3 +20,5 @@ onnxruntime-gpu; sys_platform != 'darwin'
 fastapi
 uvicorn
 pydantic
+LangSegment>=0.2.0
+pypinyin

@@ -1,9 +1,10 @@
+
+
+PUNCTUATION = ["!", "?", "…", ",", ".", "-"]  # @是SP停顿
+
+
 def _get_symbols():
-    # punctuation = ['!', '?', '…', ",", ".","@"]#@是SP停顿
-    punctuation = ["!", "?", "…", ",", "."]  # @是SP停顿
-    punctuation.append("-")
-    pu_symbols = punctuation + ["SP", "SP2", "SP3", "UNK"]
-    # pu_symbols = punctuation + ["SP", 'SP2', 'SP3','SP4', "UNK"]
+    pu_symbols = PUNCTUATION + ["SP", "SP2", "SP3", "UNK"]
     pad = "_"
 
     c = [
@@ -413,12 +414,12 @@ def _get_symbols():
 
 SYMBOLS = _get_symbols()
 
-'''
-粤语：
-    732-353=379
-韩文+粤语：
-    732-322=410
-'''
 
 if __name__ == "__main__":
+    '''
+    粤语：
+        732-353=379
+    韩文+粤语：
+        732-322=410
+    '''
     print(len(SYMBOLS))

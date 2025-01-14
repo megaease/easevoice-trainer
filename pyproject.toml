@@ -23,4 +23,6 @@ dependencies = [
     "transformers",
     "ffmpeg-python",
     "uvicorn>=0.34.0",
+    "LangSegment>=0.2.0",
+    "pypinyin",
 ]

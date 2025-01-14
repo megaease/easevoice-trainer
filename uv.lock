@@ -368,8 +368,10 @@ dependencies = [
     { name = "einops" },
     { name = "fastapi" },
     { name = "ffmpeg-python" },
+    { name = "langsegment" },
     { name = "librosa" },
     { name = "numpy" },
+    { name = "pypinyin" },
     { name = "pyrubberband" },
     { name = "pysoundfile", marker = "sys_platform == 'darwin'" },
     { name = "pytorch-lightning" },
@@ -390,8 +392,10 @@ requires-dist = [
     { name = "einops", specifier = "==0.6.0" },
     { name = "fastapi", specifier = ">=0.115.6" },
     { name = "ffmpeg-python" },
+    { name = "langsegment", specifier = ">=0.2.0" },
     { name = "librosa", specifier = "==0.9.2" },
     { name = "numpy", specifier = "==1.23.5" },
+    { name = "pypinyin" },
     { name = "pyrubberband", specifier = "==0.3.0" },
     { name = "pysoundfile", marker = "sys_platform == 'darwin'", specifier = "==0.9.0.post1" },
     { name = "pytorch-lightning" },
@@ -620,6 +624,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/64/33/60135848598c076ce4b231e1b1895170f45fbcaeaa2c9d5e38b04db70c35/joblib-1.4.2.tar.gz", hash = "sha256:2382c5816b2636fbd20a09e0f4e9dad4736765fdfb7dca582943b9c1366b3f0e", size = 2116621 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/91/29/df4b9b42f2be0b623cbd5e2140cafcaa2bef0759a00b7b70104dcfe2fb51/joblib-1.4.2-py3-none-any.whl", hash = "sha256:06d478d5674cbc267e7496a410ee875abd68e4340feff4490bcb7afb88060ae6", size = 301817 },
+]
+
+[[package]]
+name = "langsegment"
+version = "0.3.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "py3langid" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/26/b2105119247c7237108fed65860d43466a6eb6e9fc1684c331472c981477/LangSegment-0.3.5-py3-none-any.whl", hash = "sha256:769b377f1b042f4d468b0ee15ea1e5ad569dd956b35a78c0afd7e7edf5fe464d", size = 28039 },
 ]
 
 [[package]]
@@ -1162,6 +1178,18 @@ wheels = [
 ]
 
 [[package]]
+name = "py3langid"
+version = "0.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a6/06/e4f29386ca954a234f597333ce8acece364c1ca7179def16aed84556d12f/py3langid-0.2.2.tar.gz", hash = "sha256:b4de01dad7e701f29d216a0935e85e096cc8675903d23ea8445b2bb5f090b96f", size = 749464 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e8/e6/ff3e5902bc4c70b8a1f71a21386dd60b622ff1708163bf44b699d6516e4b/py3langid-0.2.2-py3-none-any.whl", hash = "sha256:a5460ccc565c7b6a7a0e72f42236900b810e73c065a1b769a69fa9d9cff13f00", size = 750603 },
+]
+
+[[package]]
 name = "pycparser"
 version = "2.22"
 source = { registry = "https://pypi.org/simple" }
@@ -1279,6 +1307,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/5e/3e/fe5b6613d9e4c0038434396b46c5303f5ade871166900b357ada4766c5b7/pydantic_core-2.27.2-pp39-pypy39_pp73-musllinux_1_1_armv7l.whl", hash = "sha256:8083d4e875ebe0b864ffef72a4304827015cff328a1be6e22cc850753bfb122b", size = 2116654 },
     { url = "https://files.pythonhosted.org/packages/db/ad/28869f58938fad8cc84739c4e592989730bfb69b7c90a8fff138dff18e1e/pydantic_core-2.27.2-pp39-pypy39_pp73-musllinux_1_1_x86_64.whl", hash = "sha256:f141ee28a0ad2123b6611b6ceff018039df17f32ada8b534e6aa039545a3efb2", size = 2152292 },
     { url = "https://files.pythonhosted.org/packages/a1/0c/c5c5cd3689c32ed1fe8c5d234b079c12c281c051759770c05b8bed6412b5/pydantic_core-2.27.2-pp39-pypy39_pp73-win_amd64.whl", hash = "sha256:7d0c8399fcc1848491f00e0314bd59fb34a9c008761bcb422a057670c3f65e35", size = 2004961 },
+]
+
+[[package]]
+name = "pypinyin"
+version = "0.53.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b8/2d/58c9e7d0825d834fc5ac62a340640953d39a80e78cba70eb73d3bad5b4be/pypinyin-0.53.0.tar.gz", hash = "sha256:a2d39ddc2bd31b55897bbb10d2e11a0c4d399988a97c00ad489c151afd9b106d", size = 824458 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b1/af/a1f9ee31b860ea55985a743b53fc06e61fe156bc1a9d64d94a81afa80470/pypinyin-0.53.0-py2.py3-none-any.whl", hash = "sha256:a906768919da3c31771f2c5e0e5a759214dc38d0087e15e6ff67649e03df8097", size = 834720 },
 ]
 
 [[package]]
