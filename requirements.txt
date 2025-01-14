@@ -25,3 +25,7 @@ pypinyin
 jieba_fast
 opencc; sys_platform != 'linux'
 opencc==1.1.1; sys_platform == 'linux'
+pyopenjtalk>=0.3.4
+nltk
+wordsegment
+g2p_en

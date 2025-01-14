@@ -28,4 +28,8 @@ dependencies = [
     "jieba_fast",
     "onnxruntime==1.17.1",
     "opencc",
+    "pyopenjtalk>=0.3.4",
+    "nltk",
+    "wordsegment",
+    "g2p_en",
 ]
