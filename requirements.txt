@@ -22,3 +22,6 @@ uvicorn
 pydantic
 LangSegment>=0.2.0
 pypinyin
+jieba_fast
+opencc; sys_platform != 'linux'
+opencc==1.1.1; sys_platform == 'linux'
