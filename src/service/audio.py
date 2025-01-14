@@ -146,5 +146,7 @@ class AudioService(object):
             except:
                 print(file, " slice failed ", traceback.format_exc())
                 queue.put(EaseVoiceResponse(ResponseStatus.FAILED, traceback.format_exc(), {"file_name": name}))
-
         return
+
+    def denoise(self):
+        pass

@@ -20,17 +20,4 @@ onnxruntime-gpu; sys_platform != 'darwin'
 fastapi
 uvicorn
 pydantic
-LangSegment>=0.2.0
-pypinyin
-jieba_fast
-opencc; sys_platform != 'linux'
-opencc==1.1.1; sys_platform == 'linux'
-pyopenjtalk>=0.3.4
-nltk
-wordsegment
-g2p_en
-jamo
-ko_pron
-g2pk2
-pyjyutping
-cn2an
+modelscope==1.10.0

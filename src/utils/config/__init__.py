@@ -12,6 +12,8 @@ uvr5_onnx_name = "onnx_dereverb_By_FoxJoy"
 vocals_output = "vocals"
 accompaniments_output = "accompaniments"
 slices_output = "slices"
+denoise_root = f"{base_path}/{model_root}/denoise-model"
+denoises_output = "denoises"
 cfg = config.GlobalCFG()
 
 CPU = "cpu"
