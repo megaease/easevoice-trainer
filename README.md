@@ -6,10 +6,9 @@ Although EaseVoice Trainer takes inspiration from GPT-SoVITS, we chose not to di
 
 ## Key Features
 
- • User-Friendly Design: Simplified workflows and intuitive configurations make it easier for users to deploy and manage.
- • Clean Architecture: We have split the project into separate frontend and backend repositories for better modularity and maintainability. The portal repository is at [EaseVoice Trainer Frontend](https://github.com/megaease/easevoice-trainer-portal).
- • Scalability: Built with scalability in mind, making it suitable for both small-scale experiments and large-scale production.
- • Powered by UV: Leverages the uv framework for process management and enhanced robustness in long-running backend tasks.
+- User-Friendly Design: Simplified workflows and intuitive configurations make it easier for users to deploy and manage.
+- Clean Architecture: We have split the project into separate frontend and backend repositories for better modularity and maintainability. The portal repository is at [EaseVoice Trainer Frontend](https://github.com/megaease/easevoice-trainer-portal).
+- Scalability: Built with scalability in mind, making it suitable for both small-scale experiments and large-scale production.
 
 ## Getting Started
 
