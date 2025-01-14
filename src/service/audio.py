@@ -67,7 +67,7 @@ class AudioService(object):
                     os.system(f'ffmpeg -i "{input_path}" -vn -acodec pcm_s16le -ac 2 -ar 44100 "{tmp_path}" -y')
                 try:
                     if done == 0:
-                        separator.separate("%s.reformatted.wav" % file_name)
+                        separator.separate("%s.reformatted.wav" % file_name.split(".")[0])
                 except:
                     traceback.print_exc()
                     trace_data[file_name] = ResponseStatus.FAILED
