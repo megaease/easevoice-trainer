@@ -14,8 +14,9 @@ from scipy.io import wavfile
 from src.audiokit.uvr5.separate import SeparateBase, SeparateMDXNet, SeparateMDXC, SeparateVR, SeparateVREcho
 from src.utils.response import ResponseStatus, EaseVoiceResponse
 from src.audiokit.slicer import Slicer
+from src.audiokit.denoise.denoise import Denoise
 from src.utils.audio import load_audio
-from src.utils.config import vocals_output, slices_output
+from src.utils.config import vocals_output, slices_output, denoises_output
 
 
 class AudioService(object):
@@ -89,12 +90,7 @@ class AudioService(object):
             num_process: int = 4,
     ) -> EaseVoiceResponse:
         os.makedirs(os.path.join(self.output_dir, slices_output), exist_ok=True)
-        files = []
-        for name in sorted(list(os.listdir(os.path.join(self.output_dir, vocals_output)))):
-            file_path = os.path.join(self.output_dir, vocals_output, name)
-            if os.path.isfile(file_path) and file_path.split(".")[-1] in ["wav", "flac", "mp3", "m4a"]:
-                files.append(file_path)
-
+        files = self._get_files(vocals_output)
         process = []
         queue = multiprocessing.Queue()
         for i in range(num_process):
@@ -140,7 +136,8 @@ class AudioService(object):
                     if nor_max > 1:
                         chunk /= nor_max
                     chunk = (chunk / nor_max * (normalize_max * alpha_mix)) + (1 - alpha_mix) * chunk
-                    output_path = os.path.join(self.output_dir, slices_output, "%s_%010d_%010d.wav" % (name, start, end))
+                    output_filename = "%s_%010d_%010d.wav" % (name, start, end)
+                    output_path = os.path.join(self.output_dir, slices_output, output_filename)
                     wavfile.write(output_path, 32000, (chunk * 32767).astype(np.int16))
                 queue.put(EaseVoiceResponse(ResponseStatus.SUCCESS, "Success", {"file_name": name}))
             except:
@@ -148,5 +145,30 @@ class AudioService(object):
                 queue.put(EaseVoiceResponse(ResponseStatus.FAILED, traceback.format_exc(), {"file_name": name}))
         return
 
-    def denoise(self):
-        pass
+    def denoise(self) -> EaseVoiceResponse:
+        os.makedirs(os.path.join(self.output_dir, denoises_output), exist_ok=True)
+        trace_data = {}
+        try:
+            files = self._get_files(slices_output)
+
+            denoise = Denoise()
+            for file_name in files:
+                base_name = os.path.basename(file_name)
+                output_path = os.path.join(self.output_dir, denoises_output, base_name)
+                denoise.denoise(file_name, output_path)
+                trace_data[file_name] = ResponseStatus.SUCCESS
+        except:
+            print(traceback.format_exc())
+            return EaseVoiceResponse(ResponseStatus.FAILED, traceback.format_exc(), trace_data)
+        finally:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Denoise Success", trace_data)
+
+    def _get_files(self, output_path: str):
+        files = []
+        for name in sorted(list(os.listdir(os.path.join(self.output_dir, output_path)))):
+            file_path = os.path.join(self.output_dir, output_path, name)
+            if os.path.isfile(file_path) and file_path.split(".")[-1] in ["wav", "flac", "mp3", "m4a"]:
+                files.append(file_path)
+        return files

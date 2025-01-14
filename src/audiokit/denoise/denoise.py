@@ -15,7 +15,7 @@ class Denoise(object):
         self.model_path = os.path.join(denoise_root, model_dir)
         if not os.path.exists(self.model_path):
             self.model_path = "damo/speech_frcrn_ans_cirm_16k"
-        self.pipeline = pipeline(Tasks.acoustic_noise_suppression,model=self.model_path)
+        self.pipeline = pipeline(Tasks.acoustic_noise_suppression, model=self.model_path)
 
-    def denoise(self, source_dir: str, output_dir: str, file_name: str):
-       self.pipeline("%s/%s" % (source_dir, file_name), output_path='%s/%s' % (output_dir, file_name))
+    def denoise(self, source_file: str, output_file: str):
+        self.pipeline(source_file, output_path=output_file)
