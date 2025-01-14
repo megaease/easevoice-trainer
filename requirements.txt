@@ -29,3 +29,8 @@ pyopenjtalk>=0.3.4
 nltk
 wordsegment
 g2p_en
+jamo
+ko_pron
+g2pk2
+pyjyutping
+cn2an

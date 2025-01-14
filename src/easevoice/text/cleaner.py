@@ -1,7 +1,6 @@
 import os
 
-from . import cleaned_text_to_sequence
-from .symbols import PUNCTUATION, SYMBOLS
+from .symbols import SYMBOLS
 from . import chinese
 from . import japanese
 from . import english
@@ -33,11 +32,13 @@ def clean_text(text, language):
     for special_s, special_l, target_symbol in SPECIAL:
         if special_s in text and language == special_l:
             return clean_special(text, language, special_s, target_symbol)
-    language_module = __import__("text."+language_module_map[language], fromlist=[language_module_map[language]])
+
+    language_module = LANGUAGE_MAP[language]
     if hasattr(language_module, "text_normalize"):
         norm_text = language_module.text_normalize(text)
     else:
         norm_text = text
+
     if language == "zh" or language == "yue":
         phones, word2ph = language_module.g2p(norm_text)
         assert len(phones) == sum(word2ph)
@@ -56,13 +57,12 @@ def clean_text(text, language):
 
 def clean_special(text, language, special_s, target_symbol):
     symbols = SYMBOLS
-    language_module_map = {"zh": "chinese2", "ja": "japanese", "en": "english", "ko": "korean", "yue": "cantonese"}
 
     """
     特殊静音段sp符号处理
     """
     text = text.replace(special_s, ",")
-    language_module = __import__("text."+language_module_map[language], fromlist=[language_module_map[language]])
+    language_module = LANGUAGE_MAP[language]
     norm_text = language_module.text_normalize(text)
     phones = language_module.g2p(norm_text)
     new_ph = []
@@ -73,7 +73,6 @@ def clean_special(text, language, special_s, target_symbol):
         else:
             new_ph.append(ph)
     return new_ph, phones[1], norm_text
-
 
 
 if __name__ == "__main__":
