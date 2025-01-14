@@ -12,8 +12,14 @@ uvr5_onnx_name = "onnx_dereverb_By_FoxJoy"
 vocals_output = "vocals"
 accompaniments_output = "accompaniments"
 slices_output = "slices"
-denoise_root = f"{base_path}/{model_root}/denoise-model"
+denoise_root = f"{base_path}/{model_root}/denoise"
 denoises_output = "denoises"
+asrs_output = "asrs"
+asr_root = f"{base_path}/{model_root}/asr"
+asr_file = "asr.list"
 cfg = config.GlobalCFG()
+
+os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 CPU = "cpu"

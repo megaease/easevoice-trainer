@@ -36,3 +36,4 @@ pyjyutping
 cn2an
 modelscope==1.10.0
 sentencepiece
+Faster_Whisper
