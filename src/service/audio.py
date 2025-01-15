@@ -16,6 +16,7 @@ from src.utils.response import ResponseStatus, EaseVoiceResponse
 from src.audiokit.slicer import Slicer
 from src.audiokit.denoise import Denoise
 from src.audiokit.asr import FunAsr, WhisperAsr
+from src.audiokit.refinement import Refinement, Labeling
 from src.utils.audio import load_audio
 from src.utils.config import vocals_output, slices_output, denoises_output, asrs_output, asr_file
 
@@ -24,6 +25,7 @@ class AudioService(object):
     def __init__(self, source_dir: str, output_dir: str):
         self.source_dir = source_dir
         self.output_dir = output_dir
+        self.refinement = Refinement(os.path.join(self.output_dir, asrs_output, asr_file))
 
     def uvr5(self, model_name: str, audio_format: str, **kwargs) -> EaseVoiceResponse:
         trace_data = {}
@@ -186,3 +188,17 @@ class AudioService(object):
             if os.path.isfile(file_path) and file_path.split(".")[-1] in ["wav", "flac", "mp3", "m4a"]:
                 files.append(file_path)
         return files
+
+    def refinement_load_source(self) -> EaseVoiceResponse:
+        if self.refinement.source_file_content is None:
+            self.refinement.load_text()
+        resp = self.refinement.source_file_content
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Load Source Success", resp)
+
+    def refinement_submit_text(self, text: str) -> EaseVoiceResponse:
+        self.refinement.submit_text(text)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Submit Text Success", self.refinement.source_file_content)
+
+    def refinement_delete_text(self, file_index: str):
+        self.refinement.delete_text(file_index)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Delete Text Success", self.refinement.source_file_content)

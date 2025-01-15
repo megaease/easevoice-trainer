@@ -18,6 +18,7 @@ asrs_output = "asrs"
 asr_root = f"{base_path}/{model_root}/asr"
 asr_file = "asr.list"
 asr_fun_version = "v2.0.4"
+refinements_output = "refinements"
 cfg = config.GlobalCFG()
 
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
