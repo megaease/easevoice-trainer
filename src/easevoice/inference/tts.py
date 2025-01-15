@@ -1,7 +1,7 @@
 
 import dataclasses
-from .text_preprocessor import TextPreprocessor
-from .text_segmentation import SPLITS
+from .preprocessor import TextPreprocessor
+from .segmentation import SPLITS
 from module.mel_processing import spectrogram_torch
 from ...utils.audio import load_audio
 from time import time as ttime

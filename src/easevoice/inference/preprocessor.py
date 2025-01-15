@@ -7,7 +7,7 @@ import re
 import os
 import sys
 from tqdm import tqdm
-from .text_segmentation import SPLITS, PUNCTUATION, split_big_text, get_split_method
+from .segmentation import SPLITS, PUNCTUATION, split_big_text, get_split_method
 
 from ..text import cleaned_text_to_sequence
 from ..text.cleaner import clean_text
