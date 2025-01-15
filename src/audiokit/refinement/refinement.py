@@ -11,8 +11,9 @@ class Labeling(object):
 
 
 class Refinement(object):
-    def __init__(self, source_file_path: str):
+    def __init__(self, source_file_path: str, output_file_path: str):
         self.source_file_path = source_file_path
+        self.output_file_path = output_file_path
         self.source_file_content: dict[str, Labeling] = dict()
 
     @staticmethod
@@ -30,13 +31,15 @@ class Refinement(object):
 
     @staticmethod
     def _save_file(file_path: str, labels: dict[str, Labeling]):
+        open(file_path, "w").close()
         with open(file_path, "w", encoding="utf-8") as f:
             for key, value in labels.items():
+                value.text_content = value.text_content.rstrip("\n").rstrip("\r")
                 f.write(f"{value.source_file_path}|{value.language}|{value.text_content}\n")
 
     def submit_text(self, source_file_path: str, language: str, text_content: str):
         self.source_file_content[source_file_path] = Labeling(source_file_path, language, text_content)
-        self._save_file(source_file_path, self.source_file_content)
+        self._save_file(self.output_file_path, self.source_file_content)
 
     def load_text(self) -> dict[str, Labeling]:
         self.source_file_content = self._load_file(self.source_file_path)
@@ -44,4 +47,7 @@ class Refinement(object):
 
     def delete_text(self, source_file_path: str):
         self.source_file_content.pop(source_file_path)
-        self._save_file(self.source_file_path, self.source_file_content)
+        self._save_file(self.output_file_path, self.source_file_content)
+
+    def save_file(self):
+        self._save_file(self.output_file_path, self.source_file_content)

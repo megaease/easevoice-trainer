@@ -18,14 +18,14 @@ from src.audiokit.denoise import Denoise
 from src.audiokit.asr import FunAsr, WhisperAsr
 from src.audiokit.refinement import Refinement, Labeling
 from src.utils.audio import load_audio
-from src.utils.config import vocals_output, slices_output, denoises_output, asrs_output, asr_file
+from src.utils.config import vocals_output, slices_output, denoises_output, asrs_output, asr_file, refinements_output, refinement_file
 
 
 class AudioService(object):
     def __init__(self, source_dir: str, output_dir: str):
         self.source_dir = source_dir
         self.output_dir = output_dir
-        self.refinement = Refinement(os.path.join(self.output_dir, asrs_output, asr_file))
+        self.refinement = Refinement(os.path.join(self.output_dir, asrs_output, asr_file), os.path.join(self.output_dir, refinements_output, refinement_file))
 
     def uvr5(self, model_name: str, audio_format: str, **kwargs) -> EaseVoiceResponse:
         trace_data = {}
@@ -190,15 +190,21 @@ class AudioService(object):
         return files
 
     def refinement_load_source(self) -> EaseVoiceResponse:
-        if self.refinement.source_file_content is None:
+        os.makedirs(os.path.join(self.output_dir, refinements_output), exist_ok=True)
+        if len(self.refinement.source_file_content) == 0:
             self.refinement.load_text()
+            self.refinement.save_file()
         resp = self.refinement.source_file_content
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Load Source Success", resp)
 
-    def refinement_submit_text(self, text: str) -> EaseVoiceResponse:
-        self.refinement.submit_text(text)
+    def refinement_submit_text(self, index: str, language: str, text_content: str) -> EaseVoiceResponse:
+        self.refinement.submit_text(index, language.upper(), text_content)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Submit Text Success", self.refinement.source_file_content)
 
     def refinement_delete_text(self, file_index: str):
         self.refinement.delete_text(file_index)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Delete Text Success", self.refinement.source_file_content)
+
+    def refinement_reload(self):
+        self.refinement.load_text()
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Reload Success", self.refinement.source_file_content)

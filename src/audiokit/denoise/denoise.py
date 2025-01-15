@@ -3,14 +3,14 @@
 
 import os
 
-from modelscope.pipelines import pipeline
-from modelscope.utils.constant import Tasks
-
-from src.utils.config import denoises_output, denoise_root
+from src.utils.config import denoise_root
 
 
 class Denoise(object):
     def __init__(self):
+        from modelscope.pipelines import pipeline
+        from modelscope.utils.constant import Tasks
+
         model_dir = "speech_frcrn_ans_cirm_16k"
         self.model_path = os.path.join(denoise_root, model_dir)
         if not os.path.exists(self.model_path):
