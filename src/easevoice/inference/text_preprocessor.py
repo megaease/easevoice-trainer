@@ -7,7 +7,6 @@ import re
 import os
 import sys
 from tqdm import tqdm
-
 from .text_segmentation import SPLITS, PUNCTUATION, split_big_text, get_split_method
 
 from ..text import cleaned_text_to_sequence
@@ -49,14 +48,14 @@ class TextPreprocessor:
         self.tokenizer = tokenizer
         self.device = device
 
-    def preprocess(self, text: str, lang: str, text_split_method: str, version: str = "v2") -> List[Dict]:
+    def preprocess(self, text: str, lang: str, text_split_method: str) -> List[Dict]:
         print(("############ split text ############"))
         text = self.replace_consecutive_punctuation(text)
         texts = self.pre_seg_text(text, lang, text_split_method)
         result = []
         print(("############ get bert feature ############"))
         for text in tqdm(texts):
-            phones, bert_features, norm_text = self.segment_and_extract_feature_for_text(text, lang, version)
+            phones, bert_features, norm_text = self.segment_and_extract_feature_for_text(text, lang)
             if phones is None or norm_text == "":
                 continue
             res = {
@@ -107,10 +106,10 @@ class TextPreprocessor:
         print(texts)
         return texts
 
-    def segment_and_extract_feature_for_text(self, text: str, language: str, version: str = "v1") -> Tuple[list, torch.Tensor, str]:
-        return self.get_phones_and_bert(text, language, version)
+    def segment_and_extract_feature_for_text(self, text: str, language: str) -> Tuple[list, torch.Tensor, str]:
+        return self.get_phones_and_bert(text, language)
 
-    def get_phones_and_bert(self, text: str, language: str, version: str, final: bool = False):
+    def get_phones_and_bert(self, text: str, language: str, final: bool = False):
         if language in {"en", "all_zh", "all_ja", "all_ko", "all_yue"}:
             language = language.replace("all_", "")
             if language == "en":
@@ -125,16 +124,16 @@ class TextPreprocessor:
                 if re.search(r'[A-Za-z]', formattext):
                     formattext = re.sub(r'[a-z]', lambda x: x.group(0).upper(), formattext)
                     formattext = chinese.mix_text_normalize(formattext)
-                    return self.get_phones_and_bert(formattext, "zh", version)
+                    return self.get_phones_and_bert(formattext, "zh")
                 else:
-                    phones, word2ph, norm_text = self.clean_text_inf(formattext, language, version)
+                    phones, word2ph, norm_text = self.clean_text_inf(formattext, language)
                     bert = self.get_bert_feature(norm_text, word2ph).to(self.device)  # pyright: ignore
             elif language == "yue" and re.search(r'[A-Za-z]', formattext):
                 formattext = re.sub(r'[a-z]', lambda x: x.group(0).upper(), formattext)
                 formattext = chinese.mix_text_normalize(formattext)
-                return self.get_phones_and_bert(formattext, "yue", version)
+                return self.get_phones_and_bert(formattext, "yue")
             else:
-                phones, word2ph, norm_text = self.clean_text_inf(formattext, language, version)
+                phones, word2ph, norm_text = self.clean_text_inf(formattext, language)
                 bert = torch.zeros(
                     (1024, len(phones)),
                     dtype=torch.float32,
@@ -168,7 +167,7 @@ class TextPreprocessor:
             norm_text_list = []
             for i in range(len(textlist)):
                 lang = langlist[i]
-                phones, word2ph, norm_text = self.clean_text_inf(textlist[i], lang, version)
+                phones, word2ph, norm_text = self.clean_text_inf(textlist[i], lang)
                 bert = self.get_bert_inf(phones, word2ph, norm_text, lang)  # pyright: ignore
                 phones_list.append(phones)
                 norm_text_list.append(norm_text)
@@ -178,7 +177,7 @@ class TextPreprocessor:
             norm_text = ''.join(norm_text_list)
 
         if not final and len(phones) < 6:  # pyright: ignore
-            return self.get_phones_and_bert("." + text, language, version, final=True)
+            return self.get_phones_and_bert("." + text, language, final=True)
 
         return phones, bert, norm_text  # pyright: ignore
 
@@ -197,7 +196,7 @@ class TextPreprocessor:
         phone_level_feature = torch.cat(phone_level_feature, dim=0)
         return phone_level_feature.T
 
-    def clean_text_inf(self, text: str, language: str, version: str = "v2"):
+    def clean_text_inf(self, text: str, language: str):
         phones, word2ph, norm_text = clean_text(text, language)
         phones = cleaned_text_to_sequence(phones)
         return phones, word2ph, norm_text
