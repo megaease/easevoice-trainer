@@ -23,3 +23,7 @@ class TestUvr5(unittest.TestCase):
     def test_denoise_service(self):
         response = self.service.denoise()
         self.assertEqual(response.status, ResponseStatus.SUCCESS)
+
+    def test_asr_service(self):
+        response = self.service.asr()
+        self.assertEqual(response.status, ResponseStatus.SUCCESS)

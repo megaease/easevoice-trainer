@@ -38,3 +38,4 @@ modelscope==1.10.0
 sentencepiece
 Faster_Whisper
 funasr==1.0.27
+torchaudio

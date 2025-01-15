@@ -14,9 +14,10 @@ from scipy.io import wavfile
 from src.audiokit.uvr5.separate import SeparateBase, SeparateMDXNet, SeparateMDXC, SeparateVR, SeparateVREcho
 from src.utils.response import ResponseStatus, EaseVoiceResponse
 from src.audiokit.slicer import Slicer
-from src.audiokit.denoise.denoise import Denoise
+from src.audiokit.denoise import Denoise
+from src.audiokit.asr import FunAsr, WhisperAsr
 from src.utils.audio import load_audio
-from src.utils.config import vocals_output, slices_output, denoises_output
+from src.utils.config import vocals_output, slices_output, denoises_output, asrs_output, asr_file
 
 
 class AudioService(object):
@@ -164,6 +165,19 @@ class AudioService(object):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Denoise Success", trace_data)
+
+    def asr(self, asr_model: str = "funasr", model_size: str = "large", language: str = "zh", precision: str = "float32") -> EaseVoiceResponse:
+        file_list = self._get_files(denoises_output)
+        output_file = os.path.join(self.output_dir, asrs_output, asr_file)
+        os.makedirs(os.path.join(self.output_dir, asrs_output), exist_ok=True)
+        if asr_model == "faster-whisper":
+            model = WhisperAsr(model_size, language, precision)
+            return model.recognize(file_list, output_file)
+        elif asr_model == "funasr":
+            model = FunAsr(model_size, language, precision)
+            return model.recognize(file_list, output_file)
+        else:
+            return EaseVoiceResponse(ResponseStatus.FAILED, "ASR model not supported", {})
 
     def _get_files(self, output_path: str):
         files = []
