@@ -2,21 +2,27 @@
 # -*- encoding=utf8 -*-
 
 
-# Response status code
-class ResponseStatus(object):
+from enum import Enum
+from typing import Optional
+
+
+class ResponseStatus(Enum):
+    """
+    Response status code
+    """
     SUCCESS = "success"
     FAILED = "failed"
 
 
 class EaseVoiceResponse(object):
-    def __init__(self, status: ResponseStatus, message: str, data: dict = None):
+    def __init__(self, status: ResponseStatus, message: str, data: Optional[dict] = None):
         self.status = status
         self.message = message
         self.data = data
 
     def to_dict(self):
         return {
-            "status": self.status,
+            "status": self.status.value,
             "message": self.message,
             "data": self.data
         }

@@ -2,14 +2,14 @@ import os
 import uuid
 import json
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 from api.api import Task
 
 
 class TaskService:
     """Service class for managing tasks using the filesystem."""
 
-    def __init__(self, base_dir: str = None):
+    def __init__(self, base_dir: Optional[str] = None):
         """
         Initialize the TaskService.
 
