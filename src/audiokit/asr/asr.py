@@ -5,18 +5,62 @@ import traceback
 
 import torch
 from faster_whisper import WhisperModel
+from funasr import AutoModel
 from tqdm import tqdm
 
-from src.utils.config import asr_root
+from src.utils.config import asr_root, asr_fun_version
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
 class FunAsr(object):
-    def __init__(self):
-        pass
+    def __init__(self, model_size: str, language: str, precision: str):
+        model_vad = os.path.join(asr_root, "speech_fsmn_vad_zh-cn-16k-common-pytorch")
+        model_punc = os.path.join(asr_root, "punc_ct-transformer_zh-cn-common-vocab272727-pytorch")
+        self.model_vad = model_vad if os.path.exists(model_vad) else "iic/speech_fsmn_vad_zh-cn-16k-common-pytorch"
+        self.model_punc = model_punc if os.path.exists(model_punc) else "iic/punc_ct-transformer_zh-cn-common-vocab272727-pytorch"
+        self.vad_model_revision = self.punc_model_revision = asr_fun_version
+        if language == "zh":
+            model_asr = os.path.join(asr_root, "speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch")
+            self.model_asr = model_asr if os.path.exists(model_asr) else "iic/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
+            self.model_revision = asr_fun_version
+        elif language == "yue":
+            model_asr = os.path.join(asr_root, "speech_UniASR_asr_2pass-cantonese-CHS-16k-common-vocab1468-tensorflow1-online")
+            self.model_asr = model_asr if os.path.exists(model_asr) else "iic/speech_UniASR_asr_2pass-cantonese-CHS-16k-common-vocab1468-tensorflow1-online"
+            self.model_revision = "master"
+            self.model_vad = self.model_punc = None
+            self.vad_model_revision = self.punc_model_revision = None
+        else:
+            raise ValueError("FunASR does not support this language: " + language)
 
-    def recognize(self, file_list: list) -> EaseVoiceResponse:
-        pass
+        self.model = AutoModel(
+            model=self.model_asr,
+            model_revision=self.model_revision,
+            vad_model=self.model_vad,
+            vad_model_revision=self.vad_model_revision,
+            punc_model=self.model_punc,
+            punc_model_revision=self.punc_model_revision,
+        )
+        self.model_size = model_size
+        self.language = language
+        self.precision = precision
+
+    def recognize(self, file_list: list, output_file: str) -> EaseVoiceResponse:
+        output = []
+        trace_data = {}
+        for file in tqdm(file_list):
+            try:
+                text = self.model.generate(input=file)[0]["text"]
+                output.append(f"{file}|{self.language.upper()}|{text}")
+                trace_data[file] = ResponseStatus.SUCCESS
+            except:
+                print(traceback.format_exc())
+                trace_data[file] = ResponseStatus.FAILED
+                return EaseVoiceResponse(status=ResponseStatus.FAILED, message="Failed to recognize audio", data=trace_data)
+
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(output))
+
+        return EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="asr success", data=trace_data)
 
 
 class WhisperAsr(object):
@@ -77,7 +121,7 @@ class WhisperAsr(object):
 
         output = []
         trace_data = {}
-        for file in file_list:
+        for file in tqdm(file_list):
             try:
                 segments, info = model.transcribe(
                     audio=file,
