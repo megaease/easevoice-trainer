@@ -11,9 +11,9 @@ from pypinyin.contrib.tone_convert import to_tone
 from .onnx_api import G2PWOnnxConverter
 
 current_file_path = os.path.dirname(__file__)
-CACHE_PATH = os.path.join(current_file_path, "polyphonic.pickle")
-PP_DICT_PATH = os.path.join(current_file_path, "polyphonic.rep")
-PP_FIX_DICT_PATH = os.path.join(current_file_path, "polyphonic-fix.rep")
+CACHE_PATH = os.path.join(current_file_path, "data", "polyphonic.pickle")
+PP_DICT_PATH = os.path.join(current_file_path, "data", "polyphonic.rep")
+PP_FIX_DICT_PATH = os.path.join(current_file_path, "data", "polyphonic-fix.rep")
 
 
 class G2PWPinyin(Pinyin):

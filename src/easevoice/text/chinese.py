@@ -38,7 +38,7 @@ def get_pinyin_to_symbol():
     current_file_path = os.path.dirname(__file__)
     pinyin_to_symbol_map = {
         line.split("\t")[0]: line.strip().split("\t")[1]
-        for line in open(os.path.join(current_file_path, "opencpop-strict.txt")).readlines()
+        for line in open(os.path.join(current_file_path, "data", "chinese", "opencpop-strict.txt")).readlines()
     }
     return pinyin_to_symbol_map
 

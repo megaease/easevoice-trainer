@@ -15,11 +15,11 @@ from nltk.tokenize import TweetTokenizer
 word_tokenize = TweetTokenizer().tokenize
 
 current_file_path = os.path.dirname(__file__)
-CMU_DICT_PATH = os.path.join(current_file_path, "userdict_en", "cmudict.rep")
-CMU_DICT_FAST_PATH = os.path.join(current_file_path, "userdict_en", "cmudict-fast.rep")
-CMU_DICT_HOT_PATH = os.path.join(current_file_path, "userdict_en", "engdict-hot.rep")
-CACHE_PATH = os.path.join(current_file_path, "userdict_en", "engdict_cache.pickle")
-NAMECACHE_PATH = os.path.join(current_file_path, "userdict_en", "namedict_cache.pickle")
+CMU_DICT_PATH = os.path.join(current_file_path, "data", "english", "cmudict.rep")
+CMU_DICT_FAST_PATH = os.path.join(current_file_path, "data", "english", "cmudict-fast.rep")
+CMU_DICT_HOT_PATH = os.path.join(current_file_path, "data", "english", "engdict-hot.rep")
+CACHE_PATH = os.path.join(current_file_path, "data", "english", "engdict_cache.pickle")
+NAMECACHE_PATH = os.path.join(current_file_path, "data", "english", "namedict_cache.pickle")
 
 arpa = {
     "AH0",

@@ -28,7 +28,7 @@ class InferenceResult:
 
 
 @dataclasses.dataclass
-class InferenceTask:
+class InferenceTaskData:
     text: str
     text_lang: str
     ref_audio_path: str
@@ -48,6 +48,12 @@ class InferenceTask:
     keep_random = True
     parallel_infer = True
     repetition_penalty = 1.3
+
+
+@dataclasses.dataclass
+class InferenceTask:
+    result_queue: multiprocessing.Queue
+    data: InferenceTaskData
 
 
 class Runner:
@@ -89,35 +95,36 @@ class Runner:
             else:
                 try:
                     items, seed = self._inference(task)
-                    self.task_queue.put(
+                    task.result_queue.put(
                         InferenceResult(items=items, seed=seed)
                     )
                 except Exception as e:
                     logger.error(f"error: {e}")
-                    self.task_queue.put(InferenceResult(error=str(e)))
+                    task.result_queue.put(InferenceResult(error=str(e)))
 
     def _inference(self, task: InferenceTask):
-        seed = -1 if task.keep_random else task.seed
+        data = task.data
+        seed = -1 if data.keep_random else data.seed
         actual_seed = seed if seed not in [-1, "", None] else random.randrange(1 << 32)
         inputs = {
-            "text": task.text,
-            "text_lang": task.text_lang,
-            "ref_audio_path": task.ref_audio_path,
-            "aux_ref_audio_paths": [item.name for item in task.aux_ref_audio_paths],
-            "prompt_text": task.prompt_text if not task.ref_text_free else "",
-            "prompt_lang": task.prompt_lang,
-            "top_k": task.top_k,
-            "top_p": task.top_p,
-            "temperature": task.temperature,
-            "text_split_method": task.text_split_method,
-            "batch_size": int(task.batch_size),
-            "speed_factor": float(task.speed_factor),
-            "split_bucket": task.split_bucket,
+            "text": data.text,
+            "text_lang": data.text_lang,
+            "ref_audio_path": data.ref_audio_path,
+            "aux_ref_audio_paths": [item.name for item in data.aux_ref_audio_paths],
+            "prompt_text": data.prompt_text if not data.ref_text_free else "",
+            "prompt_lang": data.prompt_lang,
+            "top_k": data.top_k,
+            "top_p": data.top_p,
+            "temperature": data.temperature,
+            "text_split_method": data.text_split_method,
+            "batch_size": int(data.batch_size),
+            "speed_factor": float(data.speed_factor),
+            "split_bucket": data.split_bucket,
             "return_fragment": False,
-            "fragment_interval": task.fragment_interval,
+            "fragment_interval": data.fragment_interval,
             "seed": actual_seed,
-            "parallel_infer": task.parallel_infer,
-            "repetition_penalty": task.repetition_penalty,
+            "parallel_infer": data.parallel_infer,
+            "repetition_penalty": data.repetition_penalty,
         }
         items = []
         for item in self.tts_pipeline.run(inputs):

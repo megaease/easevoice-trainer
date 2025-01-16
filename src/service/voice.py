@@ -1,20 +1,25 @@
 import gc
-from multiprocessing import Queue, Process
+import multiprocessing as mp
 import threading
 
+from torch import mul
 
-from ..easevoice.inference import InferenceResult, InferenceTask, Runner
+from ..utils.response import EaseVoiceResponse, ResponseStatus
+
+
+from ..easevoice.inference import InferenceResult, InferenceTask, InferenceTaskData, Runner
+from ..logger import logger
 
 
 class VoiceService:
     def __init__(self):
-        self.queue = Queue()
-        self.runner_process = Process(target=VoiceService.init_runner, args=(self.queue,))
+        self.queue = mp.Queue()
+        self.runner_process = mp.Process(target=VoiceService.init_runner, args=(self.queue,))
         self.runner_process.start()
-        self.lock = threading.Lock()
+        self.locker = threading.Lock()
 
     @staticmethod
-    def init_runner(queue: Queue):
+    def init_runner(queue: mp.Queue):
         """
         Call this method to start the runner process
         """
@@ -23,11 +28,30 @@ class VoiceService:
         gc.collect()
 
     def clone(self, input: dict):
-        success = self.lock.acquire(blocking=False)
-        if not success:
-            raise Exception("inference task is running, please wait")
-        task = InferenceTask(**input)
-        self.queue.put(task)
-        result: InferenceResult = self.queue.get()
-        self.lock.release()
-        return result
+        ok = self.locker.acquire(timeout=5)
+        if not ok:
+            return EaseVoiceResponse(ResponseStatus.FAILED, "There is another task running, please try again later")
+
+        try:
+            data = InferenceTaskData(**input)
+            queue = mp.Queue()
+            task = InferenceTask(result_queue=queue, data=data)
+            self.queue.put(task)
+            result: InferenceResult = task.result_queue.get(timeout=600)
+        except Exception as e:
+            logger.error(f"failed to clone voice for {input}, error: {e}", exc_info=True)
+            result = InferenceResult(error=str(e))
+
+        finally:
+            self.locker.release()
+
+        if result.error:
+            return EaseVoiceResponse(ResponseStatus.FAILED, result.error)
+
+        return EaseVoiceResponse(
+            ResponseStatus.SUCCESS,
+            "Cloned voice successfully",
+            {
+                "items": result.items,
+                "seed": result.seed
+            })

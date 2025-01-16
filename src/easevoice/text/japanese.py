@@ -13,9 +13,9 @@ try:
                 hash_md5.update(chunk)
         return hash_md5.hexdigest()
 
-    USERDIC_CSV_PATH = os.path.join(current_file_path, "userdict_ja", "userdict.csv")
-    USERDIC_BIN_PATH = os.path.join(current_file_path, "userdict_ja", "user.dict")
-    USERDIC_HASH_PATH = os.path.join(current_file_path, "userdict_ja", "userdict.md5")
+    USERDIC_CSV_PATH = os.path.join(current_file_path, "data", "japanese", "userdict.csv")
+    USERDIC_BIN_PATH = os.path.join(current_file_path, "data", "japanese", "user.dict")
+    USERDIC_HASH_PATH = os.path.join(current_file_path, "data", "japanese", "userdict.md5")
     # 如果没有用户词典，就生成一个；如果有，就检查md5，如果不一样，就重新生成
     if os.path.exists(USERDIC_CSV_PATH):
         if not os.path.exists(USERDIC_BIN_PATH) or get_hash(USERDIC_CSV_PATH) != open(USERDIC_HASH_PATH, "r", encoding='utf-8').read():
