@@ -1,6 +1,7 @@
 
 
 PUNCTUATION = ["!", "?", "…", ",", ".", "-"]  # @是SP停顿
+PUNCTUATION_SET = set(PUNCTUATION)
 
 
 def _get_symbols():
@@ -413,6 +414,8 @@ def _get_symbols():
 
 
 SYMBOLS = _get_symbols()
+
+SYMBOLS_TO_ID = {s: i for i, s in enumerate(SYMBOLS)}
 
 
 if __name__ == "__main__":

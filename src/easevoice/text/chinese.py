@@ -9,6 +9,7 @@ from .symbols import PUNCTUATION
 from .tone_sandhi import ToneSandhi
 from .chinese_norm import TextNormalizer
 from .. import config
+from ...logger import logger
 
 REP_MAP = {
     "：": ",",
@@ -30,7 +31,7 @@ REP_MAP = {
 TONE_MODIFIER = ToneSandhi()
 
 if config.IS_G2PW:
-    print("use g2pw to do pinyin inference")
+    logger.info("use g2pw to do pinyin inference")
     G2PW = G2PWPinyin(model_dir=config.MODEL_DIR, model_source=config.MODEL_SOURCE, v_to_u=False, neutral_tone_with_five=True)
 
 
@@ -109,6 +110,7 @@ def text_normalize(text):
 MUST_ERHUA = {
     "小院儿", "胡同儿", "范儿", "老汉儿", "撒欢儿", "寻老礼儿", "妥妥儿", "媳妇儿"
 }
+
 NOT_ERHUA = {
     "虐儿", "为儿", "护儿", "瞒儿", "救儿", "替儿", "有儿", "一儿", "我儿", "俺儿", "妻儿",
     "拐儿", "聋儿", "乞儿", "患儿", "幼儿", "孤儿", "婴儿", "婴幼儿", "连体儿", "脑瘫儿",
@@ -233,7 +235,6 @@ def _g2p(segments):
 
             initials = sum(initials, [])
             finals = sum(finals, [])
-            # print("g2pw结果",initials,finals)
 
         for c, v in zip(initials, finals):
             raw_pinyin = c + v

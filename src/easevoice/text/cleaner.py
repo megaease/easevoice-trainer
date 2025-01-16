@@ -1,5 +1,3 @@
-import os
-
 from .symbols import SYMBOLS
 from . import chinese
 from . import japanese

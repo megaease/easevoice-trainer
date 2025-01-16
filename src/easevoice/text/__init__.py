@@ -1,6 +1,4 @@
-from .symbols import SYMBOLS
-
-_symbol_to_id = {s: i for i, s in enumerate(SYMBOLS)}
+from .symbols import SYMBOLS_TO_ID
 
 
 def cleaned_text_to_sequence(cleaned_text):
@@ -10,5 +8,5 @@ def cleaned_text_to_sequence(cleaned_text):
       Returns:
         List of integers corresponding to the symbols in the text
     '''
-    phones = [_symbol_to_id[symbol] for symbol in cleaned_text]
+    phones = [SYMBOLS_TO_ID[symbol] for symbol in cleaned_text]
     return phones

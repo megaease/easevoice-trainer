@@ -1,15 +1,15 @@
 # reference: https://huggingface.co/spaces/Naozumi0512/Bert-VITS2-Cantonese-Yue/blob/main/text/chinese.py
 
-import sys
 import re
 import cn2an
 
 from pyjyutping import jyutping
-from .symbols import PUNCTUATION
+from .symbols import PUNCTUATION_SET, PUNCTUATION
 from .chinese_norm.text_normlization import TextNormalizer
 
 
-def normalizer(x): return cn2an.transform(x, "an2cn")
+def normalizer(x):
+    return cn2an.transform(x, "an2cn")
 
 
 INITIALS = [
@@ -56,11 +56,14 @@ INITIALS = [
     "o",
     "uk",
     "ung",
+    "sp",
+    "spl",
+    "spn",
+    "sil",
 ]
-INITIALS += ["sp", "spl", "spn", "sil"]
 
 
-rep_map = {
+REP_MAP = {
     "：": ",",
     "；": ",",
     "，": ",",
@@ -96,10 +99,9 @@ rep_map = {
 
 
 def replace_punctuation(text):
-    # text = text.replace("嗯", "恩").replace("呣", "母")
-    pattern = re.compile("|".join(re.escape(p) for p in rep_map.keys()))
+    pattern = re.compile("|".join(re.escape(p) for p in REP_MAP.keys()))
 
-    replaced_text = pattern.sub(lambda x: rep_map[x.group()], text)
+    replaced_text = pattern.sub(lambda x: REP_MAP[x.group()], text)
 
     replaced_text = re.sub(
         r"[^\u4e00-\u9fa5" + "".join(PUNCTUATION) + r"]+", "", replaced_text
@@ -115,9 +117,6 @@ def text_normalize(text):
     for sentence in sentences:
         dest_text += replace_punctuation(sentence)
     return dest_text
-
-
-punctuation_set = set(PUNCTUATION)
 
 
 def jyuping_to_initials_finals_tones(jyuping_syllables):
@@ -151,13 +150,11 @@ def jyuping_to_initials_finals_tones(jyuping_syllables):
                                 syllable_without_tone[2:] or syllable_without_tone[-1],
                             ]
                         )
-                        # tones.extend([tone, tone])
                         tones.extend([-1, tone])
                         word2ph.append(2)
                     else:
                         final = syllable_without_tone[len(initial):] or initial[-1]
                         initials_finals.extend([initial, final])
-                        # tones.extend([tone, tone])
                         tones.extend([-1, tone])
                         word2ph.append(2)
                     break
@@ -170,17 +167,15 @@ def jyuping_to_initials_finals_tones(jyuping_syllables):
             todo = "%s%s" % (a, b)
         else:
             todo = a
-        if (todo not in punctuation_set):
+        if (todo not in PUNCTUATION_SET):
             todo = "Y%s" % todo
         phones.append(todo)
 
-    # return initials_finals, tones, word2ph
     return phones, word2ph
 
 
 def get_jyutping(text):
     jp = jyutping.convert(text)
-    # print(1111111,jp)
     for symbol in PUNCTUATION:
         jp = jp.replace(symbol, " " + symbol + " ")
     jp_array = jp.split()
@@ -188,22 +183,13 @@ def get_jyutping(text):
 
 
 def g2p(text):
-    # word2ph = []
     jyuping = get_jyutping(text)
-    # print(jyuping)
-    # phones, tones, word2ph = jyuping_to_initials_finals_tones(jyuping)
     phones, word2ph = jyuping_to_initials_finals_tones(jyuping)
-    # phones = ["_"] + phones + ["_"]
-    # tones = [0] + tones + [0]
-    # word2ph = [1] + word2ph + [1]
     return phones, word2ph
 
 
 if __name__ == "__main__":
-    # text = "啊！但是《原神》是由,米哈\游自主，  [研发]的一款全.新开放世界.冒险游戏"
     text = "佢個鋤頭太短啦。"
     text = text_normalize(text)
-    # phones, tones, word2ph = g2p(text)
     phones, word2ph = g2p(text)
-    # print(phones, tones, word2ph)
     print(phones, word2ph)
