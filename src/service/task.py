@@ -3,7 +3,7 @@ import uuid
 import json
 from datetime import datetime, timezone
 from typing import List, Optional
-from api.api import Task
+from src.api.api import Task, Progress, TaskStatus
 
 
 class TaskService:
@@ -26,7 +26,7 @@ class TaskService:
         """Get the path to the task metadata file."""
         return os.path.join(self.base_dir, task_id, ".metadata.json")
 
-    def create_task(self) -> Task:
+    def create_task(self, service_name: str, args: dict) -> Task:
         """Create a new task."""
         task_id = str(uuid.uuid4())
         task_name = f"Task-{task_id[:8]}"
@@ -39,9 +39,14 @@ class TaskService:
             name=task_name,
             createdAt=created_at,
             homePath=home_path,
+            service_name=service_name,
+            args=args,
+            progress=Progress(),
         )
-        self._save_task_metadata(task)
         return task
+
+    def submit_task(self, task: Task):
+        self._save_task_metadata(task)
 
     def get_tasks(self) -> List[Task]:
         """Get all tasks."""
@@ -72,7 +77,7 @@ class TaskService:
         """Save task metadata to a file."""
         metadata_path = self._task_metadata_path(task.taskID)
         with open(metadata_path, "w") as f:
-            json.dump(task.dict(), f, default=str)
+            json.dump(task.model_dump(), f, default=str)
 
     def _load_task_metadata(self, task_id: str) -> Task:
         """Load task metadata from a file."""

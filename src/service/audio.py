@@ -19,15 +19,19 @@ from src.audiokit.asr import FunAsr, WhisperAsr
 from src.audiokit.refinement import Refinement, Labeling
 from src.utils.audio import load_audio
 from src.utils.config import vocals_output, slices_output, denoises_output, asrs_output, asr_file, refinements_output, refinement_file
+from src.service.task import TaskService
+from src.api.api import Task, TaskStatus, AudioServiceSteps
 
 
-class AudioService(object):
-    def __init__(self, source_dir: str, output_dir: str):
+class AudioService(TaskService):
+    def __init__(self, source_dir: str, output_dir: str, task: Task):
+        super().__init__()
         self.source_dir = source_dir
         self.output_dir = output_dir
         self.refinement = Refinement(os.path.join(self.output_dir, asrs_output, asr_file), os.path.join(self.output_dir, refinements_output, refinement_file))
+        self.task = task
 
-    def uvr5(self, model_name: str, audio_format: str, **kwargs) -> EaseVoiceResponse:
+    def uvr5(self, model_name: str, audio_format: str, progress=None, **kwargs) -> EaseVoiceResponse:
         trace_data = {}
         try:
             base_separator = SeparateBase(
@@ -49,7 +53,10 @@ class AudioService(object):
                     separator = SeparateVR(base_separator)
 
             files = [name for name in os.listdir(self.source_dir)]
+            total = len(files)
             for file_name in files:
+                if progress is not None and callable(progress):
+                    progress(int((files.index(file_name) + 1) * 100 / total))
                 input_path = os.path.join(self.source_dir, file_name)
                 if not os.path.isfile(input_path):
                     continue
@@ -208,3 +215,52 @@ class AudioService(object):
     def refinement_reload(self):
         self.refinement.load_text()
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Reload Success", self.refinement.source_file_content)
+
+    def audio_service(self):
+        uvr_resp = self.uvr5(self.task.args["model_name"], self.task.args["audio_format"], self._progress)
+        if not self._handle_resp(uvr_resp, AudioServiceSteps.Slicer):
+            return
+
+        slice_resp = self.slicer(
+            threshold=self.task.args["threshold"] if "threshold" in self.task.args else -34,
+            min_length=self.task.args["min_length"] if "min_length" in self.task.args else 4000,
+            min_interval=self.task.args["min_interval"] if "min_interval" in self.task.args else 300,
+            hop_size=self.task.args["hop_size"] if "hop_size" in self.task.args else 10,
+            max_silent_kept=self.task.args["max_silent_kept"] if "max_silent_kept" in self.task.args else 500,
+            normalize_max=self.task.args["normalize_max"] if "normalize_max" in self.task.args else 0.9,
+            alpha_mix=self.task.args["alpha_mix"] if "alpha_mix" in self.task.args else 0.25,
+            num_process=self.task.args["num_process"] if "num_process" in self.task.args else 4,
+        )
+        if not self._handle_resp(slice_resp, AudioServiceSteps.Denoise):
+            return
+
+        denoise_resp = self.denoise()
+        if not self._handle_resp(denoise_resp, AudioServiceSteps.ASR):
+            return
+
+        asr_resp = self.asr(
+            asr_model=self.task.args["asr_model"] if "asr_model" in self.task.args else "funasr",
+            model_size=self.task.args["model_size"] if "model_size" in self.task.args else "large",
+            language=self.task.args["language"] if "language" in self.task.args else "zh",
+            precision=self.task.args["precision"] if "precision" in self.task.args else "float32",
+        )
+        if not self._handle_resp(asr_resp, ""):
+            return
+
+    def _progress(self, progress: int):
+        self.task.progress.current_step_progress = progress
+        self.submit_task(self.task)
+        return
+
+    def _handle_resp(self, response: EaseVoiceResponse, next_step: str) -> bool:
+        if response.status == ResponseStatus.FAILED:
+            self.task.progress.status = TaskStatus.FAILED
+            self.submit_task(self.task)
+            return False
+        self.task.progress.completed_steps += 1
+        if next_step == "":
+            self.task.progress.status = TaskStatus.COMPLETED
+        else:
+            self.task.progress.current_step = next_step
+        self.submit_task(self.task)
+        return True

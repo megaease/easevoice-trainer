@@ -3,6 +3,39 @@ from typing import List
 from datetime import datetime
 
 
+class AudioServiceSteps:
+    UVR5 = "Separating vocals using U-Net V5"
+    Slicer = "Removing silent intervals and slicing audio"
+    Denoise = "Denoising audio"
+    ASR = "Transcribing audio to text"
+
+
+class TaskStatus:
+    """Status of a task."""
+    PENDING = "PENDING"
+    IN_PROGRESS = "IN_PROGRESS"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
+class Progress(object):
+    """Progress of a task."""
+    status: str = TaskStatus.PENDING
+    current_step: str = ""
+    total_steps: int = 0
+    completed_steps: int = 0
+    current_step_progress: int = 0
+
+
+class AudioTaskProgressInitial(Progress):
+    """Progress of an audio task."""
+    status = TaskStatus.IN_PROGRESS
+    current_step = AudioServiceSteps.UVR5
+    total_steps: int = 5
+    completed_steps: int = 0
+    current_step_progress: int = 0
+
+
 # Task models
 class Task(BaseModel):
     """Task model."""
@@ -11,10 +44,19 @@ class Task(BaseModel):
     name: str
     createdAt: datetime
     homePath: str
+    progress: Progress
+    args: dict
+    service_name: str
 
 
 """Response model for creating a new task."""
 CreateTaskResponse = Task
+
+
+class CreateTaskRequest(BaseModel):
+    """Request model for creating a new task."""
+    service_name: str
+    args: dict
 
 
 class UpdateTaskRequest(BaseModel):
@@ -28,6 +70,7 @@ class ListTaskResponse(BaseModel):
     """Response model for listing tasks."""
 
     tasks: List[Task]
+
 
 # File models
 class CreateDirectoryRequest(BaseModel):
@@ -68,6 +111,7 @@ class ListDirectoryResponse(BaseModel):
     """Response model for listing directory contents."""
     directoryPath: str
     files: List[FileMetadata]
+
 
 # General models
 class HTTPError(BaseModel):

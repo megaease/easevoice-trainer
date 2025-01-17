@@ -1,7 +1,8 @@
 from fastapi import FastAPI, APIRouter, HTTPException
-from service.task import TaskService
-from service.file import FileService
-from api.api import (
+from src.service.task import TaskService
+from src.service.file import FileService
+from src.service.audio import AudioService
+from src.api.api import (
     Task,
     CreateTaskResponse,
     UpdateTaskRequest,
@@ -12,6 +13,8 @@ from api.api import (
     UploadFileRequest,
     DeleteFilesRequest,
     ListDirectoryResponse,
+    CreateTaskRequest,
+    AudioTaskProgressInitial,
 )
 
 
@@ -59,9 +62,18 @@ class TaskAPI:
         tasks = self.task_service.get_tasks()
         return {"tasks": tasks}
 
-    async def new_task(self):
+    async def new_task(self, new_task_request: CreateTaskRequest):
         """Create a new task."""
-        task = self.task_service.create_task()
+        args = new_task_request.args
+        if new_task_request.service_name == "audio":
+            task = self.task_service.create_task(new_task_request.service_name, args)
+            task.progress = AudioTaskProgressInitial()
+            self.task_service.submit_task(task)
+            audio_service = AudioService(args["source_dir"], args["output_dir"], task)
+            audio_service.audio_service()
+            return task
+
+        task = self.task_service.create_task(new_task_request.service_name, new_task_request.args)
         return task
 
     async def change_task(self, task_id: str, update_request: UpdateTaskRequest):
@@ -78,6 +90,7 @@ class TaskAPI:
             self.task_service.delete_task(task_id)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
+
 
 class FileAPI:
     """Encapsulated API logic for file operations."""
@@ -189,4 +202,3 @@ app.include_router(task_api.router, prefix="/apis/v1")
 file_service = FileService()
 file_api = FileAPI(file_service)
 app.include_router(file_api.router, prefix="/apis/v1")
-
