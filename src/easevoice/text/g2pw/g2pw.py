@@ -10,11 +10,6 @@ from pypinyin.converter import UltimateConverter
 from pypinyin.contrib.tone_convert import to_tone
 from .onnx_api import G2PWOnnxConverter
 
-current_file_path = os.path.dirname(__file__)
-CACHE_PATH = os.path.join(current_file_path, "data", "polyphonic.pickle")
-PP_DICT_PATH = os.path.join(current_file_path, "data", "polyphonic.rep")
-PP_FIX_DICT_PATH = os.path.join(current_file_path, "data", "polyphonic-fix.rep")
-
 
 class G2PWPinyin(Pinyin):
     def __init__(self, model_dir='G2PWModel/', model_source=None,
@@ -114,27 +109,34 @@ def cache_dict(polyphonic_dict, file_path):
         pickle.dump(polyphonic_dict, pickle_file)
 
 
+def _get_data_dir():
+    return os.path.join(os.path.dirname(__file__), "data")
+
+
 def get_dict():
-    if os.path.exists(CACHE_PATH):
-        with open(CACHE_PATH, "rb") as pickle_file:
+    cache_path = os.path.join(_get_data_dir(), "polyphonic.pickle")
+    if os.path.exists(cache_path):
+        with open(cache_path, "rb") as pickle_file:
             polyphonic_dict = pickle.load(pickle_file)
     else:
         polyphonic_dict = read_dict()
-        cache_dict(polyphonic_dict, CACHE_PATH)
+        cache_dict(polyphonic_dict, cache_path)
 
     return polyphonic_dict
 
 
 def read_dict():
+    pp_dict_path = os.path.join(_get_data_dir(), "polyphonic.rep")
+    pp_fix_dict_path = os.path.join(_get_data_dir(), "polyphonic-fix.rep")
     polyphonic_dict = {}
-    with open(PP_DICT_PATH, encoding="utf-8") as f:
+    with open(pp_dict_path, encoding="utf-8") as f:
         line = f.readline()
         while line:
             key, value_str = line.split(':')
             value = eval(value_str.strip())
             polyphonic_dict[key.strip()] = value
             line = f.readline()
-    with open(PP_FIX_DICT_PATH, encoding="utf-8") as f:
+    with open(pp_fix_dict_path, encoding="utf-8") as f:
         line = f.readline()
         while line:
             key, value_str = line.split(':')

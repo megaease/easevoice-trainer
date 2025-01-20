@@ -9,7 +9,6 @@ from .symbols import PUNCTUATION
 from .tone_sandhi import ToneSandhi
 from .chinese_norm import TextNormalizer
 from ...logger import logger
-from ...utils.helper import str2bool
 from ...utils.config import GlobalCFG
 
 
@@ -26,6 +25,8 @@ def init_g2pw():
 
 
 G2PW = init_g2pw()
+TONE_MODIFIER = ToneSandhi()
+TEXT_NORMALIZER = TextNormalizer()
 
 REP_MAP = {
     "：": ",",
@@ -44,7 +45,18 @@ REP_MAP = {
     "~": "…",
     "～": "…",
 }
-TONE_MODIFIER = ToneSandhi()
+
+MUST_ERHUA = {
+    "小院儿", "胡同儿", "范儿", "老汉儿", "撒欢儿", "寻老礼儿", "妥妥儿", "媳妇儿"
+}
+
+NOT_ERHUA = {
+    "虐儿", "为儿", "护儿", "瞒儿", "救儿", "替儿", "有儿", "一儿", "我儿", "俺儿", "妻儿",
+    "拐儿", "聋儿", "乞儿", "患儿", "幼儿", "孤儿", "婴儿", "婴幼儿", "连体儿", "脑瘫儿",
+    "流浪儿", "体弱儿", "混血儿", "蜜雪儿", "舫儿", "祖儿", "美儿", "应采儿", "可儿", "侄儿",
+    "孙儿", "侄孙儿", "女儿", "男儿", "红孩儿", "花儿", "虫儿", "马儿", "鸟儿", "猪儿", "猫儿",
+    "狗儿", "少儿"
+}
 
 
 def get_pinyin_to_symbol():
@@ -92,9 +104,6 @@ def replace_consecutive_punctuation(text):
     return result
 
 
-TEXT_NORMALIZER = TextNormalizer()
-
-
 def mix_text_normalize(text):
     # 不排除英文的文本格式化
     # https://github.com/PaddlePaddle/PaddleSpeech/tree/develop/paddlespeech/t2s/frontend/zh_normalization
@@ -118,19 +127,6 @@ def text_normalize(text):
     # 避免重复标点引起的参考泄露
     dest_text = replace_consecutive_punctuation(dest_text)
     return dest_text
-
-
-MUST_ERHUA = {
-    "小院儿", "胡同儿", "范儿", "老汉儿", "撒欢儿", "寻老礼儿", "妥妥儿", "媳妇儿"
-}
-
-NOT_ERHUA = {
-    "虐儿", "为儿", "护儿", "瞒儿", "救儿", "替儿", "有儿", "一儿", "我儿", "俺儿", "妻儿",
-    "拐儿", "聋儿", "乞儿", "患儿", "幼儿", "孤儿", "婴儿", "婴幼儿", "连体儿", "脑瘫儿",
-    "流浪儿", "体弱儿", "混血儿", "蜜雪儿", "舫儿", "祖儿", "美儿", "应采儿", "可儿", "侄儿",
-    "孙儿", "侄孙儿", "女儿", "男儿", "红孩儿", "花儿", "虫儿", "马儿", "鸟儿", "猪儿", "猫儿",
-    "狗儿", "少儿"
-}
 
 
 def _merge_erhua(initials: list[str],

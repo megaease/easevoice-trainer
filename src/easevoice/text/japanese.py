@@ -1,50 +1,55 @@
 # modified from https://github.com/CjangCjengh/vits/blob/main/text/japanese.py
+from .symbols import PUNCTUATION
 import re
 import os
 import hashlib
-try:
-    import pyopenjtalk
-    current_file_path = os.path.dirname(__file__)
-
-    def get_hash(fp: str) -> str:
-        hash_md5 = hashlib.md5()
-        with open(fp, "rb") as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                hash_md5.update(chunk)
-        return hash_md5.hexdigest()
-
-    USERDIC_CSV_PATH = os.path.join(current_file_path, "data", "japanese", "userdict.csv")
-    USERDIC_BIN_PATH = os.path.join(current_file_path, "data", "japanese", "user.dict")
-    USERDIC_HASH_PATH = os.path.join(current_file_path, "data", "japanese", "userdict.md5")
-    # 如果没有用户词典，就生成一个；如果有，就检查md5，如果不一样，就重新生成
-    if os.path.exists(USERDIC_CSV_PATH):
-        if not os.path.exists(USERDIC_BIN_PATH) or get_hash(USERDIC_CSV_PATH) != open(USERDIC_HASH_PATH, "r", encoding='utf-8').read():
-            pyopenjtalk.mecab_dict_index(USERDIC_CSV_PATH, USERDIC_BIN_PATH)
-            with open(USERDIC_HASH_PATH, "w", encoding='utf-8') as f:
-                f.write(get_hash(USERDIC_CSV_PATH))
-
-    if os.path.exists(USERDIC_BIN_PATH):
-        pyopenjtalk.update_global_jtalk_with_user_dict(USERDIC_BIN_PATH)
-except Exception as e:
-    # print(e)
-    import pyopenjtalk
-    # failed to load user dictionary, ignore.
-    pass
+import pyopenjtalk
+from ...logger import logger
 
 
-from .symbols import PUNCTUATION
+def init():
+    try:
+        current_file_path = os.path.dirname(__file__)
+
+        def get_hash(fp: str) -> str:
+            hash_md5 = hashlib.md5()
+            with open(fp, "rb") as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hash_md5.update(chunk)
+            return hash_md5.hexdigest()
+
+        base_path = os.path.join(current_file_path, "data", "japanese")
+        userdict_csv = os.path.join(base_path, "userdict.csv")
+        userdict_bin = os.path.join(base_path, "user.dict")
+        userdict_hash = os.path.join(base_path, "userdict.md5")
+        # 如果没有用户词典，就生成一个；如果有，就检查md5，如果不一样，就重新生成
+        if os.path.exists(userdict_csv):
+            if not os.path.exists(userdict_bin) or get_hash(userdict_csv) != open(userdict_hash, "r", encoding='utf-8').read():
+                pyopenjtalk.mecab_dict_index(userdict_csv, userdict_bin)
+                with open(userdict_hash, "w", encoding='utf-8') as f:
+                    f.write(get_hash(userdict_csv))
+
+        if os.path.exists(userdict_bin):
+            pyopenjtalk.update_global_jtalk_with_user_dict(userdict_bin)
+    except Exception as e:
+        logger.warning(f"Failed to update pyopenjtalk, err: {e}")
+
+
+init()
+
+
 # Regular expression matching Japanese without punctuation marks:
-_japanese_characters = re.compile(
+_JAPANESE_CHARS = re.compile(
     r"[A-Za-z\d\u3005\u3040-\u30ff\u4e00-\u9fff\uff11-\uff19\uff21-\uff3a\uff41-\uff5a\uff66-\uff9d]"
 )
 
 # Regular expression matching non-Japanese characters or punctuation marks:
-_japanese_marks = re.compile(
+_JAPANESE_MARKS = re.compile(
     r"[^A-Za-z\d\u3005\u3040-\u30ff\u4e00-\u9fff\uff11-\uff19\uff21-\uff3a\uff41-\uff5a\uff66-\uff9d]"
 )
 
 # List of (symbol, Japanese) pairs for marks:
-_symbols_to_japanese = [(re.compile("%s" % x[0]), x[1]) for x in [("％", "パーセント")]]
+_SYMBOLS_TO_JAPANESE = [(re.compile("%s" % x[0]), x[1]) for x in [("％", "パーセント")]]
 
 
 # List of (consonant, sokuon) pairs:
@@ -97,7 +102,7 @@ def replace_consecutive_punctuation(text):
 
 
 def symbols_to_japanese(text):
-    for regex, replacement in _symbols_to_japanese:
+    for regex, replacement in _SYMBOLS_TO_JAPANESE:
         text = re.sub(regex, replacement, text)
     return text
 
@@ -107,11 +112,11 @@ def preprocess_jap(text, with_prosody=False):
     text = symbols_to_japanese(text)
     # English words to lower case, should have no influence on japanese words.
     text = text.lower()
-    sentences = re.split(_japanese_marks, text)
-    marks = re.findall(_japanese_marks, text)
+    sentences = re.split(_JAPANESE_MARKS, text)
+    marks = re.findall(_JAPANESE_MARKS, text)
     text = []
     for i, sentence in enumerate(sentences):
-        if re.match(_japanese_characters, sentence):
+        if re.match(_JAPANESE_CHARS, sentence):
             if with_prosody:
                 text += pyopenjtalk_g2p_prosody(sentence)[1:-1]
             else:

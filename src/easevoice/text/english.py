@@ -28,7 +28,7 @@ class DictLoader:
         self.dict = self.get_dict()
         self.namedict = self.get_namedict()
 
-    def read_dict(self):
+    def _read_dict(self):
         g2p_dict = {}
         with open(self._cmu_dict_path) as f:
             line = f.readline()
@@ -59,7 +59,7 @@ class DictLoader:
 
         return g2p_dict
 
-    def hot_reload_hot(self, g2p_dict):
+    def _hot_reload_hot(self, g2p_dict):
         with open(self._cmu_dict_hot_path) as f:
             line = f.readline()
             line_index = 1
@@ -85,10 +85,10 @@ class DictLoader:
             with open(self._cache_path, "rb") as pickle_file:
                 g2p_dict = pickle.load(pickle_file)
         else:
-            g2p_dict = self.read_dict()
+            g2p_dict = self._read_dict()
             self._cache_dict(g2p_dict)
 
-        g2p_dict = self.hot_reload_hot(g2p_dict)
+        g2p_dict = self._hot_reload_hot(g2p_dict)
 
         return g2p_dict
 
@@ -271,12 +271,12 @@ class EnglishG2p(G2p):
         return [phone for comp in comps for phone in self.qryword(comp)]
 
 
-EN_G2P = EnglishG2p()
+_EnglishG2p = EnglishG2p()
 
 
 def g2p(text):
     # g2p_en 整段推理，剔除不存在的arpa返回
-    phone_list = EN_G2P(text)
+    phone_list = _EnglishG2p(text)
     phones = [ph if ph != "<unk>" else "UNK" for ph in phone_list if ph not in [" ", "<pad>", "UW", "</s>", "<s>"]]
 
     return replace_phs(phones)
