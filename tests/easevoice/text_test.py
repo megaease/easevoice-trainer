@@ -3,11 +3,7 @@ import unittest
 
 from regex import F
 
-from src.easevoice.text import cantonese
-from src.easevoice.text import english
-from src.easevoice.text import japanese
-from src.easevoice.text import korean
-from src.easevoice.text import chinese
+from src.easevoice.text import cantonese, english, japanese, korean, chinese, cleaner, cleaned_text_to_sequence
 from src.utils.helper import set_seed
 
 
@@ -86,6 +82,22 @@ class TestTextProcessing(unittest.TestCase):
             'r', 'en2', 'ch', 'a2', 'y', 'En2', 'g', 'uan1', 's', 'e4', 'd', 'e5', 'c', 'ong2', 'r', 'ong2', '.'
         ])
         self.assertEqual(word2ph, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1])
+
+        self._log("zh", text, text_norm, phonemes, {"word2ph": word2ph})
+
+    def test_clean_text(self):
+        set_seed(100)
+
+        text = "成熟是一种明亮而不刺眼的光辉，一种不再需要对别人察言观色的从容。"
+        phonemes, word2ph, text_norm = cleaner.clean_text(text, "zh")
+        phonemes = cleaned_text_to_sequence(phonemes)
+
+        self.assertEqual(phonemes, [
+            125, 146, 251, 241, 251, 214, 318, 169, 320, 237, 225, 202, 224, 184, 33, 151, 122,
+            256, 124, 164, 318, 46, 127, 134, 156, 275, 158, 280, 1, 318, 169, 320, 237, 122, 256,
+            319, 105, 317, 296, 318, 120, 127, 283, 122, 192, 248, 141, 125, 98, 318, 45, 156, 270,
+            250, 133, 127, 134, 124, 236, 248, 236, 3
+        ])
 
         self._log("zh", text, text_norm, phonemes, {"word2ph": word2ph})
 
