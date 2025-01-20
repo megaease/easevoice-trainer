@@ -8,8 +8,24 @@ from pypinyin.contrib.tone_convert import to_normal, to_finals_tone3, to_initial
 from .symbols import PUNCTUATION
 from .tone_sandhi import ToneSandhi
 from .chinese_norm import TextNormalizer
-from .. import config
 from ...logger import logger
+from ...utils.helper import str2bool
+from ...utils.config import GlobalCFG
+
+
+def init_g2pw():
+    cfg = GlobalCFG()
+    if cfg.is_g2pw:
+        logger.info("use g2pw to do pinyin inference")
+        model_dir = os.path.join(os.path.dirname(__file__), "data", "chinese", "G2PWModel")
+        if not os.path.exists(cfg.bert_path):
+            logger.error(f"model path {cfg.bert_path} not exists")
+            raise FileNotFoundError(f"model path {cfg.bert_path} not exists, please download it before using")
+        return G2PWPinyin(model_dir=model_dir, model_source=cfg.bert_path, v_to_u=False, neutral_tone_with_five=True)
+    return None
+
+
+G2PW = init_g2pw()
 
 REP_MAP = {
     "：": ",",
@@ -29,10 +45,6 @@ REP_MAP = {
     "～": "…",
 }
 TONE_MODIFIER = ToneSandhi()
-
-if config.IS_G2PW:
-    logger.info("use g2pw to do pinyin inference")
-    G2PW = G2PWPinyin(model_dir=config.G2PW_MODEL_DIR, model_source=config.MODEL_SOURCE, v_to_u=False, neutral_tone_with_five=True)
 
 
 def get_pinyin_to_symbol():
@@ -80,11 +92,13 @@ def replace_consecutive_punctuation(text):
     return result
 
 
+TEXT_NORMALIZER = TextNormalizer()
+
+
 def mix_text_normalize(text):
     # 不排除英文的文本格式化
     # https://github.com/PaddlePaddle/PaddleSpeech/tree/develop/paddlespeech/t2s/frontend/zh_normalization
-    tx = TextNormalizer()
-    sentences = tx.normalize(text)
+    sentences = TEXT_NORMALIZER.normalize(text)
     dest_text = ""
     for sentence in sentences:
         dest_text += replace_punctuation_with_en(sentence)
@@ -96,8 +110,7 @@ def mix_text_normalize(text):
 
 def text_normalize(text):
     # https://github.com/PaddlePaddle/PaddleSpeech/tree/develop/paddlespeech/t2s/frontend/zh_normalization
-    tx = TextNormalizer()
-    sentences = tx.normalize(text)
+    sentences = TEXT_NORMALIZER.normalize(text)
     dest_text = ""
     for sentence in sentences:
         dest_text += replace_punctuation(sentence)
@@ -185,7 +198,7 @@ def _g2p(segments):
         initials = []
         finals = []
 
-        if not config.IS_G2PW:
+        if not GlobalCFG().is_g2pw:
             for word, pos in seg_cut:
                 if pos == "eng":
                     continue
@@ -201,7 +214,7 @@ def _g2p(segments):
             print("pypinyin结果", initials, finals)
         else:
             # g2pw采用整句推理
-            pinyins = G2PW.lazy_pinyin(seg, neutral_tone_with_five=True, style=Style.TONE3)
+            pinyins = G2PW.lazy_pinyin(seg, neutral_tone_with_five=True, style=Style.TONE3)  # pyright: ignore
 
             pre_word_length = 0
             for word, pos in seg_cut:

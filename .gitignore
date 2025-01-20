@@ -173,3 +173,5 @@ cython_debug/
 pkg
 
 .DS_Store
+
+pretrained_models/

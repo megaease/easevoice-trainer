@@ -58,7 +58,7 @@ def download_and_decompress(model_dir: str = 'G2PWModel/'):
         zip_dir = os.path.join(parent_directory, "G2PWModel_1.1.zip")
         extract_dir = os.path.join(parent_directory, "G2PWModel_1.1")
         extract_dir_new = os.path.join(parent_directory, "G2PWModel")
-        print("Downloading g2pw model...")
+        print(f"Downloading g2pw model into {parent_directory}...")
         modelscope_url = "https://paddlespeech.bj.bcebos.com/Parakeet/released_models/g2p/G2PWModel_1.1.zip"
         with requests.get(modelscope_url, stream=True) as r:
             r.raise_for_status()

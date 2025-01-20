@@ -7,10 +7,11 @@ from src.easevoice.text import cantonese
 from src.easevoice.text import english
 from src.easevoice.text import japanese
 from src.easevoice.text import korean
+from src.easevoice.text import chinese
+from src.utils.helper import set_seed
 
 
-class TestText(unittest.TestCase):
-
+class TestTextProcessing(unittest.TestCase):
     def _log(self, language: str, text: str, text_norm: str, phonemes: list, other: Optional[dict] = None):
         msg = f"Text process for {language}:\n\ttext: {text}\n\tnorm: {text_norm}\n\tphonemes: {phonemes}"
         for k, v in ({} if other is None else other).items():
@@ -70,6 +71,23 @@ class TestText(unittest.TestCase):
         ])
 
         self._log("ko", text, text, phonemes)
+
+    def test_chinese(self):
+        set_seed(100)
+        text = "成熟是一种明亮而不刺眼的光辉，一种不再需要对别人察言观色的从容。"
+        text_norm = chinese.text_normalize(text)
+        phonemes, word2ph = chinese.g2p(text_norm)
+
+        self.assertEqual(text_norm, "成熟是一种明亮而不刺眼的光辉,一种不再需要对别人察言观色的从容.")
+        self.assertEqual(phonemes, [
+            'ch', 'eng2', 'sh', 'ou2', 'sh', 'ir4', 'y', 'i4', 'zh', 'ong3', 'm', 'ing2', 'l', 'iang4',
+            'EE', 'er2', 'b', 'u2', 'c', 'i04', 'y', 'En3', 'd', 'e5', 'g', 'uang1', 'h', 'ui1', ',',
+            'y', 'i4', 'zh', 'ong3', 'b', 'u2', 'z', 'ai4', 'x', 'v1', 'y', 'ao4', 'd', 'ui4', 'b', 'ie2',
+            'r', 'en2', 'ch', 'a2', 'y', 'En2', 'g', 'uan1', 's', 'e4', 'd', 'e5', 'c', 'ong2', 'r', 'ong2', '.'
+        ])
+        self.assertEqual(word2ph, [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1])
+
+        self._log("zh", text, text_norm, phonemes, {"word2ph": word2ph})
 
 
 if __name__ == "__main__":

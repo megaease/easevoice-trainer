@@ -3,6 +3,8 @@
 import os
 
 import torch
+from ..helper import str2bool
+from ...logger import logger
 
 
 class GlobalCFG(object):
@@ -32,5 +34,14 @@ class GlobalCFG(object):
                     self.is_half = False
             if self.device == "cpu":
                 self.is_half = False
+
+            # is use g2pw for pinyin inference of chinese text
+            self.is_g2pw: bool = str2bool(os.environ.get("is_g2pw", "True"))
+
+            default_pretrained_models = os.path.join(os.getcwd(), "pretrained_models", "GPT-SoVITS")
+            logger.info(f"Default pretrained models directory: {default_pretrained_models}")
+            if not os.path.exists(default_pretrained_models):
+                logger.warning(f"Default pretrained models directory {default_pretrained_models} not exist, please consider to download it before use.")
+            self.bert_path: str = os.environ.get("bert_path", os.path.join(default_pretrained_models, "chinese-roberta-wwm-ext-large"))
 
             self.initialized = True
