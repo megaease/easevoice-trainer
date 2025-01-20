@@ -32,7 +32,7 @@ TONE_MODIFIER = ToneSandhi()
 
 if config.IS_G2PW:
     logger.info("use g2pw to do pinyin inference")
-    G2PW = G2PWPinyin(model_dir=config.MODEL_DIR, model_source=config.MODEL_SOURCE, v_to_u=False, neutral_tone_with_five=True)
+    G2PW = G2PWPinyin(model_dir=config.G2PW_MODEL_DIR, model_source=config.MODEL_SOURCE, v_to_u=False, neutral_tone_with_five=True)
 
 
 def get_pinyin_to_symbol():

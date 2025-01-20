@@ -1,4 +1,5 @@
 from nltk import pos_tag
+import nltk
 import pickle
 import os
 import re
@@ -12,9 +13,10 @@ import unicodedata
 from builtins import str as unicode
 from g2p_en.expand import normalize_numbers
 from nltk.tokenize import TweetTokenizer
+from ...logger import logger
 
 
-class DictManager:
+class DictLoader:
     def __init__(self):
         current_file_path = os.path.dirname(__file__)
         self._cmu_dict_path = os.path.join(current_file_path, "data", "english", "cmudict.rep")
@@ -152,13 +154,21 @@ def text_normalize(text):
 class EnglishG2p(G2p):
     def __init__(self):
         super().__init__()
+        logger.info("Loading English G2P model")
+
+        try:
+            nltk.data.find("taggers/averaged_perceptron_tagger_eng")
+        except LookupError:
+            logger.info("Downloading nltk averaged_perceptron_tagger_eng")
+            nltk.download('averaged_perceptron_tagger_eng')
+
         self.word_tokenize = TweetTokenizer().tokenize
 
         # 分词初始化
         wordsegment.load()
 
         # 扩展过时字典, 添加姓名字典
-        manager = DictManager()
+        manager = DictLoader()
         self.cmu = manager.dict
         self.namedict = manager.namedict
 
@@ -169,6 +179,7 @@ class EnglishG2p(G2p):
         # 修正多音字
         self.homograph2features["read"] = (['R', 'IY1', 'D'], ['R', 'EH1', 'D'], 'VBP')
         self.homograph2features["complex"] = (['K', 'AH0', 'M', 'P', 'L', 'EH1', 'K', 'S'], ['K', 'AA1', 'M', 'P', 'L', 'EH0', 'K', 'S'], 'JJ')
+        logger.info("Finishing loading English G2P model")
 
     def __call__(self, text):
         # tokenization
