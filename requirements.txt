@@ -40,3 +40,4 @@ Faster_Whisper
 funasr==1.0.27
 torchaudio
 python-mecab-ko
+opencc

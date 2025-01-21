@@ -1,6 +1,7 @@
 import torch
 import random
 import os
+import string
 import numpy as np
 from ...logger import logger
 
@@ -30,3 +31,10 @@ def set_seed(seed: int):
         logger.error(f"Set seed failed: {e}")
     logger.info(f"Set seed to {seed}")
     return seed
+
+
+alphabet = string.ascii_lowercase + string.digits
+
+
+def random_choice():
+    return ''.join(random.choices(alphabet, k=8))

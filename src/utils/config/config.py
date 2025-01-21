@@ -5,6 +5,7 @@ import os
 import torch
 from ..helper import str2bool
 from ...logger import logger
+from src.utils.path import get_base_path
 
 
 class GlobalCFG(object):
@@ -38,7 +39,8 @@ class GlobalCFG(object):
             # is use g2pw for pinyin inference of chinese text
             self.is_g2pw: bool = str2bool(os.environ.get("is_g2pw", "True"))
 
-            default_pretrained_models = os.path.join(os.getcwd(), "pretrained_models", "GPT-SoVITS")
+            base_path = get_base_path()
+            default_pretrained_models = os.path.join(base_path, "models", "normalize")
             logger.info(f"Default pretrained models directory: {default_pretrained_models}")
             if not os.path.exists(default_pretrained_models):
                 logger.warning(f"Default pretrained models directory {default_pretrained_models} not exist, please consider to download it before use.")
