@@ -12,6 +12,15 @@ class NormalizeService(object):
     def normalize(self) -> EaseVoiceResponse:
         try:
             normalize = Normalize(self.processing_path)
-            return normalize.text()
+            text_resp = normalize.text()
+            if text_resp.status == ResponseStatus.FAILED:
+                return text_resp
+            ssl_resp = normalize.ssl()
+            if ssl_resp.status == ResponseStatus.FAILED:
+                return ssl_resp
+            token_resp = normalize.token()
+            if token_resp.status == ResponseStatus.FAILED:
+                return token_resp
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalization completed successfully")
         except Exception as e:
             return EaseVoiceResponse(ResponseStatus.FAILED, str(e))

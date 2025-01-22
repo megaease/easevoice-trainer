@@ -205,3 +205,4 @@ class Normalize(object):
 
         with open(self.semantic_output_path, "w", encoding="utf8") as f:
             f.write("\n".join(opt) + "\n")
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "success")
