@@ -174,4 +174,5 @@ pkg
 
 .DS_Store
 
-pretrained_models/
+models/*
+!models/pretrained/.gitkeep
