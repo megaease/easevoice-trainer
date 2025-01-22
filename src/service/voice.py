@@ -30,8 +30,14 @@ class VoiceCloneService:
         self.runner_process = mp.Process(target=VoiceCloneService._init_runner, args=(self.queue,))
         self.runner_process.start()
 
-        self._run_tasks = threading.Thread(target=self._run)
+        self._done = False
+        self._run_tasks = threading.Thread(target=self._run, daemon=True)
         self._run_tasks.start()
+
+    def close(self):
+        self._done = True
+        self.queue.put(1)
+        self.runner_process.join()
 
     @staticmethod
     def _init_runner(queue: mp.Queue):
@@ -40,10 +46,15 @@ class VoiceCloneService:
         """
         runner = Runner(queue)
         runner.run()
+        logger.info("Runner process exited")
         gc.collect()
 
     def _run(self):
         while True:
+            if self._done:
+                logger.info("Voice clone service is shutting down")
+                return
+
             tasks = self.task_service.filter_tasks(lambda t: t.service_name == ServiceNames.VOICE_CLONE and t.progress.status == TaskStatus.PENDING)
             if len(tasks) == 0:
                 logger.debug("No pending tasks found for voice clone")

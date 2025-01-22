@@ -35,8 +35,8 @@ class Progress(BaseModel):
 
 class AudioTaskProgressInitial(Progress):
     """Progress of an audio task."""
-    status = TaskStatus.IN_PROGRESS
-    current_step = AudioServiceSteps.UVR5
+    status: str = TaskStatus.IN_PROGRESS
+    current_step: str = AudioServiceSteps.UVR5
     total_steps: int = 5
     completed_steps: int = 0
     current_step_progress: int = 0
