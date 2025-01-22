@@ -39,11 +39,19 @@ class GlobalCFG(object):
             # is use g2pw for pinyin inference of chinese text
             self.is_g2pw: bool = str2bool(os.environ.get("is_g2pw", "True"))
 
-            base_path = get_base_path()
-            default_pretrained_models = os.path.join(base_path, "models", "pretrained")
-            logger.info(f"Default pretrained models directory: {default_pretrained_models}")
-            if not os.path.exists(default_pretrained_models):
-                logger.warning(f"Default pretrained models directory {default_pretrained_models} not exist, please consider to download it before use.")
-            self.bert_path: str = os.environ.get("bert_path", os.path.join(default_pretrained_models, "chinese-roberta-wwm-ext-large"))
+            self._init_model_paths()
 
             self.initialized = True
+
+    def _init_model_paths(self):
+        base_path = get_base_path()
+        default_dir = os.path.join(base_path, "models", "pretrained")
+        logger.info(f"Default pretrained models directory: {default_dir}")
+        if not os.path.exists(default_dir):
+            logger.warning(f"Default pretrained models directory {default_dir} not exist, please consider to download it before use.")
+
+        self.gpt_path: str = os.environ.get("gpt_path", os.path.join(default_dir, "gsv-v2final-pretrained", "s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"))
+        self.bert_path: str = os.environ.get("bert_path", os.path.join(default_dir, "chinese-roberta-wwm-ext-large"))
+
+        self.cnhubert_path: str = os.environ.get("cnhubert_path", os.path.join(default_dir, "chinese-hubert-base"))
+        self.sovits_path: str = os.environ.get("sovits_path", os.path.join(default_dir, "gsv-v2final-pretrained", "s2G2333k.pth"))

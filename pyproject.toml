@@ -38,4 +38,5 @@ dependencies = [
     "pyjyutping",
     "cn2an",
     "python-mecab-ko",
+    "matplotlib",
 ]

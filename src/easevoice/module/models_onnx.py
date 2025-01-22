@@ -1,20 +1,18 @@
-import copy
 import math
 from typing import Optional
 import torch
 from torch import nn
 from torch.nn import functional as F
 
-from module import commons
-from module import modules
-from module import attentions_onnx as attentions
+from . import commons
+from . import modules
+from . import attentions_onnx as attentions
 
-from torch.nn import Conv1d, ConvTranspose1d, AvgPool1d, Conv2d
+from torch.nn import Conv1d, ConvTranspose1d, Conv2d
 from torch.nn.utils import weight_norm, remove_weight_norm, spectral_norm
-from module.commons import init_weights, get_padding
-from module.quantize import ResidualVectorQuantizer
+from .commons import init_weights, get_padding
+from .quantize import ResidualVectorQuantizer
 from ..text.symbols import SYMBOLS
-from torch.cuda.amp import autocast
 
 
 class StochasticDurationPredictor(nn.Module):

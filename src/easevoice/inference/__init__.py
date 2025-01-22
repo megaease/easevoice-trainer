@@ -5,7 +5,7 @@ import random
 import os
 import logging
 
-from ...utils.config.config import GlobalCFG
+from ...utils.path import get_base_path
 from ...logger import logger
 
 
@@ -22,7 +22,7 @@ logging.getLogger("torchaudio._extension").setLevel(logging.ERROR)
 
 @dataclasses.dataclass
 class InferenceResult:
-    items: list = []
+    items: list = dataclasses.field(default_factory=list)
     seed: int = -1
     error: Optional[str] = None
 
@@ -35,7 +35,7 @@ class InferenceTaskData:
     prompt_text: str
     prompt_lang: str
     text_split_method: str
-    aux_ref_audio_paths: list = []
+    aux_ref_audio_paths: list = dataclasses.field(default_factory=list)
     seed = -1
     top_k = 5
     top_p = 1
@@ -65,20 +65,7 @@ class Runner:
     """
 
     def __init__(self, queue: multiprocessing.Queue):
-        cfg = GlobalCFG()
-
-        gpt_path = os.environ.get("gpt_path", None)
-        sovits_path = os.environ.get("sovits_path", None)
-        cnhubert_base_path = os.environ.get("cnhubert_base_path", None)
-        bert_path = os.environ.get("bert_path", None)
-
-        tts_config = TTSConfig("GPT_SoVITS/configs/tts_infer.yaml")
-        tts_config.device = cfg.device
-        tts_config.is_half = cfg.is_half
-        tts_config.t2s_weights_path = gpt_path if gpt_path is not None else tts_config.t2s_weights_path
-        tts_config.vits_weights_path = sovits_path if sovits_path is not None else tts_config.vits_weights_path
-        tts_config.cnhuhbert_base_path = cnhubert_base_path if cnhubert_base_path is not None else tts_config.cnhuhbert_base_path
-        tts_config.bert_base_path = bert_path if bert_path is not None else tts_config.bert_base_path
+        tts_config = TTSConfig(os.path.join(get_base_path(), "configs", "tts_infer.yaml"))
         logger.info(f"tts config: {tts_config}")
 
         self.tts_config = tts_config

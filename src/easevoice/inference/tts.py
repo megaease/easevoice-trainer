@@ -1,12 +1,15 @@
 
 import dataclasses
+
+from ...utils.config.config import GlobalCFG
+from ...utils.path import get_base_path
 from .preprocessor import TextPreprocessor
 from .segmentation import SPLITS
-from module.mel_processing import spectrogram_torch
+from ..module.mel_processing import spectrogram_torch
 from ...utils.audio import load_audio
 from time import time as ttime
 import librosa
-from module.models import SynthesizerTrn
+from ..module.models import SynthesizerTrn
 from ..feature_extractor.cnhubert import CNHubert
 from ..soundstorm.auto_reg.models.t2s_lightning_module import Text2SemanticLightningModule
 from transformers import AutoModelForMaskedLM, AutoTokenizer
@@ -54,16 +57,21 @@ def set_seed(seed: int):
     return seed
 
 
+def _get_default_configs():
+    global_config = GlobalCFG()
+    return {
+        "device": global_config.device,
+        "is_half": global_config.is_half,
+        "t2s_weights_path": global_config.gpt_path,
+        "vits_weights_path": global_config.sovits_path,
+        "cnhuhbert_base_path": global_config.cnhubert_path,
+        "bert_base_path": global_config.bert_path,
+    }
+
+
 class TTSConfig:
     default_configs = {
-        "default": {
-            "device": "cpu",
-            "is_half": False,
-            "t2s_weights_path": "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt",
-            "vits_weights_path": "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth",
-            "cnhuhbert_base_path": "GPT_SoVITS/pretrained_models/chinese-hubert-base",
-            "bert_base_path": "GPT_SoVITS/pretrained_models/chinese-roberta-wwm-ext-large",
-        },
+        "default": _get_default_configs(),
     }
     languages: list = ["auto", "auto_yue", "en", "zh", "ja", "yue", "ko", "all_zh", "all_ja", "all_yue", "all_ko"]
     # "all_zh",#全部按中文识别
@@ -79,6 +87,8 @@ class TTSConfig:
     # "auto_yue",#多语种启动切分识别语种
 
     def __init__(self, configs: Union[dict, str, None] = None):  # pyright: ignore
+        global_config = GlobalCFG()
+
         configs_base_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "configs")
         os.makedirs(configs_base_path, exist_ok=True)
         self.configs_path: str = os.path.join(configs_base_path, "tts_infer.yaml")
@@ -97,8 +107,8 @@ class TTSConfig:
         self.default_configs["default"] = configs.get("default", self.default_configs["default"])
 
         self.configs: dict = configs.get("custom", deepcopy(self.default_configs["default"]))
-        self.device = self.configs.get("device", torch.device("cpu"))
-        self.is_half = self.configs.get("is_half", False)
+        self.device = self.configs.get("device", global_config.device)
+        self.is_half = self.configs.get("is_half", global_config.is_half)
 
         def get_path(key: str):
             path = self.configs.get(key, None)
@@ -180,7 +190,7 @@ class TTS:
 
         self.t2s_model: Text2SemanticLightningModule = None  # pyright: ignore
         self.vits_model: SynthesizerTrn = None  # pyright: ignore
-        self.bert_tokenizer: = None  # pyright: ignore
+        self.bert_tokenizer: AutoTokenizer = None  # pyright: ignore
         self.bert_model: AutoModelForMaskedLM = None  # pyright: ignore
         self.cnhuhbert_model: CNHubert = None  # pyright: ignore
 
@@ -223,7 +233,7 @@ class TTS:
 
     def init_bert_weights(self, base_path: str):
         logger.info(f"Loading BERT weights from {base_path}")
-        self.bert_tokenizer = AutoTokenizer.from_pretrained(base_path)
+        self.bert_tokenizer = AutoTokenizer.from_pretrained(base_path)  # pyright: ignore
         self.bert_model = AutoModelForMaskedLM.from_pretrained(base_path)
         self.bert_model = self.bert_model.eval()  # pyright: ignore
         self.bert_model = self.bert_model.to(self.configs.device)  # pyright: ignore

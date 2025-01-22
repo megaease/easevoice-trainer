@@ -1,0 +1,14 @@
+custom:
+  bert_base_path: models/pretrained/chinese-roberta-wwm-ext-large
+  cnhuhbert_base_path: models/pretrained/chinese-hubert-base
+  device: cpu
+  is_half: false
+  t2s_weights_path: models/pretrained/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt
+  vits_weights_path: models/pretrained/gsv-v2final-pretrained/s2G2333k.pth
+default:
+  bert_base_path: models/pretrained/chinese-roberta-wwm-ext-large
+  cnhuhbert_base_path: models/pretrained/chinese-hubert-base
+  device: cpu
+  is_half: false
+  t2s_weights_path: models/pretrained/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt
+  vits_weights_path: models/pretrained/gsv-v2final-pretrained/s2G2333k.pth
