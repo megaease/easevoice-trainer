@@ -22,6 +22,9 @@ logging.getLogger("torchaudio._extension").setLevel(logging.ERROR)
 
 @dataclasses.dataclass
 class InferenceResult:
+    """
+    Result of inference
+    """
     items: list = dataclasses.field(default_factory=list)
     seed: int = -1
     error: Optional[str] = None
@@ -29,6 +32,9 @@ class InferenceResult:
 
 @dataclasses.dataclass
 class InferenceTaskData:
+    """
+    Data for inference
+    """
     text: str
     text_lang: str
     ref_audio_path: str
@@ -52,6 +58,9 @@ class InferenceTaskData:
 
 @dataclasses.dataclass
 class InferenceTask:
+    """
+    Task for inference
+    """
     result_queue: multiprocessing.Queue
     data: InferenceTaskData
 

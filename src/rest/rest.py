@@ -2,7 +2,9 @@ from fastapi import FastAPI, APIRouter, HTTPException
 from src.service.task import TaskService
 from src.service.file import FileService
 from src.service.audio import AudioService
+from src.service.voice import VoiceCloneService
 from src.api.api import (
+    Progress,
     Task,
     CreateTaskResponse,
     UpdateTaskRequest,
@@ -196,6 +198,7 @@ class FileAPI:
 app = FastAPI()
 
 task_service = TaskService()
+voice_service = VoiceCloneService(task_service=task_service)
 task_api = TaskAPI(task_service)
 app.include_router(task_api.router, prefix="/apis/v1")
 

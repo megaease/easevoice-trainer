@@ -2,7 +2,7 @@ import os
 import uuid
 import json
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Callable, Dict, List, Optional
 from src.api.api import Task, Progress, TaskStatus
 
 
@@ -22,9 +22,21 @@ class TaskService:
         self.base_dir = base_dir
         os.makedirs(self.base_dir, exist_ok=True)
 
+        tasks = self.get_tasks()
+        self._tasks: Dict[str, Task] = {}
+        for task in tasks:
+            self._tasks[task.taskID] = task
+
     def _task_metadata_path(self, task_id: str) -> str:
         """Get the path to the task metadata file."""
         return os.path.join(self.base_dir, task_id, ".metadata.json")
+
+    def filter_tasks(self, fn: Callable[[Task], bool]) -> List[Task]:
+        """
+        Filter task using a function. 
+        For example, to get all pending tasks for a service.
+        """
+        return sorted(list(filter(fn, self._tasks.values())), key=lambda t: t.createdAt)
 
     def create_task(self, service_name: str, args: dict) -> Task:
         """Create a new task."""
@@ -43,10 +55,12 @@ class TaskService:
             args=args,
             progress=Progress(),
         )
+        self._tasks[task_id] = task
         return task
 
     def submit_task(self, task: Task):
         self._save_task_metadata(task)
+        self._tasks[task.taskID] = task
 
     def get_tasks(self) -> List[Task]:
         """Get all tasks."""
@@ -57,6 +71,7 @@ class TaskService:
                 try:
                     task = self._load_task_metadata(task_id)
                     tasks.append(task)
+                    self._tasks[task_id] = task
                 except FileNotFoundError:
                     pass  # Skip invalid tasks
         return tasks
@@ -66,11 +81,13 @@ class TaskService:
         task = self._load_task_metadata(task_id)
         task.name = name
         self._save_task_metadata(task)
+        self._tasks[task.taskID] = task
         return task
 
     def delete_task(self, task_id: str):
         """Delete a task."""
         task = self._load_task_metadata(task_id)
+        self._tasks.pop(task_id)
         self._delete_directory(task.homePath)
 
     def _save_task_metadata(self, task: Task):

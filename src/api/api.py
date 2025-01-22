@@ -18,13 +18,19 @@ class TaskStatus:
     FAILED = "FAILED"
 
 
-class Progress(object):
+class ServiceNames:
+    AUDIO = "audio"
+    VOICE_CLONE = "voice_clone"
+
+
+class Progress(BaseModel):
     """Progress of a task."""
     status: str = TaskStatus.PENDING
     current_step: str = ""
     total_steps: int = 0
     completed_steps: int = 0
     current_step_progress: int = 0
+    message: str = ""
 
 
 class AudioTaskProgressInitial(Progress):
@@ -34,6 +40,16 @@ class AudioTaskProgressInitial(Progress):
     total_steps: int = 5
     completed_steps: int = 0
     current_step_progress: int = 0
+
+
+class VoiceCloneProgress(Progress):
+    """Progress of a task."""
+    status: str = TaskStatus.PENDING
+    current_step: str = ""
+    total_steps: int = 1
+    completed_steps: int = 0
+    current_step_progress: int = 0
+    message: str = ""
 
 
 # Task models
