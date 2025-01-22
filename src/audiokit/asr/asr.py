@@ -130,7 +130,7 @@ class WhisperAsr(object):
                     vad_parameters=dict(min_silence_duration_ms=700),
                     language=self.language)
                 text = ''.join(str(segment.text) for segment in segments)
-                output.append(f"{file}|{info.language.upper()}|{text}")
+                output.append(f"{file}|{info.language.lower()}|{text}")
                 trace_data[file] = ResponseStatus.SUCCESS
             except:
                 print(traceback.format_exc())

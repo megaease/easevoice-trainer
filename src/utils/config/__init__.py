@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
+import os.path
 
 from .config import *
 from src.utils.path import get_base_path
@@ -21,12 +22,16 @@ asr_fun_version = "v2.0.4"
 refinements_output = "refinements"
 refinement_file = "refinement.list"
 refinement_root = os.path.join(base_path, model_root, "refinement")
-normalize_root = os.path.join(base_path, model_root, "normalize")
+normalize_root = os.path.join(base_path, model_root, "pretrained")
 normalize_text = "chinese-roberta-wwm-ext-large"
 normalize_ssl = "chinese-hubert-base"
 normalize_token = os.path.join("gsv-v2final-pretrained", "s2G2333k.pth")
 text_output_name = "2-name2text.txt"
 bert_output = "3-bert"
+ssl_output = "4-cnhubert"
+wav_output = "5-wav32k"
+semantic_output = "6-name2semantic.tsv"
+s2config_path = os.path.join(base_path, "configs", "s2.json")
 cfg = config.GlobalCFG()
 
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"

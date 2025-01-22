@@ -40,7 +40,7 @@ class GlobalCFG(object):
             self.is_g2pw: bool = str2bool(os.environ.get("is_g2pw", "True"))
 
             base_path = get_base_path()
-            default_pretrained_models = os.path.join(base_path, "models", "normalize")
+            default_pretrained_models = os.path.join(base_path, "models", "pretrained")
             logger.info(f"Default pretrained models directory: {default_pretrained_models}")
             if not os.path.exists(default_pretrained_models):
                 logger.warning(f"Default pretrained models directory {default_pretrained_models} not exist, please consider to download it before use.")
