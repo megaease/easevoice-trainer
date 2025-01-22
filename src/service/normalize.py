@@ -12,7 +12,6 @@ class NormalizeService(object):
     def normalize(self) -> EaseVoiceResponse:
         try:
             normalize = Normalize(self.processing_path)
-            normalize.text()
-            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalize success")
+            return normalize.text()
         except Exception as e:
             return EaseVoiceResponse(ResponseStatus.FAILED, str(e))

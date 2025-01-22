@@ -7,12 +7,13 @@
 """Residual vector quantizer implementation."""
 
 from dataclasses import dataclass, field
+import math
 import typing as tp
 
 import torch
 from torch import nn
 
-from .core_vq import ResidualVectorQuantization
+from src.easevoice.module.core_vq import ResidualVectorQuantization
 
 
 @dataclass

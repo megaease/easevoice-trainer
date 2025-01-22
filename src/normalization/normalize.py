@@ -99,7 +99,7 @@ class Normalize(object):
             phone_level_feature.append(repeat_feature)
 
         phone_level_feature = torch.cat(phone_level_feature, dim=0)
-        data = {"phone_level_feature": phone_level_feature}
+        data = {"phone_level_feature": phone_level_feature.T}
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "success", data)
 
     def _process_text(self, data, res, bert_dir, tokenizer, bert_model) -> EaseVoiceResponse:
