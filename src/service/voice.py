@@ -46,7 +46,7 @@ class VoiceCloneService:
         """
         runner = Runner(queue)
         runner.run()
-        logger.info("Runner process exited")
+        print("Runner process exited")
         gc.collect()
 
     def _run(self):

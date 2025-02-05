@@ -17,7 +17,7 @@ dependencies = [
     "rotary-embedding-torch==0.3.5",
     "scipy==1.9.3",
     "six>=1.17.0",
-    "soundfile==0.11.0 ; sys_platform != 'darwin'",
+    "soundfile>=0.11.0",
     "torch>=2.1.1",
     "tqdm>=4.67.1",
     "transformers",
@@ -39,4 +39,8 @@ dependencies = [
     "cn2an",
     "python-mecab-ko",
     "matplotlib",
+    "ctranslate2==4.1.0",
+    "Faster_Whisper",
+    "funasr==1.0.27",
+    "torchaudio==2.1.1",
 ]
