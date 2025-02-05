@@ -19,17 +19,15 @@ from src.audiokit.asr import FunAsr, WhisperAsr
 from src.audiokit.refinement import Refinement, Labeling
 from src.utils.audio import load_audio
 from src.utils.config import vocals_output, slices_output, denoises_output, asrs_output, asr_file, refinements_output, refinement_file
-from src.service.task import TaskService
-from src.api.api import Task, TaskStatus, AudioServiceSteps
+from src.api.api import TaskStatus, AudioServiceSteps
 
 
-class AudioService(TaskService):
-    def __init__(self, source_dir: str, output_dir: str, task: Task):
+class AudioService():
+    def __init__(self, source_dir: str, output_dir: str):
         super().__init__()
         self.source_dir = source_dir
         self.output_dir = output_dir
         self.refinement = Refinement(os.path.join(self.output_dir, asrs_output, asr_file), os.path.join(self.output_dir, refinements_output, refinement_file))
-        self.task = task
 
     def uvr5(self, model_name: str, audio_format: str, progress=None, **kwargs) -> EaseVoiceResponse:
         trace_data = {}

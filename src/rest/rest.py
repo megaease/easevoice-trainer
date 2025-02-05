@@ -1,95 +1,95 @@
 from fastapi import FastAPI, APIRouter, HTTPException
-from src.service.task import TaskService
+from src.service.namespace import NamespaceService
 from src.service.file import FileService
 from src.service.audio import AudioService
 from src.service.voice import VoiceCloneService
 from src.api.api import (
     Progress,
-    Task,
-    CreateTaskResponse,
-    UpdateTaskRequest,
-    ListTaskResponse,
+    Namespace,
+    CreateNamespaceResponse,
+    UpdateNamespaceRequest,
+    ListNamespaceResponse,
     CreateDirectoryRequest,
     DeleteDirectoryRequest,
     ListDirectoryRequest,
     UploadFileRequest,
     DeleteFilesRequest,
     ListDirectoryResponse,
-    CreateTaskRequest,
-    AudioTaskProgressInitial,
+    CreateNamespaceRequest,
+    AudioNamespaceProgressInitial,
 )
 
 
-class TaskAPI:
-    """Class to encapsulate task-related API endpoints."""
+class NamespaceAPI:
+    """Class to encapsulate namespace-related API endpoints."""
 
-    def __init__(self, task_service: TaskService):
+    def __init__(self, namespace_service: NamespaceService):
         self.router = APIRouter()
-        self.task_service = task_service
+        self.namespace_service = namespace_service
         self._register_routes()
 
     def _register_routes(self):
         """Register API routes."""
         self.router.add_api_route(
-            path="/tasks",
-            endpoint=self.list_tasks,
+            path="/namespaces",
+            endpoint=self.list_namespaces,
             methods=["GET"],
-            response_model=ListTaskResponse,
-            summary="List all tasks",
+            response_model=ListNamespaceResponse,
+            summary="List all namespaces",
         )
         self.router.add_api_route(
-            path="/tasks",
-            endpoint=self.new_task,
+            path="/namespaces",
+            endpoint=self.new_namespace,
             methods=["POST"],
-            response_model=CreateTaskResponse,
-            summary="Create a new task",
+            response_model=CreateNamespaceResponse,
+            summary="Create a new namespace",
         )
         self.router.add_api_route(
-            path="/tasks/{task_id}",
-            endpoint=self.change_task,
+            path="/namespaces/{namespace_id}",
+            endpoint=self.change_namespace,
             methods=["PUT"],
-            response_model=Task,
-            summary="Update a task",
+            response_model=Namespace,
+            summary="Update a namespace",
         )
         self.router.add_api_route(
-            path="/tasks/{task_id}",
-            endpoint=self.remove_task,
+            path="/namespaces/{namespace_id}",
+            endpoint=self.remove_namespace,
             methods=["DELETE"],
             status_code=204,  # No body in response
-            summary="Delete a task",
+            summary="Delete a namespace",
         )
 
-    async def list_tasks(self):
-        """List all tasks."""
-        tasks = self.task_service.get_tasks()
-        return {"tasks": tasks}
+    async def list_namespaces(self):
+        """List all namespaces."""
+        namespaces = self.namespace_service.get_namespaces()
+        return {"namespaces": namespaces}
 
-    async def new_task(self, new_task_request: CreateTaskRequest):
-        """Create a new task."""
-        args = new_task_request.args
-        if new_task_request.service_name == "audio":
-            task = self.task_service.create_task(new_task_request.service_name, args)
-            task.progress = AudioTaskProgressInitial()
-            self.task_service.submit_task(task)
-            audio_service = AudioService(args["source_dir"], args["output_dir"], task)
+    async def new_namespace(self, new_namespace_request: CreateNamespaceRequest):
+        """Create a new namespace."""
+        args = new_namespace_request.args
+        if new_namespace_request.service_name == "audio":
+            namespace = self.namespace_service.create_namespace(new_namespace_request.service_name, args)
+            namespace.progress = AudioNamespaceProgressInitial()
+            self.namespace_service.submit_namespace(namespace)
+            audio_service = AudioService(args["source_dir"], args["output_dir"], namespace)
             audio_service.audio_service()
-            return task
+            return namespace
 
-        task = self.task_service.create_task(new_task_request.service_name, new_task_request.args)
-        return task
+        namespace = self.namespace_service.create_namespace(new_namespace_request.service_name, new_namespace_request.args)
+        return namespace
 
-    async def change_task(self, task_id: str, update_request: UpdateTaskRequest):
-        """Update a task."""
+    async def change_namespace(self, namespace_id: str, update_request: UpdateNamespaceRequest):
+        """Update a namespace."""
         try:
-            task = self.task_service.update_task(task_id, update_request.name)
-            return task
+            namespace = self.namespace_service.update_namespace(namespace_id, update_request.name)
+            return namespace
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
 
-    async def remove_task(self, task_id: str):
-        """Delete a task."""
+    async def remove_namespace(self, namespace_id: str):
+        """Delete a namespace."""
         try:
-            self.task_service.delete_task(task_id)
+            self.namespace_service.delete_namespace(namespace_id)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
 
@@ -194,13 +194,13 @@ class FileAPI:
             raise HTTPException(status_code=400, detail=str(e))
 
 
-# Initialize FastAPI and TaskService
+# Initialize FastAPI and NamespaceService
 app = FastAPI()
 
-task_service = TaskService()
-voice_service = VoiceCloneService(task_service=task_service)
-task_api = TaskAPI(task_service)
-app.include_router(task_api.router, prefix="/apis/v1")
+namespace_service = NamespaceService()
+voice_service = VoiceCloneService(namespace_service=namespace_service)
+namespace_api = NamespaceAPI(namespace_service)
+app.include_router(namespace_api.router, prefix="/apis/v1")
 
 file_service = FileService()
 file_api = FileAPI(file_service)

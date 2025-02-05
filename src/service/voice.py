@@ -9,7 +9,6 @@ import numpy as np
 from scipy.io import wavfile
 
 from src.api.api import ServiceNames, TaskStatus, VoiceCloneProgress
-from src.service.task import TaskService
 
 
 from src.easevoice.inference import InferenceResult, InferenceTask, InferenceTaskData, Runner
@@ -21,7 +20,7 @@ class VoiceCloneService:
     VoiceService is a long run service that listens for voice clone tasks and processes them.
     """
 
-    def __init__(self, task_service: TaskService):
+    def __init__(self):
         self.task_service = task_service
 
         self.queue = mp.Queue()

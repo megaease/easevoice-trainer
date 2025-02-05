@@ -52,11 +52,11 @@ class VoiceCloneProgress(Progress):
     message: str = ""
 
 
-# Task models
-class Task(BaseModel):
-    """Task model."""
+# Namespace models
+class Namespace(BaseModel):
+    """Namespace model."""
 
-    taskID: str
+    namespaceID: str
     name: str
     createdAt: datetime
     homePath: str
@@ -65,27 +65,21 @@ class Task(BaseModel):
     service_name: str
 
 
-"""Response model for creating a new task."""
-CreateTaskResponse = Task
+"""Response model for creating a new namespace."""
+CreateNamespaceResponse = Namespace
 
 
-class CreateTaskRequest(BaseModel):
-    """Request model for creating a new task."""
-    service_name: str
-    args: dict
+class UpdateNamespaceRequest(BaseModel):
+    """Request model for updating a namespace."""
 
-
-class UpdateTaskRequest(BaseModel):
-    """Request model for updating a task."""
-
-    taskID: str
+    namespaceID: str
     name: str
 
 
-class ListTaskResponse(BaseModel):
-    """Response model for listing tasks."""
+class ListNamespaceResponse(BaseModel):
+    """Response model for listing namespaces."""
 
-    tasks: List[Task]
+    namespaces: List[Namespace]
 
 
 # File models
@@ -135,3 +129,10 @@ class HTTPError(BaseModel):
 
     code: int
     message: str
+
+# Task models
+
+class CreateTaskRequest(BaseModel):
+    """Request model for creating a new namespace."""
+    service_name: str
+    args: dict
