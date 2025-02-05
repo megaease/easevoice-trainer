@@ -1,10 +1,6 @@
 from fastapi import FastAPI, APIRouter, HTTPException
-from src.service.namespace import NamespaceService
-from src.service.file import FileService
-from src.service.audio import AudioService
-from src.service.voice import VoiceCloneService
+
 from src.api.api import (
-    Progress,
     Namespace,
     CreateNamespaceResponse,
     UpdateNamespaceRequest,
@@ -18,6 +14,10 @@ from src.api.api import (
     CreateNamespaceRequest,
     AudioNamespaceProgressInitial,
 )
+from src.service.audio import AudioService
+from src.service.file import FileService
+from src.service.namespace import NamespaceService
+from src.service.voice import VoiceCloneService
 
 
 class NamespaceAPI:
