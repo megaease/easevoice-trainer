@@ -8,8 +8,9 @@ from pypinyin.contrib.tone_convert import to_normal, to_finals_tone3, to_initial
 from .symbols import PUNCTUATION
 from .tone_sandhi import ToneSandhi
 from .chinese_norm import TextNormalizer
-from ...logger import logger
-from ...utils.config import GlobalCFG
+from src.logger import logger
+from src.utils.config import GlobalCFG
+
 
 
 def init_g2pw():

@@ -4,8 +4,7 @@ import re
 import os
 import hashlib
 import pyopenjtalk
-from ...logger import logger
-
+from src.logger import logger
 
 def init():
     try:

@@ -1,17 +1,17 @@
 
 import dataclasses
 
-from ...utils.config.config import GlobalCFG
-from ...utils.path import get_base_path
+from src.utils.config.config import GlobalCFG
+from src.utils.path import get_base_path
 from .preprocessor import TextPreprocessor
 from .segmentation import SPLITS
-from ..module.mel_processing import spectrogram_torch
-from ...utils.audio import load_audio
+from src.easevoice.module.mel_processing import spectrogram_torch
+from src.utils.audio import load_audio
 from time import time as ttime
 import librosa
-from ..module.models import SynthesizerTrn
-from ..feature_extractor.cnhubert import CNHubert
-from ..soundstorm.auto_reg.models.t2s_lightning_module import Text2SemanticLightningModule
+from src.easevoice.module.models import SynthesizerTrn
+from src.easevoice.feature_extractor.cnhubert import CNHubert
+from src.easevoice.soundstorm.auto_reg.models.t2s_lightning_module import Text2SemanticLightningModule
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 import yaml
 import torch.nn.functional as F
@@ -27,7 +27,7 @@ import sys
 import gc
 import random
 import traceback
-from ...logger import logger
+from src.logger import logger
 
 from tqdm import tqdm
 

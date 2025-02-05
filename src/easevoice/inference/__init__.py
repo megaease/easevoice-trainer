@@ -5,8 +5,8 @@ import random
 import os
 import logging
 
-from ...utils.path import get_base_path
-from ...logger import logger
+from src.utils.path import get_base_path
+from src.logger import logger
 
 
 from .tts import TTSConfig, TTS

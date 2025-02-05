@@ -13,7 +13,7 @@ import unicodedata
 from builtins import str as unicode
 from g2p_en.expand import normalize_numbers
 from nltk.tokenize import TweetTokenizer
-from ...logger import logger
+from src.logger import logger
 
 
 class DictLoader:

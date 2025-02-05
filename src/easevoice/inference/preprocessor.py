@@ -9,9 +9,8 @@ import sys
 from tqdm import tqdm
 from .segmentation import SPLITS, PUNCTUATION, split_big_text, get_split_method
 
-from ..text import cleaned_text_to_sequence
-from ..text.cleaner import clean_text
-from ..text import chinese
+from src.easevoice.text import cleaned_text_to_sequence, chinese
+from src.easevoice.text.cleaner import clean_text
 
 
 sys.path.append(os.getcwd())

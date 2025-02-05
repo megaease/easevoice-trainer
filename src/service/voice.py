@@ -10,12 +10,10 @@ from scipy.io import wavfile
 
 from src.api.api import ServiceNames, TaskStatus, VoiceCloneProgress
 from src.service.task import TaskService
-from ..utils.response import EaseVoiceResponse, ResponseStatus
 
 
-from ..easevoice.inference import InferenceResult, InferenceTask, InferenceTaskData, Runner
-from ..logger import logger
-from src.easevoice import inference
+from src.easevoice.inference import InferenceResult, InferenceTask, InferenceTaskData, Runner
+from src.logger import logger
 
 
 class VoiceCloneService:
