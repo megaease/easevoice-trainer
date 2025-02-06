@@ -53,6 +53,6 @@ onnxruntime~=1.19.2
 requests~=2.32.3
 g2p-en~=2.1.0
 pandas~=2.2.3
-torchmetrics~=1.6.1
+torchmetrics==1.6.0
 regex~=2024.11.6
 tensorboard
