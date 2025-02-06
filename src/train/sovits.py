@@ -56,10 +56,14 @@ class SovitsTrain:
         hps.train.gpu_numbers = params.gpu_ids
 
         # path
-        hps.data.exp_dir = os.path.join(params.normalize_path, params.output_model_name)
-        hps.s2_ckpt_dir = hps.data.exp_dir
+        hps.data.exp_dir = params.normalize_path
+        hps.data.train_logs_dir = os.path.join(hps.data.exp_dir, config.train_sovits_logs_output)
+        os.makedirs(hps.data.train_logs_dir, exist_ok=True)
+        hps.s2_ckpt_dir = os.path.join(hps.data.exp_dir, config.train_sovits_logs_output, "ckpt")
+        os.makedirs(hps.s2_ckpt_dir, exist_ok=True)
         hps.name = params.output_model_name
-        hps.save_weight_dir = os.path.join(hps.data.exp_dir, "weights")
+        hps.save_weight_dir = os.path.join(hps.data.exp_dir, config.train_output)
+        os.makedirs(hps.save_weight_dir, exist_ok=True)
 
         # set pretrained model path
         if params.pretrained_s2G == "":
@@ -240,14 +244,14 @@ class SovitsTrain:
 
         try:
             _, _, _, epoch_str = ckpt.load_checkpoint(
-                ckpt.latest_checkpoint_path(f"{hps.data.exp_dir}/logs_s2", "D_*.pth"),
+                ckpt.latest_checkpoint_path(hps.data.train_logs_dir, "D_*.pth"),
                 net_d,
                 optim_d,
             )
             if rank == 0:
                 logger.info("loaded D")
             _, _, _, epoch_str = ckpt.load_checkpoint(
-                ckpt.latest_checkpoint_path(f"{hps.data.exp_dir}/logs_s2", "G_*.pth"),
+                ckpt.latest_checkpoint_path(hps.data.train_logs_dir, "G_*.pth"),
                 net_g,
                 optim_g,
             )
@@ -322,7 +326,7 @@ class SovitsTrain:
             scheduler_d.step()
 
     def _train_and_evaluate(
-        self, rank, epoch, hps, nets, optims, schedulers, scaler, loaders, logger, writers
+            self, rank, epoch, hps, nets, optims, schedulers, scaler, loaders, logger, writers
     ):
         device = self.device
         net_g, net_d = nets
@@ -337,14 +341,14 @@ class SovitsTrain:
         net_g.train()
         net_d.train()
         for batch_idx, (
-            ssl,
-            ssl_lengths,
-            spec,
-            spec_lengths,
-            y,
-            y_lengths,
-            text,
-            text_lengths,
+                ssl,
+                ssl_lengths,
+                spec,
+                spec_lengths,
+                y,
+                y_lengths,
+                text,
+                text_lengths,
         ) in enumerate(tqdm(train_loader)):
             if torch.cuda.is_available():
                 spec, spec_lengths = spec.cuda(rank, non_blocking=True), spec_lengths.cuda(
@@ -491,7 +495,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        "%s/logs_s2" % hps.data.exp_dir, "G_{}.pth".format(self.step)
+                        hps.data.train_logs_dir, "G_{}.pth".format(self.step)
                     ),
                 )
                 ckpt.save_checkpoint(
@@ -500,7 +504,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        "%s/logs_s2" % hps.data.exp_dir, "D_{}.pth".format(self.step)
+                        hps.data.train_logs_dir, "D_{}.pth".format(self.step)
                     ),
                 )
             else:
@@ -510,7 +514,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        "%s/logs_s2" % hps.data.exp_dir, "G_{}.pth".format(233333333333)
+                        hps.data.train_logs_dir, "G_{}.pth".format(233333333333)
                     ),
                 )
                 ckpt.save_checkpoint(
@@ -519,7 +523,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        "%s/logs_s2" % hps.data.exp_dir, "D_{}.pth".format(233333333333)
+                        hps.data.train_logs_dir, "D_{}.pth".format(233333333333)
                     ),
                 )
             if rank == 0 and hps.train.if_save_every_weights == True:
