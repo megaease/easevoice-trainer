@@ -1,0 +1,19 @@
+#!/usr/bin/env python
+# -*- encoding=utf8 -*-
+import traceback
+
+from src.train.gpt import GPTTrainParams, GPTTrain
+from src.utils.response import EaseVoiceResponse, ResponseStatus
+
+
+class TrainService(object):
+    def __init__(self, gpt_params: GPTTrainParams):
+        self.gpt_train = GPTTrain(gpt_params)
+
+    def train(self) -> EaseVoiceResponse:
+        try:
+            self.gpt_train.train()
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Training completed successfully")
+        except Exception as e:
+            print(traceback.format_exc(), e)
+            return EaseVoiceResponse(ResponseStatus.FAILED, str(e))
