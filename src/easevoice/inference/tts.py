@@ -194,6 +194,9 @@ class TTS:
         self.bert_model: AutoModelForMaskedLM = None  # pyright: ignore
         self.cnhuhbert_model: CNHubert = None  # pyright: ignore
 
+        self.current_sovits_path = configs.vits_weights_path  # pyright: ignore
+        self.current_gpt_path = configs.t2s_weights_path  # pyright: ignore
+
         self._init_models()
 
         self.text_preprocessor: TextPreprocessor = \
@@ -215,6 +218,27 @@ class TTS:
 
         self.stop_flag: bool = False
         self.precision: torch.dtype = torch.float16 if self.configs.is_half else torch.float32
+
+    def update_weights(self, sovits_path: str, gpt_path: str):
+        if sovits_path != self.current_sovits_path:
+            if sovits_path == "":
+                # empty sovits path, use default path
+                if self.current_sovits_path != self.configs.vits_weights_path:
+                    self.current_sovits_path = self.configs.vits_weights_path
+                    self.init_vits_weights(self.current_sovits_path)
+            else:
+                self.current_sovits_path = sovits_path
+                self.init_vits_weights(self.current_sovits_path)
+
+        if gpt_path != self.current_gpt_path:
+            if gpt_path == "":
+                # empty gpt path, use default path
+                if self.current_gpt_path != self.configs.t2s_weights_path:
+                    self.current_gpt_path = self.configs.t2s_weights_path
+                    self.init_t2s_weights(self.current_gpt_path)
+            else:
+                self.current_gpt_path = gpt_path
+                self.init_t2s_weights(self.current_gpt_path)
 
     def _init_models(self,):
         self.init_t2s_weights(self.configs.t2s_weights_path)

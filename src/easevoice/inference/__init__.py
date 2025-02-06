@@ -54,6 +54,8 @@ class InferenceTaskData:
     keep_random = True
     parallel_infer = True
     repetition_penalty = 1.3
+    sovits_path = ""
+    gpt_path = ""
 
 
 @dataclasses.dataclass
@@ -99,6 +101,15 @@ class Runner:
                     task.result_queue.put(InferenceResult(error=str(e)))
 
     def _inference(self, task: InferenceTask):
+        # change weight based on task
+        try:
+            self.tts_pipeline.update_weights(task.data.sovits_path, task.data.gpt_path)
+        except Exception as e:
+            logger.error(f"failed to update weights: {e}")
+            # change back to default weights
+            self.tts_pipeline.update_weights("", "")
+            raise e
+
         data = task.data
         seed = -1 if data.keep_random else data.seed
         actual_seed = seed if seed not in [-1, "", None] else random.randrange(1 << 32)

@@ -5,7 +5,6 @@ import unittest
 
 from src.easevoice.inference import Runner
 from src.logger import logger
-from src.service.task import TaskService
 from src.service.voice import VoiceCloneService
 
 
@@ -19,8 +18,7 @@ class TestTTS(unittest.TestCase):
         queue.put(1)
 
     def test_voice_clone_service(self):
-        task_service = TaskService()
-        voice_service = VoiceCloneService(task_service)
+        voice_service = VoiceCloneService()
         time.sleep(5)
         voice_service.close()
 
