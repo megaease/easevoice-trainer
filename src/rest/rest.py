@@ -11,8 +11,6 @@ from src.api.api import (
     UploadFileRequest,
     DeleteFilesRequest,
     ListDirectoryResponse,
-    CreateNamespaceRequest,
-    AudioNamespaceProgressInitial,
 )
 from src.service.audio import AudioService
 from src.service.file import FileService
@@ -64,18 +62,9 @@ class NamespaceAPI:
         namespaces = self.namespace_service.get_namespaces()
         return {"namespaces": namespaces}
 
-    async def new_namespace(self, new_namespace_request: CreateNamespaceRequest):
+    async def new_namespace(self):
         """Create a new namespace."""
-        args = new_namespace_request.args
-        if new_namespace_request.service_name == "audio":
-            namespace = self.namespace_service.create_namespace(new_namespace_request.service_name, args)
-            namespace.progress = AudioNamespaceProgressInitial()
-            self.namespace_service.submit_namespace(namespace)
-            audio_service = AudioService(args["source_dir"], args["output_dir"], namespace)
-            audio_service.audio_service()
-            return namespace
-
-        namespace = self.namespace_service.create_namespace(new_namespace_request.service_name, new_namespace_request.args)
+        namespace = self.namespace_service.create_namespace()
         return namespace
 
     async def change_namespace(self, namespace_id: str, update_request: UpdateNamespaceRequest):

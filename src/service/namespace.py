@@ -38,7 +38,7 @@ class NamespaceService:
         """
         return sorted(list(filter(fn, self._namespaces.values())), key=lambda t: t.createdAt)
 
-    def create_namespace(self, service_name: str, args: dict) -> Namespace:
+    def create_namespace(self) -> Namespace:
         """Create a new namespace."""
         namespace_id = str(uuid.uuid4())
         namespace_name = f"Namespace-{namespace_id[:8]}"
@@ -51,16 +51,9 @@ class NamespaceService:
             name=namespace_name,
             createdAt=created_at,
             homePath=home_path,
-            service_name=service_name,
-            args=args,
-            progress=Progress(),
         )
         self._namespaces[namespace_id] = namespace
         return namespace
-
-    def submit_namespace(self, namespace: Namespace):
-        self._save_namespace_metadata(namespace)
-        self._namespaces[namespace.namespaceID] = namespace
 
     def get_namespaces(self) -> List[Namespace]:
         """Get all namespaces."""
