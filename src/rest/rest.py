@@ -198,7 +198,7 @@ class FileAPI:
 app = FastAPI()
 
 namespace_service = NamespaceService()
-voice_service = VoiceCloneService(namespace_service=namespace_service)
+voice_service = VoiceCloneService()
 namespace_api = NamespaceAPI(namespace_service)
 app.include_router(namespace_api.router, prefix="/apis/v1")
 

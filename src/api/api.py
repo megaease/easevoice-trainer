@@ -68,6 +68,9 @@ class Namespace(BaseModel):
 """Response model for creating a new namespace."""
 CreateNamespaceResponse = Namespace
 
+class CreateNamespaceRequest(BaseModel):
+    ...
+
 
 class UpdateNamespaceRequest(BaseModel):
     """Request model for updating a namespace."""

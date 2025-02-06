@@ -36,6 +36,7 @@ gpt_config_path = os.path.join(base_path, "configs", "gpt.yaml")
 train_output = "train"
 train_gpt_logs_output = "gpt_logs"
 gpt_pretrained_model_path = os.path.join(normalize_root, "gsv-v2final-pretrained", "s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt")
+sovits_pretrained_model_path = os.path.join(normalize_root, "gsv-v2final-pretrained", "s2G2333k.pth")
 cfg = config.GlobalCFG()
 
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"

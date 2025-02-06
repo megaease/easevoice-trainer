@@ -171,7 +171,7 @@ class GPTTrain(object):
         self.trainer.fit(self.model, self.data_module, ckpt_path=self.trainer_ckpt_path)
 
     @staticmethod
-    def _get_newest_ckpt(file_list: []):
+    def _get_newest_ckpt(file_list: list):
         if file_list is None or len(file_list) == 0:
             return None
 

@@ -13,6 +13,7 @@ from src.api.api import ServiceNames, TaskStatus, VoiceCloneProgress
 
 from src.easevoice.inference import InferenceResult, InferenceTask, InferenceTaskData, Runner
 from src.logger import logger
+from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
 class VoiceCloneService:
@@ -21,20 +22,27 @@ class VoiceCloneService:
     """
 
     def __init__(self):
-        self.task_service = task_service
-
         self.queue = mp.Queue()
+        self.runner_process = None
+        # self.runner_process = mp.Process(target=VoiceCloneService._init_runner, args=(self.queue,))
+        # self.runner_process.start()
+
+        # self._done = False
+        # self._run_tasks = threading.Thread(target=self._run, daemon=True)
+        # self._run_tasks.start()
+
+    def start(self):
+        if self.runner_process is not None:
+            logger.info("Runner process already started")
+            return
         self.runner_process = mp.Process(target=VoiceCloneService._init_runner, args=(self.queue,))
         self.runner_process.start()
 
-        self._done = False
-        self._run_tasks = threading.Thread(target=self._run, daemon=True)
-        self._run_tasks.start()
-
     def close(self):
-        self._done = True
-        self.queue.put(1)
-        self.runner_process.join()
+        if self.runner_process is not None:
+            self.queue.put(1)
+            self.runner_process.join()
+            self.runner_process = None
 
     @staticmethod
     def _init_runner(queue: mp.Queue):
@@ -46,54 +54,25 @@ class VoiceCloneService:
         print("Runner process exited")
         gc.collect()
 
-    def _run(self):
-        while True:
-            if self._done:
-                logger.info("Voice clone service is shutting down")
-                return
+    def clone(self, params: dict):
+        try:
+            data = InferenceTaskData(**params)
+            queue = mp.Queue()
+            infer_task = InferenceTask(result_queue=queue, data=data)
+            self.queue.put(infer_task)
+            result: InferenceResult = infer_task.result_queue.get(timeout=600)
+        except Exception as e:
+            logger.error(f"failed to clone voice for {params}, error: {e}", exc_info=True)
+            result = InferenceResult(error=str(e))
 
-            tasks = self.task_service.filter_tasks(lambda t: t.service_name == ServiceNames.VOICE_CLONE and t.progress.status == TaskStatus.PENDING)
-            if len(tasks) == 0:
-                logger.debug("No pending tasks found for voice clone")
+            if result.error:
+                logger.error(f"failed to clone voice for {params}, error: {result.error}")
+                return EaseVoiceResponse(ResponseStatus.FAILED, result.error)
             else:
-                task = tasks[0]
-                logger.info(f"Processing task {task.taskID}, args: {task.args}")
-
-                task.progress.status = TaskStatus.IN_PROGRESS
-                self.task_service.submit_task(task)
-
                 try:
-                    data = InferenceTaskData(**task.args)
-                    queue = mp.Queue()
-                    infer_task = InferenceTask(result_queue=queue, data=data)
-                    self.queue.put(infer_task)
-                    result: InferenceResult = infer_task.result_queue.get(timeout=600)
+                    sampling_rate = result.items[0][0]
+                    audio = np.concatenate([item[1] for item in result.items])
+                    return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice cloned successfully", {"sampling_rate": sampling_rate, "audio": audio})
                 except Exception as e:
-                    logger.error(f"failed to clone voice for {task.args}, error: {e}", exc_info=True)
-                    result = InferenceResult(error=str(e))
-
-                if result.error:
-                    progress = VoiceCloneProgress(status=TaskStatus.FAILED, current_step="Failed", total_steps=1, completed_steps=1, current_step_progress=100, message=result.error)
-                    task.progress = progress
-                    self.task_service.submit_task(task)
-                    logger.error(f"failed to clone voice for {task.args}, error: {result.error}")
-                else:
-                    try:
-                        sampling_rate = result.items[0][0]
-                        audio = np.concatenate([item[1] for item in result.items])
-                        output_file = os.path.join(task.homePath, "output.wav")
-                        wavfile.write(output_file, sampling_rate, audio)
-
-                        progress = VoiceCloneProgress(status=TaskStatus.COMPLETED, current_step="Completed", total_steps=1, completed_steps=1, current_step_progress=100)
-                        task.progress = progress
-                        self.task_service.submit_task(task)
-                        logger.info(f"Successfully cloned voice for {task.args}")
-
-                    except Exception as e:
-                        logger.error(f"failed to clone voice for {task.args}, error: {e}", exc_info=True)
-                        progress = VoiceCloneProgress(status=TaskStatus.FAILED, current_step="Failed", total_steps=1, completed_steps=1, current_step_progress=100, message=str(e))
-                        task.progress = progress
-                        self.task_service.submit_task(task)
-                        logger.error(f"failed to clone voice for {task.args}, error: {e}")
-
-            time.sleep(1)
+                    logger.error(f"failed to clone voice for {params}, error: {e}", exc_info=True)
+                    return EaseVoiceResponse(ResponseStatus.FAILED, "failed to clone voice")
