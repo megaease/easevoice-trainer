@@ -27,6 +27,7 @@ dependencies = [
     "pypinyin",
     "jieba_fast",
     "onnxruntime==1.17.1",
+    "torchmetrics==1.6.0",
     "opencc",
     "pyopenjtalk>=0.3.4",
     "nltk",
