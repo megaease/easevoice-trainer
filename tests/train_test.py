@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
 
-import unittest
-
-from src.service.train import TrainGPTService
-from src.train.gpt import GPTTrainParams
 from src.utils.response import ResponseStatus
+from src.train.gpt import GPTTrainParams
+from src.service.train import TrainGPTService
+import unittest
 
 
 class TestTrain(unittest.TestCase):

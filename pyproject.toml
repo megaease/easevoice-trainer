@@ -43,4 +43,6 @@ dependencies = [
     "Faster_Whisper",
     "funasr==1.0.27",
     "torchaudio==2.1.1",
+    "pandas",
+    "tensorboard",
 ]

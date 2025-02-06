@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 from . import commons
 from .mel_processing import spectrogram_torch
-from text import cleaned_text_to_sequence
+from src.easevoice.text import cleaned_text_to_sequence
 import torch.nn.functional as F
 from ...utils.audio import load_audio
 version = os.environ.get('version', None)
