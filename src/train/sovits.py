@@ -105,7 +105,7 @@ class SovitsTrain:
                 opt["weight"][key] = ckpt[key].half()
             opt["config"] = hps
             opt["info"] = "%sepoch_%siteration" % (epoch, steps)
-            # torch.save(opt, "%s/%s.pth" % (hps.save_weight_dir, name))
+
             ckpt.save_with_torch(opt, os.path.join(hps.save_weight_dir, f"{name}.pth"))
             return "Success"
         except:
@@ -488,14 +488,14 @@ class SovitsTrain:
                     )
             self.step += 1
         if epoch % hps.train.save_every_epoch == 0 and rank == 0:
-            if hps.train.if_save_latest == 0:
+            if not hps.train.if_save_latest:
                 ckpt.save_checkpoint(
                     net_g,
                     optim_g,
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.data.train_logs_dir, "G_{}.pth".format(self.step)
+                        hps.save_weight_dir, f"sovits_G_epoch{epoch}_step{self.step}.pth"
                     ),
                 )
                 ckpt.save_checkpoint(
@@ -504,7 +504,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.data.train_logs_dir, "D_{}.pth".format(self.step)
+                        hps.save_weight_dir, f"sovits_D_epoch{epoch}_step{self.step}.pth"
                     ),
                 )
             else:
@@ -514,7 +514,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.data.train_logs_dir, "G_{}.pth".format(233333333333)
+                        hps.save_weight_dir, "sovits_G_latest.pth"
                     ),
                 )
                 ckpt.save_checkpoint(
@@ -523,7 +523,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.data.train_logs_dir, "D_{}.pth".format(233333333333)
+                        hps.save_weight_dir, "sovits_D_latest.pth"
                     ),
                 )
             if rank == 0 and hps.train.if_save_every_weights == True:
