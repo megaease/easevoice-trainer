@@ -16,6 +16,7 @@ from src.service.audio import AudioService
 from src.service.file import FileService
 from src.service.namespace import NamespaceService
 from src.service.voice import VoiceCloneService
+from src.service.session import SessionManager
 
 
 class NamespaceAPI:
@@ -182,6 +183,29 @@ class FileAPI:
                 raise HTTPException(status_code=404, detail=str(e))
             raise HTTPException(status_code=400, detail=str(e))
 
+class SessionAPI:
+    """Class to encapsulate session-related API endpoints."""
+
+    def __init__(self, session_manager: SessionManager):
+        self.router = APIRouter()
+        self.session_manager = session_manager
+        self._register_routes()
+
+    def _register_routes(self):
+        """Register API routes."""
+        self.router.add_api_route(
+            path="/session",
+            endpoint=self.get_session,
+            methods=["GET"],
+            summary="Get current session info",
+        )
+
+    async def get_session(self):
+        """Retrieve current session info."""
+        session_info = self.session_manager.get_session_info()
+        if session_info is None:
+            raise HTTPException(status_code=404, detail="No active session")
+
 
 # Initialize FastAPI and NamespaceService
 app = FastAPI()
@@ -194,3 +218,7 @@ app.include_router(namespace_api.router, prefix="/apis/v1")
 file_service = FileService()
 file_api = FileAPI(file_service)
 app.include_router(file_api.router, prefix="/apis/v1")
+
+session_manager = SessionManager()
+session_api = SessionAPI(session_manager)
+app.include_router(session_api.router, prefix="/apis/v1")
