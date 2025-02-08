@@ -205,6 +205,7 @@ class SessionAPI:
         session_info = self.session_manager.get_session_info()
         if session_info is None:
             raise HTTPException(status_code=404, detail="No active session")
+        return session_info
 
 
 # Initialize FastAPI and NamespaceService
