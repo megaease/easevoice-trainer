@@ -16,8 +16,11 @@ from src.api.api import (
 from src.service.audio import AudioService
 from src.service.file import FileService
 from src.service.namespace import NamespaceService
+from src.service.train import TrainGPTService, TrainSovitsService
 from src.service.voice import VoiceCloneService
-from src.service.session import SessionManager
+from src.service.session import SessionManager, session_guard
+from src.train.gpt import GPTTrainParams
+from src.train.sovits import SovitsTrainParams
 from src.utils.response import EaseVoiceResponse
 from src.logger import logger
 
@@ -275,11 +278,48 @@ class VoiceCloneAPI:
                 raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": msg})
 
 
+class TrainAPI:
+    def __init__(self):
+        self.router = APIRouter()
+        self._register_routes()
+
+    def _register_routes(self):
+        self.router.post("/train/gpt")(self.train_gpt)
+        self.router.post("/train/sovits")(self.train_sovits)
+
+    def train_gpt(self, params: GPTTrainParams):
+        result = self._do_train_gpt(params)
+
+        # session_guard wrapper return a dict
+        if isinstance(result, EaseVoiceResponse):
+            return result
+        logger.error(f"failed to train gpt: {result}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
+    async def train_sovits(self, params: SovitsTrainParams):
+        result = self._do_train_sovits(params)
+        
+        # session_guard wrapper return a dict
+        if isinstance(result, EaseVoiceResponse):
+            return result
+        logger.error(f"failed to train sovits: {result}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
+    @session_guard("TrainGPT")
+    def _do_train_gpt(self, params: GPTTrainParams):
+        service = TrainGPTService(params)
+        return service.train()
+
+    @session_guard("TrainSovits")
+    def _do_train_sovits(self, params: SovitsTrainParams):
+        service = TrainSovitsService(params)
+        return service.train()
+
+
 # Initialize FastAPI and NamespaceService
 app = FastAPI()
 
 namespace_service = NamespaceService()
-voice_service = VoiceCloneService()
 namespace_api = NamespaceAPI(namespace_service)
 app.include_router(namespace_api.router, prefix="/apis/v1")
 
@@ -290,3 +330,9 @@ app.include_router(file_api.router, prefix="/apis/v1")
 session_manager = SessionManager()
 session_api = SessionAPI(session_manager)
 app.include_router(session_api.router, prefix="/apis/v1")
+
+voice_clone_api = VoiceCloneAPI(session_manager)
+app.include_router(voice_clone_api.router, prefix="/apis/v1")
+
+train_api = TrainAPI()
+app.include_router(train_api.router, prefix="/apis/v1")
