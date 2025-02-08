@@ -3,10 +3,12 @@ from functools import wraps
 from typing import Optional, Dict, Any
 from enum import Enum
 
+
 class Status(Enum):
     RUNNING = "Running"
     COMPLETED = "Completed"
     FAILED = "Failed"
+
 
 class SessionManager:
     """Manages training session, ensuring single GPU task execution and tracking task state."""
@@ -50,8 +52,8 @@ class SessionManager:
         """Updates task session with arbitrary info."""
         if not self.current_session or self.current_session["status"] != Status.RUNNING:
             raise RuntimeError("No active task to update session info!")
-
         self.current_session.update(info)
+
     def get_session_info(self) -> Optional[Dict[str, Any]]:
         """Returns current task state information."""
         return self.current_session
@@ -66,6 +68,10 @@ def session_guard(task_name: str):
 
             try:
                 session_manager.start_session(task_name)
+            except Exception as e:
+                return {"error": f"failed to start session: {e}"}
+            
+            try:
                 result = func(*args, **kwargs)  # Execute the training task
                 session_manager.end_session(result)
                 return result
@@ -74,6 +80,7 @@ def session_guard(task_name: str):
                 # NOTICE: No Re-raise exception here,
                 # as we capture the error and record it in session info.
                 # raise e
+                return {"error": f"failed to run {task_name}: {e}"} 
         return wrapper
     return decorator
 

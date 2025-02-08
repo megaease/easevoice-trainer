@@ -1,4 +1,5 @@
 from fastapi import FastAPI, APIRouter, HTTPException
+from http import HTTPStatus
 
 from src.api.api import (
     Namespace,
@@ -17,6 +18,8 @@ from src.service.file import FileService
 from src.service.namespace import NamespaceService
 from src.service.voice import VoiceCloneService
 from src.service.session import SessionManager
+from src.utils.response import EaseVoiceResponse
+from src.logger import logger
 
 
 class NamespaceAPI:
@@ -183,6 +186,7 @@ class FileAPI:
                 raise HTTPException(status_code=404, detail=str(e))
             raise HTTPException(status_code=400, detail=str(e))
 
+
 class SessionAPI:
     """Class to encapsulate session-related API endpoints."""
 
@@ -206,6 +210,69 @@ class SessionAPI:
         if session_info is None:
             raise HTTPException(status_code=404, detail="No active session")
         return session_info
+
+
+class VoiceCloneAPI:
+    _name = "VoiceClone"
+
+    def __init__(self, session_manager: SessionManager):
+        self.router = APIRouter()
+        self.session_manager = session_manager
+        self._register_routes()
+
+        self.service = None
+
+    def _register_routes(self):
+        self.router.post("/voiceclone/start")(self.start_service)
+        self.router.post("/voiceclone/clone")(self.clone)
+        self.router.get("/voiceclone/stop")(self.stop_service)
+        self.router.get("/voiceclone/status")(self.get_status)
+
+    async def get_status(self):
+        if self.service is None:
+            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail={"error": "voice clone service is not started"})
+        status = self.service.get_status()
+        return {"status": status}
+
+    async def start_service(self):
+        if self.service is None:
+            try:
+                self.session_manager.start_session(self._name)
+            except Exception as e:
+                msg = f"failed to start session for voice clone service: {str(e)}"
+                logger.error(msg)
+                raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": msg})
+            try:
+                self.service = VoiceCloneService()
+            except Exception as e:
+                msg = f"failed to start voice clone service: {str(e)}"
+                logger.error(msg)
+                self.service = None
+                self.session_manager.fail_session(msg)
+                raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": msg})
+        return {"message": "Voice Clone Service is started"}
+
+    async def clone(self, request: dict):
+        if self.service is None:
+            raise HTTPException(status_code=HTTPStatus.SERVICE_UNAVAILABLE, detail={"error": "please start the service before clone"})
+        try:
+            return self.service.clone(request)
+        except Exception as e:
+            logger.error(f"failed to clone voice for {request}, err: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to clone voice: {e}"})
+
+    async def stop_service(self):
+        if self.service is not None:
+            try:
+                self.service.close()
+                self.service = None
+                self.session_manager.end_session("stop voice clone service")
+            except Exception as e:
+                msg = f"failed to stop voice clone service: {str(e)}"
+                logger.error(msg)
+                self.service = None
+                self.session_manager.fail_session(msg)
+                raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": msg})
 
 
 # Initialize FastAPI and NamespaceService

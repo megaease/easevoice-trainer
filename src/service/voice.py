@@ -1,4 +1,5 @@
 from concurrent.futures import thread
+from enum import Enum
 import gc
 import multiprocessing as mp
 import os
@@ -15,6 +16,10 @@ from src.easevoice.inference import InferenceResult, InferenceTask, InferenceTas
 from src.logger import logger
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
+class VoiceCloneStatus(Enum):
+    RUNNING = "Running"
+    COMPLETED = "Completed"
+    ERROR = "Error"
 
 class VoiceCloneService:
     """
@@ -23,26 +28,23 @@ class VoiceCloneService:
 
     def __init__(self):
         self.queue = mp.Queue()
-        self.runner_process = None
-        # self.runner_process = mp.Process(target=VoiceCloneService._init_runner, args=(self.queue,))
-        # self.runner_process.start()
-
-        # self._done = False
-        # self._run_tasks = threading.Thread(target=self._run, daemon=True)
-        # self._run_tasks.start()
-
-    def start(self):
-        if self.runner_process is not None:
-            logger.info("Runner process already started")
-            return
         self.runner_process = mp.Process(target=VoiceCloneService._init_runner, args=(self.queue,))
         self.runner_process.start()
 
     def close(self):
         if self.runner_process is not None:
             self.queue.put(1)
-            self.runner_process.join()
+            self.runner_process.terminate()
+            self.runner_process.join(timeout=10)
             self.runner_process = None
+    
+    def get_status(self):
+        if self.runner_process is None:
+            return VoiceCloneStatus.COMPLETED
+        elif self.runner_process.is_alive():
+            return VoiceCloneStatus.RUNNING
+        else:
+            return VoiceCloneStatus.ERROR
 
     @staticmethod
     def _init_runner(queue: mp.Queue):
@@ -51,7 +53,7 @@ class VoiceCloneService:
         """
         runner = Runner(queue)
         runner.run()
-        print("Runner process exited")
+        print("Voice clone runner process exited")
         gc.collect()
 
     def clone(self, params: dict):
