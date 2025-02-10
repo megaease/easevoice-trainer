@@ -31,13 +31,6 @@ class NamespaceService:
         """Get the path to the namespace metadata file."""
         return os.path.join(self.base_dir, namespace_id, ".metadata.json")
 
-    def filter_namespaces(self, fn: Callable[[Namespace], bool]) -> List[Namespace]:
-        """
-        Filter namespace using a function.
-        For example, to get all pending namespaces for a service.
-        """
-        return sorted(list(filter(fn, self._namespaces.values())), key=lambda t: t.createdAt)
-
     def create_namespace(self) -> Namespace:
         """Create a new namespace."""
         namespace_id = str(uuid.uuid4())
@@ -90,6 +83,7 @@ class NamespaceService:
     def _save_namespace_metadata(self, namespace: Namespace):
         """Save namespace metadata to a file."""
         metadata_path = self._namespace_metadata_path(namespace.namespaceID)
+        print(f"""Saving metadata to {metadata_path}""")
         with open(metadata_path, "w") as f:
             json.dump(namespace.model_dump(), f, default=str)
 
