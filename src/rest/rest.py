@@ -278,6 +278,8 @@ class VoiceCloneAPI:
                 self.service = None
                 self.session_manager.fail_session(msg)
                 raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": msg})
+            return {"message": "Voice Clone Service is stopped"}
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail={"error": "voice clone service is not started"})
 
 
 class TrainAPI:
