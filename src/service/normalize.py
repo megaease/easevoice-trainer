@@ -1,8 +1,15 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
 
+from dataclasses import dataclass
+
 from src.normalization.normalize import Normalize
 from src.utils.response import EaseVoiceResponse, ResponseStatus
+
+
+@dataclass
+class NormalizeParams:
+    processing_path: str
 
 
 class NormalizeService(object):

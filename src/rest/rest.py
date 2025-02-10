@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException
 from http import HTTPStatus
+
+from fastapi import FastAPI, APIRouter, HTTPException
 
 from src.api.api import (
     Namespace,
@@ -13,16 +14,17 @@ from src.api.api import (
     DeleteFilesRequest,
     ListDirectoryResponse,
 )
-from src.service.audio import AudioService
+from src.logger import logger
+from src.service.audio import AudioUVR5Params, AudioSlicerParams, AudioASRParams, AudioService, AudioDenoiseParams, AudioRefinementSubmitParams, AudioRefinementDeleteParams
 from src.service.file import FileService
 from src.service.namespace import NamespaceService
+from src.service.normalize import NormalizeService, NormalizeParams
+from src.service.session import SessionManager, session_guard
 from src.service.train import TrainGPTService, TrainSovitsService
 from src.service.voice import VoiceCloneService
-from src.service.session import SessionManager, session_guard
 from src.train.gpt import GPTTrainParams
 from src.train.sovits import SovitsTrainParams
 from src.utils.response import EaseVoiceResponse
-from src.logger import logger
 
 
 class NamespaceAPI:
@@ -287,7 +289,7 @@ class TrainAPI:
         self.router.post("/train/gpt")(self.train_gpt)
         self.router.post("/train/sovits")(self.train_sovits)
 
-    def train_gpt(self, params: GPTTrainParams):
+    async def train_gpt(self, params: GPTTrainParams):
         result = self._do_train_gpt(params)
 
         # session_guard wrapper return a dict
@@ -298,7 +300,7 @@ class TrainAPI:
 
     async def train_sovits(self, params: SovitsTrainParams):
         result = self._do_train_sovits(params)
-        
+
         # session_guard wrapper return a dict
         if isinstance(result, EaseVoiceResponse):
             return result
@@ -314,6 +316,138 @@ class TrainAPI:
     def _do_train_sovits(self, params: SovitsTrainParams):
         service = TrainSovitsService(params)
         return service.train()
+
+
+class NormalizeAPI:
+    def __init__(self):
+        self.router = APIRouter()
+        self._register_routes()
+
+    def _register_routes(self):
+        self.router.post("/normalize")(self.normalize)
+
+    async def normalize(self, request: NormalizeParams):
+        result = self._do_normalize(request)
+
+        # session_guard wrapper return a dict
+        if isinstance(result, EaseVoiceResponse):
+            return result
+        logger.error(f"failed to normalize: {result}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
+    @session_guard("Normalize")
+    def _do_normalize(self, params: NormalizeParams):
+        service = NormalizeService(params.processing_path)
+        return service.normalize()
+
+
+class AudioAPI:
+    def __init__(self):
+        self.router = APIRouter()
+        self._register_routes()
+
+    def _register_routes(self):
+        self.router.post("/audio/uvr5")(self.audio_uvr5)
+        self.router.post("/audio/slicer")(self.audio_slicer)
+        self.router.post("/audio/denoise")(self.audio_denoise)
+        self.router.post("/audio/asr")(self.audio_asr)
+        self.router.get("/audio/refinement")(self.list_audio_refinement)
+        self.router.post("/audio/refinement")(self.update_audio_refinement)
+        self.router.delete("/audio/refinement")(self.delete_audio_refinement)
+
+    async def audio_uvr5(self, request: AudioUVR5Params):
+        result = self._do_audio_uvr5(request)
+
+        # session_guard wrapper return a dict
+        if isinstance(result, EaseVoiceResponse):
+            return result
+        logger.error(f"failed to uvr5: {result}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
+    async def audio_slicer(self, request: AudioSlicerParams):
+        result = self._do_audio_slicer(request)
+
+        # session_guard wrapper return a dict
+        if isinstance(result, EaseVoiceResponse):
+            return result
+        logger.error(f"failed to slice: {result}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
+    async def audio_denoise(self, request: AudioDenoiseParams):
+        result = self._do_audio_denoise(request)
+
+        # session_guard wrapper return a dict
+        if isinstance(result, EaseVoiceResponse):
+            return result
+        logger.error(f"failed to denoise: {result}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
+    async def audio_asr(self, request: AudioASRParams):
+        result = self._do_audio_asr(request)
+
+        # session_guard wrapper return a dict
+        if isinstance(result, EaseVoiceResponse):
+            return result
+        logger.error(f"failed to asr: {result}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
+    async def list_audio_refinement(self, input_dir: str, output_dir: str):
+        service = AudioService(source_dir=input_dir, output_dir=output_dir)
+        result = service.refinement_reload()
+        if isinstance(result, EaseVoiceResponse):
+            return result
+        logger.error(f"failed to list audio refinement: {result}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
+    def update_audio_refinement(self, request: AudioRefinementSubmitParams):
+        service = AudioService(source_dir=request.source_dir, output_dir=request.output_dir)
+        result = service.refinement_submit_text(request.index, request.language, request.text_content)
+        if isinstance(result, EaseVoiceResponse):
+            return result
+        logger.error(f"failed to update audio refinement: {result}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
+    def delete_audio_refinement(self, params: AudioRefinementDeleteParams):
+        service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
+        result = service.refinement_delete_text(params.file_index)
+        if isinstance(result, EaseVoiceResponse):
+            return result
+        logger.error(f"failed to delete audio refinement: {result}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
+    @session_guard("AudioUVR5")
+    def _do_audio_uvr5(self, params: AudioUVR5Params):
+        service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
+        return service.uvr5(params.model_name, params.audio_format)
+
+    @session_guard("AudioSlicer")
+    def _do_audio_slicer(self, params: AudioSlicerParams):
+        service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
+        return service.slicer(
+            threshold=params.threshold,
+            min_length=params.min_length,
+            min_interval=params.min_interval,
+            hop_size=params.hop_size,
+            max_silent_kept=params.max_silent_kept,
+            normalize_max=params.normalize_max,
+            alpha_mix=params.alpha_mix,
+            num_process=params.num_process,
+        )
+
+    @session_guard("AudioDenoise")
+    def _do_audio_denoise(self, params: AudioDenoiseParams):
+        service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
+        return service.denoise()
+
+    @session_guard("AudioASR")
+    def _do_audio_asr(self, params: AudioASRParams):
+        service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
+        return service.asr(
+            asr_model=params.asr_model,
+            model_size=params.model_size,
+            language=params.language,
+            precision=params.precision,
+        )
 
 
 # Initialize FastAPI and NamespaceService
@@ -336,3 +470,9 @@ app.include_router(voice_clone_api.router, prefix="/apis/v1")
 
 train_api = TrainAPI()
 app.include_router(train_api.router, prefix="/apis/v1")
+
+normalize_api = NormalizeAPI()
+app.include_router(normalize_api.router, prefix="/apis/v1")
+
+audio_api = AudioAPI()
+app.include_router(audio_api.router, prefix="/apis/v1")

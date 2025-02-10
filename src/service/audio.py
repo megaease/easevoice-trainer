@@ -4,6 +4,7 @@ import multiprocessing
 import os
 import traceback
 from multiprocessing import Process
+from dataclasses import dataclass
 
 import ffmpeg
 import numpy as np
@@ -19,6 +20,60 @@ from src.audiokit.uvr5.separate import SeparateBase, SeparateMDXNet, SeparateMDX
 from src.utils.audio import load_audio
 from src.utils.config import vocals_output, slices_output, denoises_output, asrs_output, asr_file, refinements_output, refinement_file
 from src.utils.response import ResponseStatus, EaseVoiceResponse
+
+
+@dataclass
+class AudioUVR5Params:
+    source_dir: str
+    output_dir: str
+    model_name: str
+    audio_format: str
+
+
+@dataclass
+class AudioSlicerParams:
+    source_dir: str
+    output_dir: str
+    threshold: int = -34
+    min_length: int = 4000
+    min_interval: int = 300
+    hop_size: int = 10
+    max_silent_kept: int = 500
+    normalize_max: float = 0.9
+    alpha_mix: float = 0.25
+    num_process: int = 4
+
+
+@dataclass
+class AudioDenoiseParams:
+    source_dir: str
+    output_dir: str
+
+
+@dataclass
+class AudioASRParams:
+    source_dir: str
+    output_dir: str
+    asr_model: str = "funasr"
+    model_size: str = "large"
+    language: str = "zh"
+    precision: str = "float32"
+
+
+@dataclass
+class AudioRefinementSubmitParams:
+    source_dir: str
+    output_dir: str
+    index: str
+    language: str
+    text_content: str
+
+
+@dataclass
+class AudioRefinementDeleteParams:
+    source_dir: str
+    output_dir: str
+    file_index: str
 
 
 class AudioService():
