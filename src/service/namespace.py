@@ -45,6 +45,7 @@ class NamespaceService:
         created_at = datetime.now(timezone.utc)
         home_path = os.path.join(self.base_dir, namespace_id)
         os.makedirs(home_path, exist_ok=True)
+        os.makedirs(os.path.join(home_path, "voices"), exist_ok=True)
 
         namespace = Namespace(
             namespaceID=namespace_id,
