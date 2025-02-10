@@ -60,9 +60,6 @@ class Namespace(BaseModel):
     name: str
     createdAt: datetime
     homePath: str
-    progress: Progress
-    args: dict
-    service_name: str
 
 
 """Response model for creating a new namespace."""
