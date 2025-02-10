@@ -54,6 +54,9 @@ class NamespaceService:
             homePath=home_path,
         )
         self._namespaces[namespace_id] = namespace
+
+        self._save_namespace_metadata(namespace)
+
         return namespace
 
     def get_namespaces(self) -> List[Namespace]:
