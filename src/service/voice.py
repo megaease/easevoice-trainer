@@ -1,6 +1,8 @@
+import base64
 from concurrent.futures import thread
 from enum import Enum
 import gc
+import io
 import multiprocessing as mp
 import os
 import queue
@@ -8,6 +10,7 @@ import threading
 import time
 import numpy as np
 from scipy.io import wavfile
+import soundfile as sf
 
 from src.api.api import ServiceNames, TaskStatus, VoiceCloneProgress
 
@@ -73,7 +76,10 @@ class VoiceCloneService:
             else:
                 try:
                     sampling_rate = result.items[0][0]
-                    audio = np.concatenate([item[1] for item in result.items])
+                    data = np.concatenate([item[1] for item in result.items])
+                    buffer = io.BytesIO()
+                    sf.write(buffer, data, sampling_rate, format="WAV")
+                    audio = base64.b64encode(buffer.getvalue()).decode("utf-8")
                     return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice cloned successfully", {"sampling_rate": sampling_rate, "audio": audio})
                 except Exception as e:
                     logger.error(f"failed to clone voice for {params}, error: {e}", exc_info=True)
