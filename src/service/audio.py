@@ -64,7 +64,7 @@ class AudioASRParams:
 class AudioRefinementSubmitParams:
     source_dir: str
     output_dir: str
-    index: str
+    source_file_path: str
     language: str
     text_content: str
 
@@ -73,7 +73,7 @@ class AudioRefinementSubmitParams:
 class AudioRefinementDeleteParams:
     source_dir: str
     output_dir: str
-    file_index: str
+    source_file_path: str
 
 
 class AudioService():

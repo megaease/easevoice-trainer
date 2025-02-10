@@ -9,7 +9,7 @@ import unittest
 
 class TestTrain(unittest.TestCase):
     gpt_service = TrainGPTService(gpt_params=GPTTrainParams(
-        processing_path="./output",
+        output_path="./output",
         normalize_path="./output/test",
         output_model_name="test",
     ))

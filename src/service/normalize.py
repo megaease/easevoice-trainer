@@ -9,7 +9,7 @@ from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 @dataclass
 class NormalizeParams:
-    processing_path: str
+    output_dir: str
 
 
 class NormalizeService(object):
@@ -28,6 +28,8 @@ class NormalizeService(object):
             token_resp = normalize.token()
             if token_resp.status == ResponseStatus.FAILED:
                 return token_resp
-            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalization completed successfully")
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalization completed successfully", data={
+                "normalize_path": normalize.output_path
+            })
         except Exception as e:
             return EaseVoiceResponse(ResponseStatus.FAILED, str(e))

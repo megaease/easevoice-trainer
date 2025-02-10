@@ -14,7 +14,9 @@ class TrainGPTService(object):
     def train(self) -> EaseVoiceResponse:
         try:
             self.gpt_train.train()
-            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Training GPT completed successfully")
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Training GPT completed successfully", data={
+                "model_path": self.gpt_train.train_output
+            })
         except Exception as e:
             print(traceback.format_exc(), e)
             return EaseVoiceResponse(ResponseStatus.FAILED, str(e))

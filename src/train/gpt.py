@@ -32,7 +32,7 @@ class GPTTrainParams:
     if_save_every_weights: bool = True
     gpu_ids: str = "0"
     model_path: str = gpt_pretrained_model_path
-    processing_path: str = ""
+    output_path: str = ""
     normalize_path: str = ""
     output_model_name: str = "gpt"
 
@@ -98,7 +98,7 @@ class GPTTrain(object):
         with open(gpt_config_path, "r") as f:
             data = f.read()
             self.config = yaml.load(data, Loader=yaml.FullLoader)
-        self.processing_path = params.processing_path
+        self.processing_path = params.output_path
         self.normalize_path = params.normalize_path
         self.train_output = os.path.join(params.normalize_path, train_output)
         self.train_logs_output = os.path.join(params.normalize_path, train_gpt_logs_output)

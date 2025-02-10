@@ -338,7 +338,7 @@ class NormalizeAPI:
 
     @session_guard("Normalize")
     def _do_normalize(self, params: NormalizeParams):
-        service = NormalizeService(params.processing_path)
+        service = NormalizeService(params.output_dir)
         return service.normalize()
 
 
@@ -402,7 +402,7 @@ class AudioAPI:
 
     def update_audio_refinement(self, request: AudioRefinementSubmitParams):
         service = AudioService(source_dir=request.source_dir, output_dir=request.output_dir)
-        result = service.refinement_submit_text(request.index, request.language, request.text_content)
+        result = service.refinement_submit_text(request.source_file_path, request.language, request.text_content)
         if isinstance(result, EaseVoiceResponse):
             return result
         logger.error(f"failed to update audio refinement: {result}")
@@ -410,7 +410,7 @@ class AudioAPI:
 
     def delete_audio_refinement(self, params: AudioRefinementDeleteParams):
         service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
-        result = service.refinement_delete_text(params.file_index)
+        result = service.refinement_delete_text(params.source_file_path)
         if isinstance(result, EaseVoiceResponse):
             return result
         logger.error(f"failed to delete audio refinement: {result}")
