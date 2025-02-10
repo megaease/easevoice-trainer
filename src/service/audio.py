@@ -264,34 +264,3 @@ class AudioService():
     def refinement_reload(self):
         self.refinement.load_text()
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Reload Success", self.refinement.source_file_content)
-
-    # def audio_service(self):
-    #     uvr_resp = self.uvr5(self.task.args["model_name"], self.task.args["audio_format"], self._progress)
-    #     if not self._handle_resp(uvr_resp, AudioServiceSteps.Slicer):
-    #         return
-    #
-    #     slice_resp = self.slicer(
-    #         threshold=self.task.args["threshold"] if "threshold" in self.task.args else -34,
-    #         min_length=self.task.args["min_length"] if "min_length" in self.task.args else 4000,
-    #         min_interval=self.task.args["min_interval"] if "min_interval" in self.task.args else 300,
-    #         hop_size=self.task.args["hop_size"] if "hop_size" in self.task.args else 10,
-    #         max_silent_kept=self.task.args["max_silent_kept"] if "max_silent_kept" in self.task.args else 500,
-    #         normalize_max=self.task.args["normalize_max"] if "normalize_max" in self.task.args else 0.9,
-    #         alpha_mix=self.task.args["alpha_mix"] if "alpha_mix" in self.task.args else 0.25,
-    #         num_process=self.task.args["num_process"] if "num_process" in self.task.args else 4,
-    #     )
-    #     if not self._handle_resp(slice_resp, AudioServiceSteps.Denoise):
-    #         return
-    #
-    #     denoise_resp = self.denoise()
-    #     if not self._handle_resp(denoise_resp, AudioServiceSteps.ASR):
-    #         return
-    #
-    #     asr_resp = self.asr(
-    #         asr_model=self.task.args["asr_model"] if "asr_model" in self.task.args else "funasr",
-    #         model_size=self.task.args["model_size"] if "model_size" in self.task.args else "large",
-    #         language=self.task.args["language"] if "language" in self.task.args else "zh",
-    #         precision=self.task.args["precision"] if "precision" in self.task.args else "float32",
-    #     )
-    #     if not self._handle_resp(asr_resp, ""):
-    #         return
