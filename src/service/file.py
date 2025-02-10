@@ -54,16 +54,16 @@ class FileService:
 
     def list_directory(self, directory_path: str) -> Dict[str, List[Dict[str, str]]]:
         """
-        List files in a directory.
+        List files and directories in a specified directory.
 
         Args:
             directory_path (str): Path of the directory to list.
 
         Returns:
-            Dict[str, List[Dict[str, str]]]: Directory information with file details.
+            Dict[str, List[Dict[str, str]]]: Directory information with file and directory details.
 
         Raises:
-            ValueError: If the directory does not exist.
+            ValueError: If the directory does not exist or the path is not a directory.
         """
         if not os.path.exists(directory_path):
             raise ValueError("Not Found: Directory does not exist.")
@@ -71,17 +71,32 @@ class FileService:
             raise ValueError("Bad Request: Path is not a directory.")
 
         files = []
-        for file_name in os.listdir(directory_path):
-            file_path = os.path.join(directory_path, file_name)
-            if os.path.isfile(file_path):
-                stat = os.stat(file_path)
-                files.append({
-                    "fileName": file_name,
+        directories = []
+
+        for entry in os.scandir(directory_path):
+            entry_info = {
+                "type": "directory" if entry.is_dir() else "file"
+            }
+
+            if entry.is_dir():
+                entry_info.update({
+                    "directoryName": entry.name
+                })
+                directories.append(entry_info)
+            elif entry.is_file():
+                stat = entry.stat()
+                entry_info.update({
+                    "fileName": entry.name,
                     "fileSize": stat.st_size,
                     "modifiedAt": datetime.fromtimestamp(stat.st_mtime).isoformat(),
                 })
+                files.append(entry_info)
 
-        return {"directoryPath": directory_path, "files": files}
+        return {
+            "directoryPath": directory_path,
+            "files": files,
+            "directories": directories
+        }
 
     def upload_file(self, directory_path: str, file_name: str, file_content: str):
         """

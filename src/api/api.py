@@ -107,15 +107,21 @@ class DeleteFilesRequest(BaseModel):
 
 class FileMetadata(BaseModel):
     """Metadata for a file."""
+    type: str
     fileName: str
     fileSize: int
     modifiedAt: str  # RFC3339 format timestamp
 
+class DirMetadata(BaseModel):
+    """Metadata for a directory."""
+    type: str
+    directoryName: str
 
 class ListDirectoryResponse(BaseModel):
     """Response model for listing directory contents."""
     directoryPath: str
     files: List[FileMetadata]
+    directories: List[DirMetadata]
 
 
 # General models
