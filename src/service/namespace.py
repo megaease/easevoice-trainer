@@ -22,11 +22,6 @@ class NamespaceService:
         self.base_dir = base_dir
         os.makedirs(self.base_dir, exist_ok=True)
 
-        namespaces = self.get_namespaces()
-        self._namespaces: Dict[str, Namespace] = {}
-        for namespace in namespaces:
-            self._namespaces[namespace.namespaceID] = namespace
-
     def _namespace_metadata_path(self, namespace_id: str) -> str:
         """Get the path to the namespace metadata file."""
         return os.path.join(self.base_dir, namespace_id, ".metadata.json")
@@ -46,7 +41,6 @@ class NamespaceService:
             createdAt=created_at,
             homePath=home_path,
         )
-        self._namespaces[namespace_id] = namespace
 
         self._save_namespace_metadata(namespace)
 
@@ -61,7 +55,6 @@ class NamespaceService:
                 try:
                     namespace = self._load_namespace_metadata(namespace_id)
                     namespaces.append(namespace)
-                    self._namespaces[namespace_id] = namespace
                 except FileNotFoundError:
                     pass  # Skip invalid namespaces
         return namespaces
@@ -71,13 +64,11 @@ class NamespaceService:
         namespace = self._load_namespace_metadata(namespace_id)
         namespace.name = name
         self._save_namespace_metadata(namespace)
-        self._namespaces[namespace.namespaceID] = namespace
         return namespace
 
     def delete_namespace(self, namespace_id: str):
         """Delete a namespace."""
         namespace = self._load_namespace_metadata(namespace_id)
-        self._namespaces.pop(namespace_id)
         self._delete_directory(namespace.homePath)
 
     def _save_namespace_metadata(self, namespace: Namespace):

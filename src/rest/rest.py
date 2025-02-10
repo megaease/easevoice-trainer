@@ -9,7 +9,6 @@ from src.api.api import (
     ListNamespaceResponse,
     CreateDirectoryRequest,
     DeleteDirectoryRequest,
-    ListDirectoryRequest,
     UploadFileRequest,
     DeleteFilesRequest,
     ListDirectoryResponse,
@@ -143,7 +142,7 @@ class FileAPI:
                 raise HTTPException(status_code=404, detail=str(e))
             raise HTTPException(status_code=400, detail=str(e))
 
-    async def list_directory(self, request: ListDirectoryRequest):
+    async def list_directory(self, directoryPath: str):
         """
         List files in a directory.
 
@@ -153,7 +152,7 @@ class FileAPI:
             404: Not Found
         """
         try:
-            return self.file_service.list_directory(request.directoryPath)
+            return self.file_service.list_directory(directoryPath)
         except ValueError as e:
             if "Not Found" in str(e):
                 raise HTTPException(status_code=404, detail=str(e))

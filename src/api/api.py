@@ -93,11 +93,6 @@ class DeleteDirectoryRequest(BaseModel):
     directoryPath: str
 
 
-class ListDirectoryRequest(BaseModel):
-    """Request model for listing directory contents."""
-    directoryPath: str
-
-
 class UploadFileRequest(BaseModel):
     """Request model for uploading a file."""
     directoryPath: str
