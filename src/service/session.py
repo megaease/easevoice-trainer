@@ -22,41 +22,52 @@ class SessionManager:
             with cls._lock:
                 if not cls._instance:
                     cls._instance = super(SessionManager, cls).__new__(cls)
+                    cls._instance._session_lock = threading.Lock()  # Protects session state
                     cls._instance.current_session = None
         return cls._instance
 
     def start_session(self, task_name: str):
         """Attempts to start a new session; rejects if another task is already running."""
-        if self.current_session and self.current_session["status"] == Status.RUNNING:
-            raise RuntimeError(f"A task '{self.current_session['task_name']}' is already running. Cannot submit another task!")
+        with self._session_lock:
+            if self.current_session is not None:
+                raise RuntimeError(
+                    f"A task '{self.current_session['task_name']}' is already running. Cannot submit another task!"
+                )
 
-        self.current_session = {
-            "task_name": task_name,
-            "status": Status.RUNNING,
-            "error": None,  # Stores error details if task fails
-        }
+            self.current_session = {
+                "task_name": task_name,
+                "status": Status.RUNNING,
+                "error": None,  # Stores error details if task fails
+            }
 
     def end_session(self, result: Any):
         """Marks task as completed successfully."""
-        if self.current_session:
-            self.current_session["status"] = Status.COMPLETED
-            self.current_session["result"] = result
+        with self._session_lock:
+            if self.current_session:
+                self.current_session["status"] = Status.COMPLETED
+                self.current_session["result"] = result
+                self.current_session = None  # Clear session after completion
 
     def fail_session(self, error: str):
         """Marks task as failed and stores error information."""
-        if self.current_session:
-            self.current_session["status"] = Status.FAILED
-            self.current_session["error"] = error
+        with self._session_lock:
+            if self.current_session:
+                self.current_session["status"] = Status.FAILED
+                self.current_session["error"] = error
+                self.current_session = None  # Clear session after failure
 
     def update_session_info(self, info: Dict[str, Any]):
         """Updates task session with arbitrary info."""
-        if not self.current_session or self.current_session["status"] != Status.RUNNING:
-            raise RuntimeError("No active task to update session info!")
-        self.current_session.update(info)
+        with self._session_lock:
+            if not self.current_session or self.current_session["status"] != Status.RUNNING:
+                raise RuntimeError("No active task to update session info!")
+            self.current_session.update(info)
 
     def get_session_info(self) -> Optional[Dict[str, Any]]:
         """Returns current task state information."""
-        return self.current_session
+        with self._session_lock:
+            return self.current_session.copy() if self.current_session else None
+
 
 # Decorator to wrap task execution logic
 def session_guard(task_name: str):
@@ -70,7 +81,7 @@ def session_guard(task_name: str):
                 session_manager.start_session(task_name)
             except Exception as e:
                 return {"error": f"failed to start session: {e}"}
-            
+
             try:
                 result = func(*args, **kwargs)  # Execute the training task
                 session_manager.end_session(result)
@@ -80,7 +91,7 @@ def session_guard(task_name: str):
                 # NOTICE: No Re-raise exception here,
                 # as we capture the error and record it in session info.
                 # raise e
-                return {"error": f"failed to run {task_name}: {e}"} 
+                return {"error": f"failed to run {task_name}: {e}"}
         return wrapper
     return decorator
 
