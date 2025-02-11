@@ -4,7 +4,7 @@ import traceback
 from typing import Any, List, Tuple
 import torch.distributed as dist
 import os
-from src.train.helper import get_sovits_train_dir, train_ckpt_path, train_logs_path
+from src.train.helper import get_sovits_train_dir, train_logs_path
 from src.utils import config
 from src.utils import helper
 from src.utils.helper import load_json
@@ -134,10 +134,9 @@ class SovitsTrain:
         hps.data.exp_dir = params.train_input_dir
         hps.train.output_dir = get_sovits_train_dir(params.output_model_name)
         hps.train.train_logs_dir = os.path.join(hps.train.output_dir, train_logs_path)
-        hps.train.save_weight_dir = os.path.join(hps.train.output_dir, train_ckpt_path)
+        hps.train.save_weight_dir = hps.train.output_dir
         os.makedirs(hps.train.output_dir, exist_ok=True)
         os.makedirs(hps.train.train_logs_dir, exist_ok=True)
-        os.makedirs(hps.train.save_weight_dir, exist_ok=True)
 
         # set pretrained model path
         if params.pretrained_s2G == "":
@@ -570,7 +569,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.train.save_weight_dir, f"sovits_G_epoch{epoch}_step{self.step}.pth"
+                        hps.train.train_logs_dir, f"sovits_G_epoch{epoch}_step{self.step}.pth"
                     ),
                 )
                 ckpt.save_checkpoint(
@@ -579,7 +578,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.train.save_weight_dir, f"sovits_D_epoch{epoch}_step{self.step}.pth"
+                        hps.train.train_logs_dir, f"sovits_D_epoch{epoch}_step{self.step}.pth"
                     ),
                 )
             else:
@@ -589,7 +588,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.train.save_weight_dir, "sovits_G_latest.pth"
+                        hps.train.train_logs_dir, "sovits_G_latest.pth"
                     ),
                 )
                 ckpt.save_checkpoint(
@@ -598,7 +597,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.train.save_weight_dir, "sovits_D_latest.pth"
+                        hps.train.train_logs_dir, "sovits_D_latest.pth"
                     ),
                 )
             if rank == 0 and hps.train.if_save_every_weights == True:

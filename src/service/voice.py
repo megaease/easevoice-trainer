@@ -17,12 +17,16 @@ from src.api.api import ServiceNames, TaskStatus, VoiceCloneProgress
 
 from src.easevoice.inference import InferenceResult, InferenceTask, InferenceTaskData, Runner
 from src.logger import logger
+from src.train import sovits
+from src.train.helper import list_train_gpts, list_train_sovits
 from src.utils.response import EaseVoiceResponse, ResponseStatus
+
 
 class VoiceCloneStatus(Enum):
     RUNNING = "Running"
     COMPLETED = "Completed"
     ERROR = "Error"
+
 
 class VoiceCloneService:
     """
@@ -40,7 +44,7 @@ class VoiceCloneService:
             self.runner_process.terminate()
             self.runner_process.join(timeout=10)
             self.runner_process = None
-    
+
     def get_status(self):
         if self.runner_process is None:
             return VoiceCloneStatus.COMPLETED
@@ -64,6 +68,7 @@ class VoiceCloneService:
             data = InferenceTaskData(**params)
             queue = mp.Queue()
             infer_task = InferenceTask(result_queue=queue, data=data)
+            infer_task = self.update_task_path(infer_task)
             self.queue.put(infer_task)
             result: InferenceResult = infer_task.result_queue.get(timeout=600)
         except Exception as e:
@@ -84,3 +89,25 @@ class VoiceCloneService:
                 except Exception as e:
                     logger.error(f"failed to clone voice for {params}, error: {e}", exc_info=True)
                     return EaseVoiceResponse(ResponseStatus.FAILED, "failed to clone voice")
+
+    def update_task_path(self, task: InferenceTask):
+        if task.data.gpt_path == "default":
+            task.data.gpt_path = ""
+        if task.data.sovits_path == "default":
+            task.data.sovits_path = ""
+
+        if task.data.gpt_path != "":
+            gpts = list_train_gpts()
+            if task.data.gpt_path in gpts:
+                task.data.gpt_path = gpts[task.data.gpt_path]
+            else:
+                logger.error(f"failed to find gpt model for {task.data.gpt_path}")
+                raise ValueError(f"failed to find gpt model for {task.data.gpt_path}")
+        if task.data.sovits_path != "":
+            sovits = list_train_sovits()
+            if task.data.sovits_path in sovits:
+                task.data.sovits_path = sovits[task.data.sovits_path]
+            else:
+                logger.error(f"failed to find sovits model for {task.data.sovits_path}")
+                raise ValueError(f"failed to find sovits model for {task.data.sovits_path}")
+        return task

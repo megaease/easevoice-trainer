@@ -1,11 +1,11 @@
 
 import datetime
 import os
+from pathlib import Path
 from typing import Optional
 from src.utils import config
 
 train_logs_path = "logs"
-train_ckpt_path = "ckpt"
 
 
 def generate_random_name():
@@ -25,8 +25,22 @@ def get_sovits_train_dir(name: Optional[str]):
 
 
 def list_train_gpts():
-    return os.listdir(config.all_gpt_train_output_dir)
+    all_gpts = Path(config.all_gpt_train_output_dir)
+    res = {}
+    for dir in all_gpts.iterdir():
+        if dir.is_dir():
+            for file in dir.iterdir():
+                if file.is_file() and file.name.endswith(".ckpt"):
+                    res[f"{dir.name}/{file.name}"] = str(file)
+    return res
 
 
 def list_train_sovits():
-    return os.listdir(config.all_sovits_train_output_dir)
+    all_sovits = Path(config.all_sovits_train_output_dir)
+    res = {}
+    for dir in all_sovits.iterdir():
+        if dir.is_dir():
+            for file in dir.iterdir():
+                if file.is_file() and file.name.endswith(".pth"):
+                    res[f"{dir.name}/{file.name}"] = str(file)
+    return res

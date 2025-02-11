@@ -22,6 +22,7 @@ from src.service.session import SessionManager, session_guard
 from src.service.train import TrainGPTService, TrainSovitsService
 from src.service.voice import VoiceCloneService
 from src.train.gpt import GPTTrainParams
+from src.train.helper import list_train_gpts, list_train_sovits
 from src.train.sovits import SovitsTrainParams
 from src.utils.response import EaseVoiceResponse
 
@@ -211,7 +212,13 @@ class VoiceCloneAPI:
         self.router.post("/voiceclone/start")(self.start_service)
         self.router.post("/voiceclone/clone")(self.clone)
         self.router.get("/voiceclone/stop")(self.stop_service)
+        self.router.get("/voiceclone/models")(self.get_available_models)
         self.router.get("/voiceclone/status")(self.get_status)
+
+    async def get_available_models(self):
+        gpts = ["default"].extend(list_train_gpts().keys())
+        sovits = ["default"].extend(list_train_sovits().keys())
+        return {"gpts": gpts, "sovits": sovits}
 
     async def get_status(self):
         if self.service is None:

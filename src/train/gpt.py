@@ -19,7 +19,7 @@ from pytorch_lightning.strategies import DDPStrategy  # pyright: ignore
 
 from src.easevoice.soundstorm.auto_reg.data.data_module import Text2SemanticDataModule
 from src.easevoice.soundstorm.auto_reg.models.t2s_lightning_module import Text2SemanticLightningModule
-from src.train.helper import get_gpt_train_dir, train_logs_path, train_ckpt_path
+from src.train.helper import get_gpt_train_dir, train_logs_path
 from src.utils.config import gpt_config_path, cfg, gpt_pretrained_model_path, semantic_output, text_output_name
 
 
@@ -102,7 +102,7 @@ class GPTTrain(object):
         self.train_input_dir = params.train_input_dir
         self.train_output = get_gpt_train_dir(params.output_model_name)
         self.train_logs_output = os.path.join(self.train_output, train_logs_path)
-        self.train_ckpts_output = os.path.join(self.train_output, train_ckpt_path)
+        self.train_ckpts_output = os.path.join(self.train_output, "ckpt")
         os.makedirs(self.train_output, exist_ok=True)
         os.makedirs(self.train_logs_output, exist_ok=True)
         os.makedirs(self.train_ckpts_output, exist_ok=True)

@@ -9,7 +9,7 @@ import unittest
 
 class TestTrain(unittest.TestCase):
     gpt_service = TrainGPTService(gpt_params=GPTTrainParams(
-        output_path="./output",
+        train_input_dir="./output",
         output_model_name="test",
     ))
     sovits_service = TrainSovitsService(sovits_params=SovitsTrainParams(
