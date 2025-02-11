@@ -66,7 +66,7 @@ class Namespace(BaseModel):
 CreateNamespaceResponse = Namespace
 
 class CreateNamespaceRequest(BaseModel):
-    ...
+    name: str
 
 
 class UpdateNamespaceRequest(BaseModel):

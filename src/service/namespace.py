@@ -26,7 +26,7 @@ class NamespaceService:
         """Get the path to the namespace metadata file."""
         return os.path.join(self.base_dir, namespace_id, ".metadata.json")
 
-    def create_namespace(self) -> Namespace:
+    def create_namespace(self, name: str) -> Namespace:
         """Create a new namespace."""
         namespace_id = str(uuid.uuid4())
         namespace_name = f"Namespace-{namespace_id[:8]}"
@@ -37,7 +37,7 @@ class NamespaceService:
 
         namespace = Namespace(
             namespaceID=namespace_id,
-            name=namespace_name,
+            name=namespace_name if name == "" else name,
             createdAt=created_at,
             homePath=home_path,
         )

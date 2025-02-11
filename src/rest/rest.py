@@ -4,6 +4,7 @@ from fastapi import FastAPI, APIRouter, HTTPException
 
 from src.api.api import (
     Namespace,
+    CreateNamespaceRequest,
     CreateNamespaceResponse,
     UpdateNamespaceRequest,
     ListNamespaceResponse,
@@ -70,9 +71,9 @@ class NamespaceAPI:
         namespaces = self.namespace_service.get_namespaces()
         return {"namespaces": namespaces}
 
-    async def new_namespace(self):
+    async def new_namespace(self, create_request: CreateNamespaceRequest):
         """Create a new namespace."""
-        namespace = self.namespace_service.create_namespace()
+        namespace = self.namespace_service.create_namespace(create_request.name)
         return namespace
 
     async def change_namespace(self, namespace_id: str, update_request: UpdateNamespaceRequest):
