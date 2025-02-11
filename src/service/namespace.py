@@ -1,99 +1,77 @@
 import os
-import uuid
 import json
+import shutil
 from datetime import datetime, timezone
-from typing import Callable, Dict, List, Optional
-from src.api.api import Namespace, Progress
-
+from typing import List, Optional
 
 class NamespaceService:
-    """Service class for managing namespaces using the filesystem."""
+    """Manages namespaces on the filesystem."""
 
     def __init__(self, base_dir: Optional[str] = None):
-        """
-        Initialize the NamespaceService.
-
-        Args:
-            base_dir (str): Base directory for namespace storage. Defaults to `$HOME/easevoice_trainer_namespaces`.
-        """
-        if base_dir is None:
-            home_dir = os.path.expanduser("~")
-            base_dir = os.path.join(home_dir, "easevoice_trainer_namespaces")
-        self.base_dir = base_dir
+        self.base_dir = base_dir or os.path.join(os.path.expanduser("~"), "easevoice_trainer_namespaces")
         os.makedirs(self.base_dir, exist_ok=True)
 
-    def _namespace_metadata_path(self, namespace_id: str) -> str:
-        """Get the path to the namespace metadata file."""
-        return os.path.join(self.base_dir, namespace_id, ".metadata.json")
+    def _namespace_metadata_path(self, name: str) -> str:
+        return os.path.join(self.base_dir, name, ".metadata.json")
 
-    def create_namespace(self, name: str) -> Namespace:
-        """Create a new namespace."""
-        namespace_id = str(uuid.uuid4())
-        namespace_name = f"Namespace-{namespace_id[:8]}"
-        created_at = datetime.now(timezone.utc)
-        home_path = os.path.join(self.base_dir, namespace_id)
-        os.makedirs(home_path, exist_ok=True)
+    def create_namespace(self, name: str) -> dict:
+        """Create a new namespace, raising FileExistsError if it already exists."""
+        home_path = os.path.join(self.base_dir, name)
+        if os.path.exists(home_path):
+            raise FileExistsError("Namespace already exists")
+
         os.makedirs(os.path.join(home_path, "voices"), exist_ok=True)
-
-        namespace = Namespace(
-            namespaceID=namespace_id,
-            name=namespace_name if name == "" else name,
-            createdAt=created_at,
-            homePath=home_path,
-        )
-
+        namespace = {"name": name, "createdAt": datetime.now(timezone.utc).isoformat(), "homePath": home_path}
         self._save_namespace_metadata(namespace)
-
         return namespace
 
-    def get_namespaces(self) -> List[Namespace]:
-        """Get all namespaces."""
+    def get_namespaces(self) -> List[dict]:
+        """List all namespaces."""
         namespaces = []
-        for namespace_id in os.listdir(self.base_dir):
-            namespace_path = os.path.join(self.base_dir, namespace_id)
+        for name in os.listdir(self.base_dir):
+            namespace_path = os.path.join(self.base_dir, name)
             if os.path.isdir(namespace_path):
                 try:
-                    namespace = self._load_namespace_metadata(namespace_id)
-                    namespaces.append(namespace)
+                    namespaces.append(self._load_namespace_metadata(name))
                 except FileNotFoundError:
-                    pass  # Skip invalid namespaces
+                    pass
         return namespaces
 
-    def update_namespace(self, namespace_id: str, name: str) -> Namespace:
-        """Update an existing namespace."""
-        namespace = self._load_namespace_metadata(namespace_id)
-        namespace.name = name
+    def update_namespace(self, old_name: str, new_name: str) -> dict:
+        """Rename a namespace, raising FileExistsError if the new name is taken."""
+        old_home_path = os.path.join(self.base_dir, old_name)
+        new_home_path = os.path.join(self.base_dir, new_name)
+
+        if not os.path.exists(old_home_path):
+            raise ValueError("Namespace not found")
+
+        if os.path.exists(new_home_path):
+            raise FileExistsError("Target namespace already exists")
+
+        namespace = self._load_namespace_metadata(old_name)
+
+        os.rename(old_home_path, new_home_path)
+
+        namespace["name"] = new_name
+        namespace["homePath"] = new_home_path
         self._save_namespace_metadata(namespace)
         return namespace
 
-    def delete_namespace(self, namespace_id: str):
-        """Delete a namespace."""
-        namespace = self._load_namespace_metadata(namespace_id)
-        self._delete_directory(namespace.homePath)
+    def delete_namespace(self, name: str):
+        """Delete a namespace, raising ValueError if it does not exist."""
+        home_path = os.path.join(self.base_dir, name)
+        if not os.path.exists(home_path):
+            raise ValueError("Namespace not found")
 
-    def _save_namespace_metadata(self, namespace: Namespace):
-        """Save namespace metadata to a file."""
-        metadata_path = self._namespace_metadata_path(namespace.namespaceID)
-        print(f"""Saving metadata to {metadata_path}""")
-        with open(metadata_path, "w") as f:
-            json.dump(namespace.model_dump(), f, default=str)
+        shutil.rmtree(home_path)
 
-    def _load_namespace_metadata(self, namespace_id: str) -> Namespace:
-        """Load namespace metadata from a file."""
-        metadata_path = self._namespace_metadata_path(namespace_id)
+    def _save_namespace_metadata(self, namespace: dict):
+        with open(self._namespace_metadata_path(namespace["name"]), "w") as f:
+            json.dump(namespace, f)
+
+    def _load_namespace_metadata(self, name: str) -> dict:
+        metadata_path = self._namespace_metadata_path(name)
         if not os.path.exists(metadata_path):
-            raise ValueError(f"Namespace with ID {namespace_id} not found.")
+            raise ValueError("Namespace not found")
         with open(metadata_path, "r") as f:
-            data = json.load(f)
-        data["createdAt"] = datetime.fromisoformat(data["createdAt"])
-        return Namespace(**data)
-
-    def _delete_directory(self, directory_path: str):
-        """Delete a directory and its contents."""
-        if os.path.exists(directory_path):
-            for root, dirs, files in os.walk(directory_path, topdown=False):
-                for file in files:
-                    os.remove(os.path.join(root, file))
-                for dir in dirs:
-                    os.rmdir(os.path.join(root, dir))
-            os.rmdir(directory_path)
+            return json.load(f)

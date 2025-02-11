@@ -51,14 +51,14 @@ class NamespaceAPI:
             summary="Create a new namespace",
         )
         self.router.add_api_route(
-            path="/namespaces/{namespace_id}",
+            path="/namespaces/{name}",
             endpoint=self.change_namespace,
             methods=["PUT"],
             response_model=Namespace,
             summary="Update a namespace",
         )
         self.router.add_api_route(
-            path="/namespaces/{namespace_id}",
+            path="/namespaces/{name}",
             endpoint=self.remove_namespace,
             methods=["DELETE"],
             status_code=204,  # No body in response
@@ -72,24 +72,28 @@ class NamespaceAPI:
 
     async def new_namespace(self, create_request: CreateNamespaceRequest):
         """Create a new namespace."""
-        namespace = self.namespace_service.create_namespace(create_request.name)
-        return namespace
+        try:
+            return self.namespace_service.create_namespace(create_request.name)
+        except FileExistsError:
+            raise HTTPException(status_code=409, detail="Namespace already exists")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
-    async def change_namespace(self, namespace_id: str, update_request: UpdateNamespaceRequest):
+    async def change_namespace(self, name: str, update_request: UpdateNamespaceRequest):
         """Update a namespace."""
         try:
-            namespace = self.namespace_service.update_namespace(namespace_id, update_request.name)
-            return namespace
+            return self.namespace_service.update_namespace(name, update_request.name)
+        except FileExistsError:
+            raise HTTPException(status_code=409, detail="Namespace already exists")
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
 
-    async def remove_namespace(self, namespace_id: str):
+    async def remove_namespace(self, name: str):
         """Delete a namespace."""
         try:
-            self.namespace_service.delete_namespace(namespace_id)
+            self.namespace_service.delete_namespace(name)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
-
 
 class FileAPI:
     """Encapsulated API logic for file operations."""

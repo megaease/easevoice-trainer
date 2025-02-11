@@ -1,6 +1,7 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from typing import List
 from datetime import datetime
+import re
 
 
 class AudioServiceSteps:
@@ -56,7 +57,6 @@ class VoiceCloneProgress(Progress):
 class Namespace(BaseModel):
     """Namespace model."""
 
-    namespaceID: str
     name: str
     createdAt: datetime
     homePath: str
@@ -66,13 +66,29 @@ class Namespace(BaseModel):
 CreateNamespaceResponse = Namespace
 
 class CreateNamespaceRequest(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=64)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, name: str):
+        # Ensure it doesn't contain invalid characters
+        if "/" in name or "\0" in name:
+            raise ValueError("Namespace name cannot contain '/' or null characters")
+
+        # Optional: Avoid names with only dots ('.' or '..')
+        if name in {".", ".."}:
+            raise ValueError("Namespace name cannot be '.' or '..'")
+
+        # Optional: Ensure it consists of valid filename characters
+        if not re.match(r"^[\w.-]+$", name):  # Allows letters, numbers, underscores, dashes, and dots
+            raise ValueError("Namespace name contains invalid characters")
+
+        return name
 
 
 class UpdateNamespaceRequest(BaseModel):
     """Request model for updating a namespace."""
 
-    namespaceID: str
     name: str
 
 
