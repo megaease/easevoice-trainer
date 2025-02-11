@@ -42,6 +42,11 @@ alphabet = string.ascii_lowercase + string.digits
 def random_choice():
     return ''.join(random.choices(alphabet, k=8))
 
+def load_json(file_path):
+    with open(file_path, "r") as f:
+        data = f.read()
+    return json.loads(data)
+
 
 def get_hparams_from_file(config_path):
     with open(config_path, "r") as f:

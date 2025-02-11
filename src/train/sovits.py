@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 import logging
 import traceback
-from typing import Any
+from typing import Any, List, Tuple
 import torch.distributed as dist
 import os
+from src.train.helper import get_sovits_train_dir, train_ckpt_path, train_logs_path
 from src.utils import config
 from src.utils import helper
-from src.utils.helper import HParams, get_hparams_from_file
+from src.utils.helper import load_json
 from src.utils.path import ckpt
 from random import randint
 from tqdm import tqdm
@@ -20,6 +21,7 @@ from torch.nn import functional as F
 import torch
 import warnings
 from collections import OrderedDict
+from pydantic import BaseModel
 
 from src.easevoice.module import commons
 from src.logger import logger
@@ -40,12 +42,83 @@ class SovitsTrainParams:
     if_save_every_weights: bool = True
     save_every_epoch: int = 5
     gpu_ids: str = "0"
-    normalize_path: str = ""
-    output_model_name: str = "sovits"
+    output_model_name: str = ""
+
+
+class TrainHparams(BaseModel):
+    if_save_latest: bool = True
+    if_save_every_weights: bool = True
+    save_every_epoch: int = 5
+    gpu_numbers: str = "0"
+    output_dir: str = ""
+    train_logs_dir: str = ""
+    save_weight_dir: str = ""
+    pretrained_s2G: str = ""
+    pretrained_s2D: str = ""
+    log_interval: int
+    eval_interval: int
+    seed: int
+    epochs: int
+    learning_rate: float
+    betas: Tuple[float, float]
+    eps: float
+    batch_size: int
+    fp16_run: bool
+    lr_decay: float
+    segment_size: int
+    init_lr_ratio: int
+    warmup_epochs: int
+    c_mel: int
+    c_kl: float
+    text_low_lr_rate: float
+
+
+class DataHparams(BaseModel):
+    max_wav_value: float
+    sampling_rate: int
+    filter_length: int
+    hop_length: int
+    win_length: int
+    n_mel_channels: int
+    mel_fmin: float
+    mel_fmax: Any
+    add_blank: bool
+    n_speakers: int
+    cleaned_text: bool
+
+
+class ModelHparams(BaseModel):
+    inter_channels: int
+    hidden_channels: int
+    filter_channels: int
+    n_heads: int
+    n_layers: int
+    kernel_size: int
+    p_dropout: float
+    resblock: str
+    resblock_kernel_sizes: List[int]
+    resblock_dilation_sizes: List[List[int]]
+    upsample_rates: List[int]
+    upsample_initial_channel: int
+    upsample_kernel_sizes: List[int]
+    n_layers_q: int
+    use_spectral_norm: bool
+    gin_channels: int
+    semantic_frame_rate: str
+    freeze_quantizer: bool
+
+
+class TrainConfig(BaseModel):
+    name: str = ""
+    train: TrainHparams
+    data: DataHparams
+    model: ModelHparams
+    s2_ckpt_dir: str
+    content_module: str
 
 
 class SovitsTrain:
-    def _update_hparams(self, hps: Any, params: SovitsTrainParams):
+    def _update_hparams(self, hps: TrainConfig, params: SovitsTrainParams):
         hps.train.batch_size = params.batch_size
         hps.train.epochs = params.total_epochs
         hps.train.text_low_lr_rate = params.text_low_lr_rate
@@ -56,14 +129,13 @@ class SovitsTrain:
         hps.train.gpu_numbers = params.gpu_ids
 
         # path
-        hps.data.exp_dir = params.normalize_path
-        hps.data.train_logs_dir = os.path.join(hps.data.exp_dir, config.train_sovits_logs_output)
-        os.makedirs(hps.data.train_logs_dir, exist_ok=True)
-        hps.s2_ckpt_dir = os.path.join(hps.data.exp_dir, config.train_sovits_logs_output, "ckpt")
-        os.makedirs(hps.s2_ckpt_dir, exist_ok=True)
+        hps.train.output_dir = get_sovits_train_dir(params.output_model_name)
+        hps.train.train_logs_dir = os.path.join(hps.train.output_dir, train_logs_path)
+        os.makedirs(hps.train.output_dir, exist_ok=True)
+        os.makedirs(hps.train.train_logs_dir, exist_ok=True)
         hps.name = params.output_model_name
-        hps.save_weight_dir = os.path.join(hps.data.exp_dir, config.train_output)
-        os.makedirs(hps.save_weight_dir, exist_ok=True)
+        hps.train.save_weight_dir = os.path.join(hps.train.output_dir, train_ckpt_path)
+        os.makedirs(hps.train.save_weight_dir, exist_ok=True)
 
         # set pretrained model path
         if params.pretrained_s2G == "":
@@ -78,7 +150,8 @@ class SovitsTrain:
         return hps
 
     def __init__(self, params: SovitsTrainParams):
-        hps = get_hparams_from_file(config.s2config_path)
+        json_data = load_json(config.s2config_path)
+        hps = TrainConfig(**json_data)
         self.hps = self._update_hparams(hps, params)
         self.step = 0
         self.device = "cpu"
@@ -95,7 +168,7 @@ class SovitsTrain:
         torch.backends.cudnn.allow_tf32 = True
         torch.set_float32_matmul_precision("medium")
 
-    def _save_epoch(self, ckpt: Any, name, epoch, steps, hps):
+    def _save_epoch(self, ckpt: Any, name, epoch, steps, hps: TrainConfig):
         try:
             opt = OrderedDict()
             opt["weight"] = {}
@@ -106,7 +179,7 @@ class SovitsTrain:
             opt["config"] = hps
             opt["info"] = "%sepoch_%siteration" % (epoch, steps)
 
-            ckpt.save_with_torch(opt, os.path.join(hps.save_weight_dir, f"{name}.pth"))
+            ckpt.save_with_torch(opt, os.path.join(hps.train.save_weight_dir, f"{name}.pth"))
             return "Success"
         except:
             return traceback.format_exc()
@@ -128,11 +201,11 @@ class SovitsTrain:
             ),
         )
 
-    def _run(self, rank, n_gpus, hps):
+    def _run(self, rank, n_gpus, hps: TrainConfig):
         if rank == 0:
             logger.info(hps)
-            writer = SummaryWriter(log_dir=hps.s2_ckpt_dir)
-            writer_eval = SummaryWriter(log_dir=os.path.join(hps.s2_ckpt_dir, "eval"))
+            writer = SummaryWriter(log_dir=hps.train.train_logs_dir)
+            writer_eval = SummaryWriter(log_dir=os.path.join(hps.train.train_logs_dir, "eval"))
 
         dist.init_process_group(
             backend="gloo" if os.name == "nt" or not torch.cuda.is_available() else "nccl",
@@ -188,12 +261,12 @@ class SovitsTrain:
             hps.data.filter_length // 2 + 1,
             hps.train.segment_size // hps.data.hop_length,
             n_speakers=hps.data.n_speakers,
-            **hps.model,
+            **hps.model.model_dump(),
         ).cuda(rank) if torch.cuda.is_available() else SynthesizerTrn(
             hps.data.filter_length // 2 + 1,
             hps.train.segment_size // hps.data.hop_length,
             n_speakers=hps.data.n_speakers,
-            **hps.model,
+            **hps.model.model_dump(),
         ).to(self.device)
 
         net_d = MultiPeriodDiscriminator(hps.model.use_spectral_norm).cuda(rank) if torch.cuda.is_available() else MultiPeriodDiscriminator(hps.model.use_spectral_norm).to(self.device)
@@ -244,14 +317,14 @@ class SovitsTrain:
 
         try:
             _, _, _, epoch_str = ckpt.load_checkpoint(
-                ckpt.latest_checkpoint_path(hps.data.train_logs_dir, "D_*.pth"),
+                ckpt.latest_checkpoint_path(hps.train.train_logs_dir, "D_*.pth"),
                 net_d,
                 optim_d,
             )
             if rank == 0:
                 logger.info("loaded D")
             _, _, _, epoch_str = ckpt.load_checkpoint(
-                ckpt.latest_checkpoint_path(hps.data.train_logs_dir, "G_*.pth"),
+                ckpt.latest_checkpoint_path(hps.train.train_logs_dir, "G_*.pth"),
                 net_g,
                 optim_g,
             )
@@ -326,7 +399,7 @@ class SovitsTrain:
             scheduler_d.step()
 
     def _train_and_evaluate(
-            self, rank, epoch, hps, nets, optims, schedulers, scaler, loaders, logger, writers
+            self, rank, epoch, hps: TrainConfig, nets, optims, schedulers, scaler, loaders, logger, writers
     ):
         device = self.device
         net_g, net_d = nets
@@ -495,7 +568,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.save_weight_dir, f"sovits_G_epoch{epoch}_step{self.step}.pth"
+                        hps.train.save_weight_dir, f"sovits_G_epoch{epoch}_step{self.step}.pth"
                     ),
                 )
                 ckpt.save_checkpoint(
@@ -504,7 +577,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.save_weight_dir, f"sovits_D_epoch{epoch}_step{self.step}.pth"
+                        hps.train.save_weight_dir, f"sovits_D_epoch{epoch}_step{self.step}.pth"
                     ),
                 )
             else:
@@ -514,7 +587,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.save_weight_dir, "sovits_G_latest.pth"
+                        hps.train.save_weight_dir, "sovits_G_latest.pth"
                     ),
                 )
                 ckpt.save_checkpoint(
@@ -523,7 +596,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.save_weight_dir, "sovits_D_latest.pth"
+                        hps.train.save_weight_dir, "sovits_D_latest.pth"
                     ),
                 )
             if rank == 0 and hps.train.if_save_every_weights == True:

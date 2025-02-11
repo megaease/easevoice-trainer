@@ -15,11 +15,12 @@ from pytorch_lightning import Trainer
 from pytorch_lightning import seed_everything
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.strategies import DDPStrategy
+from pytorch_lightning.strategies import DDPStrategy  # pyright: ignore
 
 from src.easevoice.soundstorm.auto_reg.data.data_module import Text2SemanticDataModule
 from src.easevoice.soundstorm.auto_reg.models.t2s_lightning_module import Text2SemanticLightningModule
-from src.utils.config import gpt_config_path, train_output, cfg, gpt_pretrained_model_path, semantic_output, text_output_name, train_gpt_logs_output
+from src.train.helper import get_gpt_train_dir, train_logs_path, train_ckpt_path
+from src.utils.config import gpt_config_path, cfg, gpt_pretrained_model_path, semantic_output, text_output_name
 
 
 @dataclass
@@ -33,8 +34,7 @@ class GPTTrainParams:
     gpu_ids: str = "0"
     model_path: str = gpt_pretrained_model_path
     output_path: str = ""
-    normalize_path: str = ""
-    output_model_name: str = "gpt"
+    output_model_name: str = ""
 
 
 class GPTCheckpoint(ModelCheckpoint):
@@ -76,7 +76,7 @@ class GPTCheckpoint(ModelCheckpoint):
                 if self.if_save_every_weights:
                     to_save_od = OrderedDict()
                     to_save_od["weight"] = OrderedDict()
-                    state_dict = trainer.strategy._lightning_module.state_dict()
+                    state_dict = trainer.strategy._lightning_module.state_dict()  # pyright: ignore
                     for key in state_dict:
                         to_save_od["weight"][key] = state_dict[key].half()
                     to_save_od["config"] = self.config
@@ -98,11 +98,11 @@ class GPTTrain(object):
         with open(gpt_config_path, "r") as f:
             data = f.read()
             self.config = yaml.load(data, Loader=yaml.FullLoader)
+
         self.processing_path = params.output_path
-        self.normalize_path = params.normalize_path
-        self.train_output = os.path.join(params.normalize_path, train_output)
-        self.train_logs_output = os.path.join(params.normalize_path, train_gpt_logs_output)
-        self.train_ckpts_output = os.path.join(self.train_logs_output, "ckpt")
+        self.train_output = get_gpt_train_dir(params.output_model_name)
+        self.train_logs_output = os.path.join(self.train_output, train_logs_path)
+        self.train_ckpts_output = os.path.join(self.train_output, train_ckpt_path)
         os.makedirs(self.train_output, exist_ok=True)
         os.makedirs(self.train_logs_output, exist_ok=True)
         os.makedirs(self.train_ckpts_output, exist_ok=True)
@@ -118,8 +118,8 @@ class GPTTrain(object):
         self.config["train"]["if_save_every_weights"] = params.if_save_every_weights
         self.config["pretrained_s1"] = params.model_path
         self.config["train"]["half_weights_save_dir"] = self.train_output
-        self.config["train_semantic_path"] = os.path.join(params.normalize_path, semantic_output)
-        self.config["train_phoneme_path"] = os.path.join(params.normalize_path, text_output_name)
+        self.config["train_semantic_path"] = os.path.join(self.train_output, semantic_output)
+        self.config["train_phoneme_path"] = os.path.join(self.train_output, text_output_name)
         self.config["logs_output_dir"] = self.train_logs_output
         self.config["train"]["output_name"] = params.output_model_name
         os.environ["hz"] = "25hz"
@@ -169,6 +169,9 @@ class GPTTrain(object):
 
     def train(self):
         self.trainer.fit(self.model, self.data_module, ckpt_path=self.trainer_ckpt_path)
+        return {
+            "output_path": self.train_output,
+        }
 
     @staticmethod
     def _get_newest_ckpt(file_list: list):

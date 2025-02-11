@@ -10,14 +10,12 @@ import unittest
 class TestTrain(unittest.TestCase):
     gpt_service = TrainGPTService(gpt_params=GPTTrainParams(
         output_path="./output",
-        normalize_path="./output/test",
         output_model_name="test",
     ))
     sovits_service = TrainSovitsService(sovits_params=SovitsTrainParams(
-        normalize_path="./output/test",
-        output_model_name="test",
+        output_model_name="sovits",
     ))
 
     def test_train(self):
-        resp = self.gpt_service.train()
+        resp = self.sovits_service.train()
         self.assertEqual(resp.status, ResponseStatus.SUCCESS)

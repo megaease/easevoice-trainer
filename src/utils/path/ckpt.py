@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 import torch
 import traceback
 import glob
@@ -6,6 +7,7 @@ import time
 import shutil
 
 from src.logger import logger
+from src.utils import config
 
 
 def load_checkpoint(checkpoint_path, model, optimizer=None, skip_optimizer=False):
