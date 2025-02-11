@@ -56,6 +56,11 @@ def load_checkpoint(checkpoint_path, model, optimizer=None, skip_optimizer=False
 
 def latest_checkpoint_path(dir_path, regex="G_*.pth"):
     f_list = glob.glob(os.path.join(dir_path, regex))
+    latest = list(filter(lambda x: x.endswith("latest.pth"), f_list))
+    if latest:
+        logger.info(f"latest checkpoint in dir {dir_path} is: {latest[0]}")
+        return latest[0]
+
     f_list.sort(key=lambda f: int("".join(filter(str.isdigit, f))))
     path = f_list[-1]
     logger.info(f"latest checkpoint in dir {dir_path} is: {path}")

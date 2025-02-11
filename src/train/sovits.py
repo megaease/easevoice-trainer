@@ -330,11 +330,11 @@ class SovitsTrain:
                 net_g,
                 optim_g,
             )
-            global_step = (epoch_str - 1) * len(train_loader)
+            self.step = (epoch_str - 1) * len(train_loader)
         except Exception as e:
             logger.warning(f"load failed, exception: {e}, use pretrained instead")
             epoch_str = 1
-            global_step = 0
+            step = 0
             if hps.train.pretrained_s2G != "" and hps.train.pretrained_s2G != None and os.path.exists(hps.train.pretrained_s2G):
                 if rank == 0:
                     logger.info("loaded pretrained %s" % hps.train.pretrained_s2G)
@@ -570,7 +570,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.train.train_logs_dir, f"sovits_G_epoch{epoch}_step{self.step}.pth"
+                        hps.train.train_logs_dir, f"G_{self.step}.pth"
                     ),
                 )
                 ckpt.save_checkpoint(
@@ -579,7 +579,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.train.train_logs_dir, f"sovits_D_epoch{epoch}_step{self.step}.pth"
+                        hps.train.train_logs_dir, f"D_{self.step}.pth"
                     ),
                 )
             else:
@@ -589,7 +589,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.train.train_logs_dir, "sovits_G_latest.pth"
+                        hps.train.train_logs_dir, "G_latest.pth"
                     ),
                 )
                 ckpt.save_checkpoint(
@@ -598,7 +598,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.train.train_logs_dir, "sovits_D_latest.pth"
+                        hps.train.train_logs_dir, "D_latest.pth"
                     ),
                 )
             if rank == 0 and hps.train.if_save_every_weights == True:
