@@ -17,5 +17,5 @@ class TestTrain(unittest.TestCase):
     ))
 
     def test_train(self):
-        resp = self.sovits_service.train()
+        resp = self.gpt_service.train()
         self.assertEqual(resp.status, ResponseStatus.SUCCESS)

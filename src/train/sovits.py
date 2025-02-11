@@ -42,6 +42,7 @@ class SovitsTrainParams:
     if_save_every_weights: bool = True
     save_every_epoch: int = 5
     gpu_ids: str = "0"
+    train_input_dir: str = ""
     output_model_name: str = ""
 
 
@@ -50,11 +51,11 @@ class TrainHparams(BaseModel):
     if_save_every_weights: bool = True
     save_every_epoch: int = 5
     gpu_numbers: str = "0"
-    output_dir: str = ""
-    train_logs_dir: str = ""
-    save_weight_dir: str = ""
     pretrained_s2G: str = ""
     pretrained_s2D: str = ""
+    output_dir: str = ""
+    save_weight_dir: str = ""
+    train_logs_dir: str = ""
     log_interval: int
     eval_interval: int
     seed: int
@@ -74,6 +75,7 @@ class TrainHparams(BaseModel):
 
 
 class DataHparams(BaseModel):
+    exp_dir: str = ""
     max_wav_value: float
     sampling_rate: int
     filter_length: int
@@ -113,7 +115,6 @@ class TrainConfig(BaseModel):
     train: TrainHparams
     data: DataHparams
     model: ModelHparams
-    s2_ckpt_dir: str
     content_module: str
 
 
@@ -127,14 +128,15 @@ class SovitsTrain:
         hps.train.if_save_every_weights = params.if_save_every_weights
         hps.train.save_every_epoch = params.save_every_epoch
         hps.train.gpu_numbers = params.gpu_ids
+        hps.name = params.output_model_name
 
         # path
+        hps.data.exp_dir = params.train_input_dir
         hps.train.output_dir = get_sovits_train_dir(params.output_model_name)
         hps.train.train_logs_dir = os.path.join(hps.train.output_dir, train_logs_path)
+        hps.train.save_weight_dir = os.path.join(hps.train.output_dir, train_ckpt_path)
         os.makedirs(hps.train.output_dir, exist_ok=True)
         os.makedirs(hps.train.train_logs_dir, exist_ok=True)
-        hps.name = params.output_model_name
-        hps.train.save_weight_dir = os.path.join(hps.train.output_dir, train_ckpt_path)
         os.makedirs(hps.train.save_weight_dir, exist_ok=True)
 
         # set pretrained model path

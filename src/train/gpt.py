@@ -33,7 +33,7 @@ class GPTTrainParams:
     if_save_every_weights: bool = True
     gpu_ids: str = "0"
     model_path: str = gpt_pretrained_model_path
-    output_path: str = ""
+    train_input_dir: str = ""
     output_model_name: str = ""
 
 
@@ -99,7 +99,7 @@ class GPTTrain(object):
             data = f.read()
             self.config = yaml.load(data, Loader=yaml.FullLoader)
 
-        self.processing_path = params.output_path
+        self.train_input_dir = params.train_input_dir
         self.train_output = get_gpt_train_dir(params.output_model_name)
         self.train_logs_output = os.path.join(self.train_output, train_logs_path)
         self.train_ckpts_output = os.path.join(self.train_output, train_ckpt_path)
@@ -118,8 +118,8 @@ class GPTTrain(object):
         self.config["train"]["if_save_every_weights"] = params.if_save_every_weights
         self.config["pretrained_s1"] = params.model_path
         self.config["train"]["half_weights_save_dir"] = self.train_output
-        self.config["train_semantic_path"] = os.path.join(self.train_output, semantic_output)
-        self.config["train_phoneme_path"] = os.path.join(self.train_output, text_output_name)
+        self.config["train_semantic_path"] = os.path.join(self.train_input_dir, semantic_output)
+        self.config["train_phoneme_path"] = os.path.join(self.train_input_dir, text_output_name)
         self.config["logs_output_dir"] = self.train_logs_output
         self.config["train"]["output_name"] = params.output_model_name
         os.environ["hz"] = "25hz"
