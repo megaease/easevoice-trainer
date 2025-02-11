@@ -88,9 +88,9 @@ class CreateDirectoryRequest(BaseModel):
     directoryPath: str
 
 
-class DeleteDirectoryRequest(BaseModel):
-    """Request model for deleting a directory."""
-    directoryPath: str
+class DeleteDirsFilesRequest(BaseModel):
+    """Request model for deleting directores or files."""
+    paths: List[str]
 
 
 class UploadFileRequest(BaseModel):
@@ -98,11 +98,6 @@ class UploadFileRequest(BaseModel):
     directoryPath: str
     fileName: str
     fileContent: str  # Base64-encoded content
-
-
-class DeleteFilesRequest(BaseModel):
-    """Request model for deleting files."""
-    filePaths: List[str]
 
 
 class FileMetadata(BaseModel):

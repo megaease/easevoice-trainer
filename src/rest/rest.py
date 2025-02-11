@@ -9,9 +9,8 @@ from src.api.api import (
     UpdateNamespaceRequest,
     ListNamespaceResponse,
     CreateDirectoryRequest,
-    DeleteDirectoryRequest,
+    DeleteDirsFilesRequest,
     UploadFileRequest,
-    DeleteFilesRequest,
     ListDirectoryResponse,
 )
 from src.logger import logger
@@ -104,10 +103,9 @@ class FileAPI:
     def _setup_routes(self):
         """Setup API routes."""
         self.router.post("/directories")(self.create_directory)
-        self.router.delete("/directories")(self.delete_directory)
         self.router.get("/directories", response_model=ListDirectoryResponse)(self.list_directory)
         self.router.post("/files")(self.upload_file)
-        self.router.delete("/files")(self.delete_files)
+        self.router.post("/delete-dirs-files")(self.delete_dirs_files)
 
     async def create_directory(self, request: CreateDirectoryRequest):
         """
@@ -126,22 +124,18 @@ class FileAPI:
                 raise HTTPException(status_code=409, detail=str(e))
             raise HTTPException(status_code=400, detail=str(e))
 
-    async def delete_directory(self, request: DeleteDirectoryRequest):
+    async def delete_dirs_files(self, request: DeleteDirsFilesRequest):
         """
-        Delete a directory.
+        Delete directories or files.
 
         Returns:
             200: Succeed
             400: Bad Request
-            404: Not Found (Directory does not exist)
         """
-        try:
-            self.file_service.delete_directory(request.directoryPath)
-            return {"message": "Directory deleted successfully"}
-        except ValueError as e:
-            if "Not Found" in str(e):
-                raise HTTPException(status_code=404, detail=str(e))
-            raise HTTPException(status_code=400, detail=str(e))
+        result = self.file_service.delete_dirs_files(request.paths)
+        if result["hasFailure"] is True:
+            print(result)
+        return result
 
     async def list_directory(self, directoryPath: str):
         """
@@ -173,24 +167,6 @@ class FileAPI:
             return {"message": "File uploaded successfully"}
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
-
-    async def delete_files(self, request: DeleteFilesRequest):
-        """
-        Delete files.
-
-        Returns:
-            200: Succeed
-            400: Bad Request
-            404: Not Found
-        """
-        try:
-            self.file_service.delete_files(request.filePaths)
-            return {"message": "Files deleted successfully"}
-        except ValueError as e:
-            if "Not Found" in str(e):
-                raise HTTPException(status_code=404, detail=str(e))
-            raise HTTPException(status_code=400, detail=str(e))
-
 
 class SessionAPI:
     """Class to encapsulate session-related API endpoints."""

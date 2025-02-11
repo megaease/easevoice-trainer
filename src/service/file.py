@@ -1,5 +1,6 @@
 import os
 import base64
+import shutil
 from datetime import datetime
 from typing import List, Dict
 
@@ -27,30 +28,6 @@ class FileService:
             os.makedirs(directory_path)
         except Exception as e:
             raise ValueError(f"Bad Request: Unable to create directory. {str(e)}")
-
-    def delete_directory(self, directory_path: str):
-        """
-        Delete a directory.
-
-        Args:
-            directory_path (str): Path of the directory to delete.
-
-        Raises:
-            ValueError: If the directory does not exist or the path is invalid.
-        """
-        if not os.path.exists(directory_path):
-            raise ValueError("Not Found: Directory does not exist.")
-        if not os.path.isdir(directory_path):
-            raise ValueError("Bad Request: Path is not a directory.")
-        try:
-            for root, dirs, files in os.walk(directory_path, topdown=False):
-                for file in files:
-                    os.remove(os.path.join(root, file))
-                for dir in dirs:
-                    os.rmdir(os.path.join(root, dir))
-            os.rmdir(directory_path)
-        except Exception as e:
-            raise ValueError(f"Bad Request: Unable to delete directory. {str(e)}")
 
     def list_directory(self, directory_path: str) -> Dict[str, List[Dict[str, str]]]:
         """
@@ -122,27 +99,39 @@ class FileService:
         except Exception as e:
             raise ValueError(f"Bad Request: Unable to upload file. {str(e)}")
 
-    def delete_files(self, file_paths: List[str]):
+    def delete_dirs_files(self, paths: List[str]) -> Dict[str, any]:
         """
-        Delete specified files.
+        Delete multiple files or directories.
 
         Args:
-            file_paths (List[str]): List of file paths to delete.
+            paths (List[str]): List of paths (files or directories) to delete.
 
-        Raises:
-            ValueError: If a file does not exist or the path is invalid.
+        Returns:
+            Dict[str, any]: A dictionary containing the deletion status for each path.
         """
-        errors = []
-        for file_path in file_paths:
-            if not os.path.exists(file_path):
-                errors.append(f"Not Found: {file_path}")
-                continue
-            if not os.path.isfile(file_path):
-                errors.append(f"Bad Request: {file_path} is not a file.")
-                continue
+        results = {
+            "hasFailure": False,
+            "paths": [],
+        }
+
+        for path in paths:
             try:
-                os.remove(file_path)
+                if not os.path.exists(path):
+                    results["paths"].append({"path": path, "status": "not found"})
+                    results["hasFailure"] = True
+                    continue
+
+                if os.path.isfile(path):
+                    os.remove(path)  # Remove file
+                    results["paths"].append({"path": path, "status": "file deleted"})
+                elif os.path.isdir(path):
+                    shutil.rmtree(path)  # Recursively delete directory
+                    results["paths"].append({"path": path, "status": "directory deleted"})
+                else:
+                    results["paths"].append({"path": path, "status": "invalid path type"})
+                    results["hasFailure"] = True
             except Exception as e:
-                errors.append(f"Unable to delete {file_path}. {str(e)}")
-        if errors:
-            raise ValueError("; ".join(errors))
+                results["paths"].append({"path": path, "status": "error", "message": str(e)})
+                results["hasFailure"] = True
+
+        return results
