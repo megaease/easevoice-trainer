@@ -4,7 +4,7 @@ import traceback
 from typing import Any, List, Tuple
 import torch.distributed as dist
 import os
-from src.train.helper import get_sovits_train_dir, train_logs_path
+from src.train.helper import TrainOutput, get_sovits_train_dir, train_logs_path
 from src.utils import config
 from src.utils import helper
 from src.utils.helper import load_json
@@ -201,6 +201,7 @@ class SovitsTrain:
                 self.hps,
             ),
         )
+        return TrainOutput(model_path=self.hps.train.output_dir)
 
     def _run(self, rank, n_gpus, hps: TrainConfig):
         if rank == 0:

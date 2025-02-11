@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
+import dataclasses
 import traceback
 
 from src.train.gpt import GPTTrainParams, GPTTrain
@@ -13,10 +14,8 @@ class TrainGPTService(object):
 
     def train(self) -> EaseVoiceResponse:
         try:
-            self.gpt_train.train()
-            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Training GPT completed successfully", data={
-                "model_path": self.gpt_train.train_output
-            })
+            output = self.gpt_train.train()
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Training GPT completed successfully", data=dataclasses.asdict(output))
         except Exception as e:
             print(traceback.format_exc(), e)
             return EaseVoiceResponse(ResponseStatus.FAILED, str(e))
@@ -28,8 +27,8 @@ class TrainSovitsService(object):
 
     def train(self) -> EaseVoiceResponse:
         try:
-            self.sovits_train.train()
-            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Training Sovits completed successfully")
+            output = self.sovits_train.train()
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Training Sovits completed successfully", data=dataclasses.asdict(output))
         except Exception as e:
             print(traceback.format_exc(), e)
             return EaseVoiceResponse(ResponseStatus.FAILED, str(e))

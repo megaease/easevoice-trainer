@@ -19,7 +19,7 @@ from pytorch_lightning.strategies import DDPStrategy  # pyright: ignore
 
 from src.easevoice.soundstorm.auto_reg.data.data_module import Text2SemanticDataModule
 from src.easevoice.soundstorm.auto_reg.models.t2s_lightning_module import Text2SemanticLightningModule
-from src.train.helper import get_gpt_train_dir, train_logs_path
+from src.train.helper import TrainOutput, get_gpt_train_dir, train_logs_path
 from src.utils.config import gpt_config_path, cfg, gpt_pretrained_model_path, semantic_output, text_output_name
 
 
@@ -169,9 +169,7 @@ class GPTTrain(object):
 
     def train(self):
         self.trainer.fit(self.model, self.data_module, ckpt_path=self.trainer_ckpt_path)
-        return {
-            "output_path": self.train_output,
-        }
+        return TrainOutput(model_path=self.train_output)
 
     @staticmethod
     def _get_newest_ckpt(file_list: list):

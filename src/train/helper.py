@@ -1,4 +1,5 @@
 
+from dataclasses import dataclass
 import datetime
 import os
 from pathlib import Path
@@ -44,3 +45,8 @@ def list_train_sovits():
                 if file.is_file() and file.name.endswith(".pth"):
                     res[f"{dir.name}/{file.name}"] = str(file)
     return res
+
+
+@dataclass
+class TrainOutput:
+    model_path: str
