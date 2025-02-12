@@ -1,6 +1,7 @@
+import os
 from http import HTTPStatus
-
 from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi.responses import FileResponse
 
 from src.api.api import (
     Namespace,
@@ -110,6 +111,7 @@ class FileAPI:
         self.router.post("/directories")(self.create_directory)
         self.router.get("/directories", response_model=ListDirectoryResponse)(self.list_directory)
         self.router.post("/files")(self.upload_file)
+        self.router.get("/files", response_class=FileResponse)(self.download_file)
         self.router.post("/delete-dirs-files")(self.delete_dirs_files)
 
     async def create_directory(self, request: CreateDirectoryRequest):
@@ -173,6 +175,22 @@ class FileAPI:
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+    async def download_file(self, filePath: str):
+        """
+        Download a file.
+
+        Returns:
+            200: OK
+            400: Bad Request
+            404: Not Found
+        """
+        if not os.path.exists(filePath):
+            raise HTTPException(status_code=404, detail="File not found")
+        if os.path.isdir(filePath):
+            raise HTTPException(status_code=400, detail="Path is a directory, not a file")
+
+        return FileResponse(filePath, filename=os.path.basename(filePath))
+
 class SessionAPI:
     """Class to encapsulate session-related API endpoints."""
 
@@ -216,7 +234,7 @@ class VoiceCloneAPI:
         self.router.get("/voiceclone/status")(self.get_status)
 
     async def get_available_models(self):
-        try: 
+        try:
             gpts = ["default"] + list(list_train_gpts().keys())
             sovits = ["default"] + list(list_train_sovits().keys())
             return {"gpts": gpts, "sovits": sovits}
