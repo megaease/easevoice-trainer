@@ -216,9 +216,13 @@ class VoiceCloneAPI:
         self.router.get("/voiceclone/status")(self.get_status)
 
     async def get_available_models(self):
-        gpts = ["default"].extend(list_train_gpts().keys())
-        sovits = ["default"].extend(list_train_sovits().keys())
-        return {"gpts": gpts, "sovits": sovits}
+        try: 
+            gpts = ["default"].extend(list_train_gpts().keys())
+            sovits = ["default"].extend(list_train_sovits().keys())
+            return {"gpts": gpts, "sovits": sovits}
+        except Exception as e:
+            logger.error(f"failed to get available models: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to get available models: {e}"})
 
     async def get_status(self):
         if self.service is None:
