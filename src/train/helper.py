@@ -9,6 +9,7 @@ from src.utils import config
 train_logs_path = "logs"
 
 
+
 def generate_random_name():
     return datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 

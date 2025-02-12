@@ -45,3 +45,7 @@ os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 CPU = "cpu"
+
+
+os.makedirs(all_gpt_train_output_dir, exist_ok=True)
+os.makedirs(all_sovits_train_output_dir, exist_ok=True)
