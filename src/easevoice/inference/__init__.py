@@ -21,16 +21,6 @@ logging.getLogger("torchaudio._extension").setLevel(logging.ERROR)
 
 
 @dataclasses.dataclass
-class InferenceResult:
-    """
-    Result of inference
-    """
-    items: list = dataclasses.field(default_factory=list)
-    seed: int = -1
-    error: Optional[str] = None
-
-
-@dataclasses.dataclass
 class InferenceTaskData:
     """
     Data for inference
@@ -42,29 +32,20 @@ class InferenceTaskData:
     prompt_lang: str
     text_split_method: str
     aux_ref_audio_paths: list = dataclasses.field(default_factory=list)
-    seed = -1
-    top_k = 5
-    top_p = 1
-    temperature = 1
-    batch_size = 20
-    speed_factor = 1.0
-    ref_text_free = False
-    split_bucket = True
-    fragment_interval = 0.3
-    keep_random = True
-    parallel_infer = True
-    repetition_penalty = 1.3
-    sovits_path = ""
-    gpt_path = ""
-
-
-@dataclasses.dataclass
-class InferenceTask:
-    """
-    Task for inference
-    """
-    result_queue: multiprocessing.Queue
-    data: InferenceTaskData
+    seed: int = -1
+    top_k: int = 5
+    top_p: int = 1
+    temperature: float = 1.0
+    batch_size: int = 20
+    speed_factor: float = 1.0
+    ref_text_free: bool = False
+    split_bucket: bool = True
+    fragment_interval: float = 0.3
+    keep_random: bool = True
+    parallel_infer: bool = True
+    repetition_penalty: float = 1.3
+    sovits_path: str = ""
+    gpt_path: str = ""
 
 
 class Runner:
@@ -75,42 +56,23 @@ class Runner:
     Wait InferenceResult from the queue
     """
 
-    def __init__(self, queue: multiprocessing.Queue):
+    def __init__(self):
         tts_config = TTSConfig(os.path.join(get_base_path(), "configs", "tts_infer.yaml"))
         logger.info(f"tts config: {tts_config}")
 
         self.tts_config = tts_config
         self.tts_pipeline = TTS(tts_config)
-        self.task_queue = queue
-        self.done = False
 
-    def run(self):
-        while not self.done:
-            task: Union[InferenceTask, int] = self.task_queue.get()
-            if isinstance(task, int):
-                logger.info("Received stop signal")
-                return
-            else:
-                try:
-                    items, seed = self._inference(task)
-                    task.result_queue.put(
-                        InferenceResult(items=items, seed=seed)
-                    )
-                except Exception as e:
-                    logger.error(f"error: {e}")
-                    task.result_queue.put(InferenceResult(error=str(e)))
-
-    def _inference(self, task: InferenceTask):
+    def inference(self, data: InferenceTaskData):
         # change weight based on task
         try:
-            self.tts_pipeline.update_weights(task.data.sovits_path, task.data.gpt_path)
+            self.tts_pipeline.update_weights(data.sovits_path, data.gpt_path)
         except Exception as e:
             logger.error(f"failed to update weights: {e}")
             # change back to default weights
             self.tts_pipeline.update_weights("", "")
             raise e
 
-        data = task.data
         seed = -1 if data.keep_random else data.seed
         actual_seed = seed if seed not in [-1, "", None] else random.randrange(1 << 32)
         inputs = {

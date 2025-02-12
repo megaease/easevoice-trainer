@@ -254,7 +254,7 @@ class VoiceCloneAPI:
         try:
             return self.service.clone(request)
         except Exception as e:
-            logger.error(f"failed to clone voice for {request}, err: {e}")
+            logger.error(f"failed to clone voice for {request}, err: {e}", exc_info=True)
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to clone voice: {e}"})
 
     async def stop_service(self):

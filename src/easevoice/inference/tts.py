@@ -678,7 +678,7 @@ class TTS:
 
         if ref_audio_path in [None, ""] and \
                 ((self.prompt_cache["prompt_semantic"] is None) or (self.prompt_cache["refer_spec"] in [None, []])):
-            raise ValueError("ref_audio_path cannot be empty, when the reference audio is not set using set_ref_audio()")
+            raise ValueError("ref_audio_path cannot be empty")
 
         ###### setting reference audio and prompt text preprocessing ########
         t0 = ttime()
