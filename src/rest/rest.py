@@ -12,7 +12,7 @@ from src.api.api import (
     CreateDirectoryRequest,
     DeleteDirsFilesRequest,
     UploadFileRequest,
-    ListDirectoryResponse,
+    ListDirectoryResponse, EaseVoiceRequest,
 )
 from src.logger import logger
 from src.service.audio import AudioUVR5Params, AudioSlicerParams, AudioASRParams, AudioService, AudioDenoiseParams, AudioRefinementSubmitParams, AudioRefinementDeleteParams
@@ -25,7 +25,7 @@ from src.service.voice import VoiceCloneService
 from src.train.gpt import GPTTrainParams
 from src.train.helper import list_train_gpts, list_train_sovits
 from src.train.sovits import SovitsTrainParams
-from src.utils.response import EaseVoiceResponse
+from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
 class NamespaceAPI:
@@ -461,6 +461,36 @@ class AudioAPI:
         )
 
 
+class EaseVoiceAPI:
+    def __init__(self):
+        self.router = APIRouter()
+        self._register_routes()
+
+    def _register_routes(self):
+        self.router.post("/easevoice")(self.easevoice)
+
+    async def easevoice(self, request: EaseVoiceRequest):
+        audio_service = AudioService(source_dir=request.source_dir, output_dir=request.output_dir)
+        self._check_response(audio_service.uvr5(model_name=request.model_name))
+        self._check_response(audio_service.slicer())
+        self._check_response(audio_service.denoise())
+        self._check_response(audio_service.asr())
+        normalize_service = NormalizeService(processing_path=request.output_dir)
+        response = self._check_response(normalize_service.normalize())
+        normalize_path = response.data["normalize_path"]
+        gpt_service = TrainGPTService(GPTTrainParams(train_input_dir=normalize_path))
+        self._check_response(gpt_service.train())
+        sovits_service = TrainSovitsService(SovitsTrainParams(train_input_dir=normalize_path))
+        self._check_response(sovits_service.train())
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice completed successfully")
+
+    @staticmethod
+    def _check_response(response) -> EaseVoiceResponse:
+        if response.status == ResponseStatus.FAILED:
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=response.message)
+        return response
+
+
 # Initialize FastAPI and NamespaceService
 app = FastAPI()
 
@@ -487,3 +517,6 @@ app.include_router(normalize_api.router, prefix="/apis/v1")
 
 audio_api = AudioAPI()
 app.include_router(audio_api.router, prefix="/apis/v1")
+
+easevoice_api = EaseVoiceAPI()
+app.include_router(easevoice_api.router, prefix="/apis/v1")

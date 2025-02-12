@@ -148,3 +148,10 @@ class CreateTaskRequest(BaseModel):
     """Request model for creating a new namespace."""
     service_name: str
     args: dict
+
+
+class EaseVoiceRequest(BaseModel):
+    """Request model for creating a new namespace."""
+    source_dir: str
+    output_dir: str
+    model_name: str
