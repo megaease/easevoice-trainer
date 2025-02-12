@@ -217,8 +217,8 @@ class VoiceCloneAPI:
 
     async def get_available_models(self):
         try: 
-            gpts = ["default"].extend(list_train_gpts().keys())
-            sovits = ["default"].extend(list_train_sovits().keys())
+            gpts = ["default"] + list(list_train_gpts().keys())
+            sovits = ["default"] + list(list_train_sovits().keys())
             return {"gpts": gpts, "sovits": sovits}
         except Exception as e:
             logger.error(f"failed to get available models: {e}")
