@@ -101,8 +101,8 @@ class GPTTrain(object):
 
         self.train_input_dir = params.train_input_dir
         self.train_output = get_gpt_train_dir(params.output_model_name)
-        self.train_logs_output = os.path.join(self.train_input_dir, train_logs_path)
-        self.train_ckpts_output = os.path.join(self.train_logs_output, "ckpt")
+        self.train_logs_output = os.path.join(self.train_output, train_logs_path)
+        self.train_ckpts_output = os.path.join(str(self.train_logs_output), "ckpt")
         os.makedirs(self.train_output, exist_ok=True)
         os.makedirs(self.train_logs_output, exist_ok=True)
         os.makedirs(self.train_ckpts_output, exist_ok=True)
