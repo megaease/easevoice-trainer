@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
-import multiprocessing
 import os
 import traceback
-from multiprocessing import Process
 from dataclasses import dataclass
 
 import ffmpeg
 import numpy as np
 import torch
-from joblib.externals.loky.backend.queues import Queue
 from scipy.io import wavfile
 
 from src.audiokit.asr import FunAsr, WhisperAsr
@@ -41,7 +38,6 @@ class AudioSlicerParams:
     max_silent_kept: int = 500
     normalize_max: float = 0.9
     alpha_mix: float = 0.25
-    num_process: int = 4
 
 
 @dataclass
@@ -83,7 +79,7 @@ class AudioService():
         self.output_dir = output_dir
         self.refinement = Refinement(os.path.join(self.output_dir, asrs_output, asr_file), os.path.join(self.output_dir, refinements_output, refinement_file))
 
-    def uvr5(self, model_name: str="HP5_only_main_vocal", audio_format: str = "wav", **kwargs) -> EaseVoiceResponse:
+    def uvr5(self, model_name: str = "HP5_only_main_vocal", audio_format: str = "wav", **kwargs) -> EaseVoiceResponse:
         trace_data = {}
         try:
             base_separator = SeparateBase(
@@ -146,35 +142,9 @@ class AudioService():
             max_silent_kept: int = 500,
             normalize_max: float = 0.9,
             alpha_mix: float = 0.25,
-            num_process: int = 4,
     ) -> EaseVoiceResponse:
         os.makedirs(os.path.join(self.output_dir, slices_output), exist_ok=True)
         files = self._get_files(vocals_output)
-        process = []
-        queue = multiprocessing.Queue()
-        for i in range(num_process):
-            file_list = files[i::num_process]
-            if len(file_list) == 0:
-                continue
-            p = Process(target=self.slice_audio, args=(threshold, min_length, min_interval, hop_size, max_silent_kept, normalize_max, alpha_mix, file_list, queue))
-            p.start()
-            process.append(p)
-        for p in process:
-            p.join()
-
-        results = {}
-        all_success = True
-        while not queue.empty():
-            resp = queue.get()
-            results.update(resp.data)
-            if resp.status == ResponseStatus.FAILED:
-                all_success = False
-
-        if not all_success:
-            return EaseVoiceResponse(ResponseStatus.FAILED, "Slice Failed", results, step_name="slicer")
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Slice Success", results, step_name="slicer")
-
-    def slice_audio(self, threshold: int, min_length: int, min_interval: int, hop_size: int, max_silent_kept: int, normalize_max: float, alpha_mix: float, file_list: list, queue: Queue):
         slicer = Slicer(
             sr=32000,
             threshold=int(threshold),
@@ -183,7 +153,8 @@ class AudioService():
             hop_size=int(hop_size),
             max_sil_kept=int(max_silent_kept),
         )
-        for file in file_list:
+        data = {}
+        for file in files:
             name = os.path.basename(file)
             name = name.split(".")[0]
             try:
@@ -198,11 +169,12 @@ class AudioService():
                     output_filename = "%s_%010d_%010d.wav" % (name, start, end)
                     output_path = os.path.join(self.output_dir, slices_output, output_filename)
                     wavfile.write(output_path, 32000, (chunk * 32767).astype(np.int16))
-                queue.put(EaseVoiceResponse(ResponseStatus.SUCCESS, "Success", {"file_name": name}))
+                data[name] = ResponseStatus.SUCCESS
             except:
                 print(file, " slice failed ", traceback.format_exc())
-                queue.put(EaseVoiceResponse(ResponseStatus.FAILED, traceback.format_exc(), {"file_name": name}))
-        return
+                EaseVoiceResponse(ResponseStatus.FAILED, "Slice Failed", {"file_name": name}, step_name="slicer")
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Slice Success", data, step_name="slicer")
+
 
     def denoise(self) -> EaseVoiceResponse:
         os.makedirs(os.path.join(self.output_dir, denoises_output), exist_ok=True)

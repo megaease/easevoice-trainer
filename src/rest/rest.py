@@ -1,6 +1,9 @@
+import asyncio
 import os
 from http import HTTPStatus
-from fastapi import FastAPI, APIRouter, HTTPException
+from time import sleep
+
+from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 
 from src.api.api import (
@@ -19,13 +22,14 @@ from src.service.audio import AudioUVR5Params, AudioSlicerParams, AudioASRParams
 from src.service.file import FileService
 from src.service.namespace import NamespaceService
 from src.service.normalize import NormalizeService, NormalizeParams
-from src.service.session import SessionManager, session_guard
+from src.service.session import SessionManager, session_guard, start_session_with_subprocess, stop_session_with_subprocess
 from src.service.train import TrainGPTService, TrainSovitsService
 from src.service.voice import VoiceCloneService
 from src.train.gpt import GPTTrainParams
 from src.train.helper import list_train_gpts, list_train_sovits
 from src.train.sovits import SovitsTrainParams
 from src.utils.response import EaseVoiceResponse, ResponseStatus
+from src.service.session import session_manager
 
 
 class NamespaceAPI:
@@ -96,6 +100,7 @@ class NamespaceAPI:
             self.namespace_service.delete_namespace(name)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
+
 
 class FileAPI:
     """Encapsulated API logic for file operations."""
@@ -190,6 +195,7 @@ class FileAPI:
             raise HTTPException(status_code=400, detail="Path is a directory, not a file")
 
         return FileResponse(filePath, filename=os.path.basename(filePath))
+
 
 class SessionAPI:
     """Class to encapsulate session-related API endpoints."""
@@ -297,17 +303,14 @@ class TrainAPI:
         self._register_routes()
 
     def _register_routes(self):
-        self.router.post("/train/gpt")(self.train_gpt)
+        self.router.post("/train/gpt/start")(self.train_gpt)
+        self.router.post("/train/gpt/stop")(self.train_gpt_stop)
+        self.router.get("/train/gpt/status")(self.train_gpt_status)
         self.router.post("/train/sovits")(self.train_sovits)
 
-    async def train_gpt(self, params: GPTTrainParams):
-        result = self._do_train_gpt(params)
-
-        # session_guard wrapper return a dict
-        if isinstance(result, EaseVoiceResponse):
-            return result
-        logger.error(f"failed to train gpt: {result}")
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+    async def train_gpt(self, params: GPTTrainParams, background_tasks: BackgroundTasks):
+        background_tasks.add_task(self._do_train_gpt, params)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", step_name="train_gpt")
 
     async def train_sovits(self, params: SovitsTrainParams):
         result = self._do_train_sovits(params)
@@ -318,15 +321,31 @@ class TrainAPI:
         logger.error(f"failed to train sovits: {result}")
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
 
-    @session_guard("TrainGPT")
+    async def train_gpt_stop(self):
+        try:
+            stop_session_with_subprocess("TrainGPT")
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training stopped", step_name="train_gpt")
+        except Exception as e:
+            logger.error(f"failed to stop GPT training: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop GPT training: {e}"})
+
+    async def train_gpt_status(self):
+        session_info = session_manager.get_session_info()
+        if session_info is None:
+            return {"status": "No active task"}
+        return session_info
+
     def _do_train_gpt(self, params: GPTTrainParams):
         service = TrainGPTService(params)
-        return service.train()
+        start_session_with_subprocess(service.train, "TrainGPT")
 
     @session_guard("TrainSovits")
     def _do_train_sovits(self, params: SovitsTrainParams):
         service = TrainSovitsService(params)
-        return service.train()
+        resp = start_session_with_subprocess(service.train)
+        if resp is not None:
+            return resp
+        return EaseVoiceResponse(ResponseStatus.FAILED, "failed to train SoVITS", step_name="train_sovits")
 
 
 class NormalizeAPI:
@@ -335,21 +354,31 @@ class NormalizeAPI:
         self._register_routes()
 
     def _register_routes(self):
-        self.router.post("/normalize")(self.normalize)
+        self.router.post("/normalize/start")(self.normalize)
+        self.router.post("/normalize/stop")(self.normalize_stop)
+        self.router.get("/normalize/status")(self.normalize_status)
 
-    async def normalize(self, request: NormalizeParams):
-        result = self._do_normalize(request)
+    async def normalize(self, request: NormalizeParams, background_tasks: BackgroundTasks):
+        background_tasks.add_task(self._do_normalize, request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalize started", step_name="Normalize")
 
-        # session_guard wrapper return a dict
-        if isinstance(result, EaseVoiceResponse):
-            return result
-        logger.error(f"failed to normalize: {result}")
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+    async def normalize_stop(self):
+        try:
+            stop_session_with_subprocess("Normalize")
+            return {"message": "Normalize stopped"}
+        except Exception as e:
+            logger.error(f"failed to stop Normalize: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Normalize: {e}"})
 
-    @session_guard("Normalize")
+    async def normalize_status(self):
+        session_info = session_manager.get_session_info()
+        if session_info is None:
+            return {"status": "No active task"}
+        return session_info
+
     def _do_normalize(self, params: NormalizeParams):
         service = NormalizeService(params.output_dir)
-        return service.normalize()
+        start_session_with_subprocess(service.normalize, "Normalize")
 
 
 class AudioAPI:
@@ -358,49 +387,93 @@ class AudioAPI:
         self._register_routes()
 
     def _register_routes(self):
-        self.router.post("/audio/uvr5")(self.audio_uvr5)
-        self.router.post("/audio/slicer")(self.audio_slicer)
-        self.router.post("/audio/denoise")(self.audio_denoise)
-        self.router.post("/audio/asr")(self.audio_asr)
+        self.router.post("/audio/uvr5/start")(self.audio_uvr5)
+        self.router.post("/audio/uvr5/stop")(self.audio_uvr5_stop)
+        self.router.get("/audio/uvr5/status")(self.audio_uvr5_status)
+        self.router.post("/audio/slicer/start")(self.audio_slicer)
+        self.router.post("/audio/slicer/stop")(self.audio_slicer_stop)
+        self.router.get("/audio/slicer/status")(self.audio_slicer_status)
+        self.router.post("/audio/denoise/start")(self.audio_denoise)
+        self.router.post("/audio/denoise/stop")(self.audio_denoise_stop)
+        self.router.get("/audio/denoise/status")(self.audio_denoise_status)
+        self.router.post("/audio/asr/start")(self.audio_asr)
+        self.router.post("/audio/asr/stop")(self.audio_asr_stop)
+        self.router.get("/audio/asr/status")(self.audio_asr_status)
         self.router.get("/audio/refinement")(self.list_audio_refinement)
         self.router.post("/audio/refinement")(self.update_audio_refinement)
         self.router.delete("/audio/refinement")(self.delete_audio_refinement)
 
-    async def audio_uvr5(self, request: AudioUVR5Params):
-        result = self._do_audio_uvr5(request)
+    async def audio_uvr5(self, request: AudioUVR5Params, background_tasks: BackgroundTasks):
+        background_tasks.add_task(self._do_audio_uvr5, request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio UVR5 started", step_name="AudioUVR5")
 
-        # session_guard wrapper return a dict
-        if isinstance(result, EaseVoiceResponse):
-            return result
-        logger.error(f"failed to uvr5: {result}")
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+    async def audio_slicer(self, request: AudioSlicerParams, background_tasks: BackgroundTasks):
+        background_tasks.add_task(self._do_audio_slicer, request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Slicer started", step_name="AudioSlicer")
 
-    async def audio_slicer(self, request: AudioSlicerParams):
-        result = self._do_audio_slicer(request)
+    async def audio_denoise(self, request: AudioDenoiseParams, background_tasks: BackgroundTasks):
+        background_tasks.add_task(self._do_audio_denoise, request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Denoise started", step_name="AudioDenoise")
 
-        # session_guard wrapper return a dict
-        if isinstance(result, EaseVoiceResponse):
-            return result
-        logger.error(f"failed to slice: {result}")
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+    async def audio_asr(self, request: AudioASRParams, background_tasks: BackgroundTasks):
+        background_tasks.add_task(self._do_audio_asr, request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio ASR started", step_name="AudioASR")
 
-    async def audio_denoise(self, request: AudioDenoiseParams):
-        result = self._do_audio_denoise(request)
+    async def audio_uvr5_stop(self):
+        try:
+            stop_session_with_subprocess("AudioUVR5")
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio UVR5 stopped", step_name="AudioUVR5")
+        except Exception as e:
+            logger.error(f"failed to stop Audio UVR5: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio UVR5: {e}"})
 
-        # session_guard wrapper return a dict
-        if isinstance(result, EaseVoiceResponse):
-            return result
-        logger.error(f"failed to denoise: {result}")
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+    async def audio_slicer_stop(self):
+        try:
+            stop_session_with_subprocess("AudioSlicer")
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Slicer stopped", step_name="AudioSlicer")
+        except Exception as e:
+            logger.error(f"failed to stop Audio Slicer: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio Slicer: {e}"})
 
-    async def audio_asr(self, request: AudioASRParams):
-        result = self._do_audio_asr(request)
+    async def audio_denoise_stop(self):
+        try:
+            stop_session_with_subprocess("AudioDenoise")
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Denoise stopped", step_name="AudioDenoise")
+        except Exception as e:
+            logger.error(f"failed to stop Audio Denoise: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio Denoise: {e}"})
 
-        # session_guard wrapper return a dict
-        if isinstance(result, EaseVoiceResponse):
-            return result
-        logger.error(f"failed to asr: {result}")
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+    async def audio_asr_stop(self):
+        try:
+            stop_session_with_subprocess("AudioASR")
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio ASR stopped", step_name="AudioASR")
+        except Exception as e:
+            logger.error(f"failed to stop Audio ASR: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio ASR: {e}"})
+
+    async def audio_uvr5_status(self):
+        session_info = session_manager.get_session_info()
+        if session_info is None:
+            return {"status": "No active task"}
+        return session_info
+
+    async def audio_slicer_status(self):
+        session_info = session_manager.get_session_info()
+        if session_info is None:
+            return {"status": "No active task"}
+        return session_info
+
+    async def audio_denoise_status(self):
+        session_info = session_manager.get_session_info()
+        if session_info is None:
+            return {"status": "No active task"}
+        return session_info
+
+    async def audio_asr_status(self):
+        session_info = session_manager.get_session_info()
+        if session_info is None:
+            return {"status": "No active task"}
+        return session_info
 
     def list_audio_refinement(self, input_dir: str, output_dir: str):
         service = AudioService(source_dir=input_dir, output_dir=output_dir)
@@ -426,39 +499,34 @@ class AudioAPI:
         logger.error(f"failed to delete audio refinement: {result}")
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
 
-    @session_guard("AudioUVR5")
     def _do_audio_uvr5(self, params: AudioUVR5Params):
         service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
-        return service.uvr5(params.model_name, params.audio_format)
+        start_session_with_subprocess(service.uvr5, "AudioUVR5", model_name=params.model_name, audio_format=params.audio_format)
 
-    @session_guard("AudioSlicer")
     def _do_audio_slicer(self, params: AudioSlicerParams):
         service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
-        return service.slicer(
-            threshold=params.threshold,
-            min_length=params.min_length,
-            min_interval=params.min_interval,
-            hop_size=params.hop_size,
-            max_silent_kept=params.max_silent_kept,
-            normalize_max=params.normalize_max,
-            alpha_mix=params.alpha_mix,
-            num_process=params.num_process,
-        )
+        start_session_with_subprocess(service.slicer, "AudioSlicer",
+                                      threshold=params.threshold,
+                                      min_length=params.min_length,
+                                      min_interval=params.min_interval,
+                                      hop_size=params.hop_size,
+                                      max_silent_kept=params.max_silent_kept,
+                                      normalize_max=params.normalize_max,
+                                      alpha_mix=params.alpha_mix,
+                                      )
 
-    @session_guard("AudioDenoise")
     def _do_audio_denoise(self, params: AudioDenoiseParams):
         service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
-        return service.denoise()
+        start_session_with_subprocess(service.denoise, "AudioDenoise")
 
-    @session_guard("AudioASR")
     def _do_audio_asr(self, params: AudioASRParams):
         service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
-        return service.asr(
-            asr_model=params.asr_model,
-            model_size=params.model_size,
-            language=params.language,
-            precision=params.precision,
-        )
+        start_session_with_subprocess(service.asr, "AudioASR",
+                                      asr_model=params.asr_model,
+                                      model_size=params.model_size,
+                                      language=params.language,
+                                      precision=params.precision,
+                                      )
 
 
 class EaseVoiceAPI:
@@ -467,19 +535,32 @@ class EaseVoiceAPI:
         self._register_routes()
 
     def _register_routes(self):
-        self.router.post("/easevoice")(self.easevoice)
+        self.router.post("/easevoice/start")(self.easevoice)
+        self.router.post("/easevoice/stop")(self.easevoice_stop)
+        self.router.get("/easevoice/status")(self.easevoice_status)
 
-    async def easevoice(self, request: EaseVoiceRequest):
-        result = self._easevoice(request)
+    async def easevoice(self, request: EaseVoiceRequest, background_tasks: BackgroundTasks):
+        background_tasks.add_task(self._easevoice, request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice started", step_name="EaseVoice")
 
-        # session_guard wrapper return a dict
-        if isinstance(result, EaseVoiceResponse):
-            return result
-        logger.error(f"failed to easevoice: {result}")
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+    async def easevoice_stop(self):
+        try:
+            stop_session_with_subprocess("EaseVoice")
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice stopped", step_name="EaseVoice")
+        except Exception as e:
+            logger.error(f"failed to stop EaseVoice: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop EaseVoice: {e}"})
 
-    @session_guard("EaseVoice")
+    async def easevoice_status(self):
+        session_info = session_manager.get_session_info()
+        if session_info is None:
+            return {"status": "No active task"}
+        return session_info
+
     def _easevoice(self, request: EaseVoiceRequest):
+        start_session_with_subprocess(self._easevoice_easy, "EaseVoice", request=request)
+
+    def _easevoice_easy(self, request: EaseVoiceRequest):
         session_manager.update_session_info({
             "total_steps": 7,
             "current_step": 0,
@@ -488,17 +569,31 @@ class EaseVoiceAPI:
         })
         output_dir = os.path.join(request.source_dir, "output")
         audio_service = AudioService(source_dir=request.source_dir, output_dir=str(output_dir))
-        self._check_response(audio_service.uvr5())
-        self._check_response(audio_service.slicer())
-        self._check_response(audio_service.denoise())
-        self._check_response(audio_service.asr())
+        response = self._check_response(audio_service.uvr5())
+        if response.status == ResponseStatus.FAILED:
+            return response
+        response = self._check_response(audio_service.slicer())
+        if response.status == ResponseStatus.FAILED:
+            return response
+        response = self._check_response(audio_service.denoise())
+        if response.status == ResponseStatus.FAILED:
+            return response
+        response = self._check_response(audio_service.asr())
+        if response.status == ResponseStatus.FAILED:
+            return response
         normalize_service = NormalizeService(processing_path=output_dir)
         response = self._check_response(normalize_service.normalize())
+        if response.status == ResponseStatus.FAILED:
+            return response
         normalize_path = response.data["normalize_path"]
         gpt_service = TrainGPTService(GPTTrainParams(train_input_dir=normalize_path))
-        self._check_response(gpt_service.train())
+        response = self._check_response(gpt_service.train())
+        if response.status == ResponseStatus.FAILED:
+            return response
         sovits_service = TrainSovitsService(SovitsTrainParams(train_input_dir=normalize_path))
         response = self._check_response(sovits_service.train())
+        if response.status == ResponseStatus.FAILED:
+            return response
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice completed successfully", step_name="EaseVoice", data=response.data)
 
     @staticmethod
@@ -515,13 +610,51 @@ class EaseVoiceAPI:
                 "progress": 100,
             })
             session_manager.fail_session(response)
-            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=response.message)
+            return response
 
         session_manager.update_session_info({
             "current_step_description": f"Step {session_manager.get_session_info()['current_step']}: {response.step_name}",
             "progress": session_manager.get_session_info()["current_step"] / session_manager.get_session_info()["total_steps"] * 100,
         })
         return response
+
+
+# class TestAPI:
+#     def __init__(self):
+#         self.router = APIRouter()
+#         self._register_routes()
+#
+#     def _register_routes(self):
+#         self.router.get("/test")(self.test)
+#         self.router.get("/test/status")(self.test_status)
+#         self.router.post("/test/stop")(self.test_stop)
+#
+#     async def test_stop(self):
+#         try:
+#             stop_session_with_subprocess("TEST")
+#             return EaseVoiceResponse(ResponseStatus.SUCCESS, "Test stopped", step_name="test")
+#         except Exception as e:
+#             logger.error(f"failed to stop Test: {e}")
+#             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Test: {e}"})
+#
+#     async def test_status(self):
+#         session_info = session_manager.get_session_info()
+#         if session_info is None:
+#             return {"status": "No active task"}
+#         return session_info
+#
+#     async def test(self, background_tasks: BackgroundTasks):
+#         background_tasks.add_task(self._do_test)
+#         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Test started", step_name="test")
+#
+#     def _do_test(self):
+#         start_session_with_subprocess(mock_long_running_task, "TEST")
+#
+#
+# def mock_long_running_task():
+#     sleep(100)
+#     print("Long running task done")
+#     return "done"
 
 
 # Initialize FastAPI and NamespaceService
@@ -535,7 +668,6 @@ file_service = FileService()
 file_api = FileAPI(file_service)
 app.include_router(file_api.router, prefix="/apis/v1")
 
-session_manager = SessionManager()
 session_api = SessionAPI(session_manager)
 app.include_router(session_api.router, prefix="/apis/v1")
 
@@ -553,3 +685,6 @@ app.include_router(audio_api.router, prefix="/apis/v1")
 
 easevoice_api = EaseVoiceAPI()
 app.include_router(easevoice_api.router, prefix="/apis/v1")
+
+# test_api = TestAPI()
+# app.include_router(test_api.router, prefix="/apis/v1")

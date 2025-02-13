@@ -40,7 +40,6 @@ class Slicer(object):
                    begin * self.hop_size: min(waveform.shape[0], end * self.hop_size)
                    ]
 
-    # @timeit
     def slice(self, waveform):
         if len(waveform.shape) > 1:
             samples = waveform.mean(axis=0)

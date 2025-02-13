@@ -56,3 +56,6 @@ pandas~=2.2.3
 torchmetrics==1.6.0
 regex~=2024.11.6
 tensorboard
+multiprocess==0.70.17
+
+psutil~=6.1.1
