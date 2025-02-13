@@ -229,7 +229,7 @@ class VoiceCloneAPI:
     def _register_routes(self):
         self.router.post("/voiceclone/start")(self.start_service)
         self.router.post("/voiceclone/clone")(self.clone)
-        self.router.get("/voiceclone/stop")(self.stop_service)
+        self.router.post("/voiceclone/stop")(self.stop_service)
         self.router.get("/voiceclone/models")(self.get_available_models)
         self.router.get("/voiceclone/status")(self.get_status)
 
