@@ -20,6 +20,7 @@ from src.easevoice.module.models import SynthesizerTrn
 
 
 class Normalize(object):
+    step_name = "normalize"
     def __init__(self, processing_path: str):
         self.source_path = processing_path
         self.refinements_output_path = os.path.join(self.source_path, refinements_output, refinement_file)
@@ -80,7 +81,7 @@ class Normalize(object):
             opt.append("%s\t%s\t%s\t%s" % (name, phones, word2ph, norm_text))
         with open(self.text_output_path, "w", encoding="utf8") as f:
             f.write("\n".join(opt) + "\n")
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "success")
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "success", step_name=self.step_name + " text")
 
     def _get_bert_feature(self, text, word2ph, tokenizer, bert_model) -> EaseVoiceResponse:
         with torch.no_grad():
@@ -91,7 +92,7 @@ class Normalize(object):
             res = torch.cat(res["hidden_states"][-3:-2], -1)[0].cpu()[1:-1]
 
         if len(word2ph) != len(text):
-            return EaseVoiceResponse(ResponseStatus.FAILED, "text and word2ph not match")
+            return EaseVoiceResponse(ResponseStatus.FAILED, "text and word2ph not match", step_name=self.step_name + " text")
 
         phone_level_feature = []
         for i in range(len(word2ph)):
@@ -100,7 +101,7 @@ class Normalize(object):
 
         phone_level_feature = torch.cat(phone_level_feature, dim=0)
         data = {"phone_level_feature": phone_level_feature.T}
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "success", data)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "success", data, step_name=self.step_name + " text")
 
     def _process_text(self, data, res, bert_dir, tokenizer, bert_model) -> EaseVoiceResponse:
         for name, text, lan in data:
@@ -117,14 +118,14 @@ class Normalize(object):
                         return resp
                     bert_feature = resp.data["phone_level_feature"]
                     if bert_feature.shape[-1] != len(phones):
-                        return EaseVoiceResponse(ResponseStatus.FAILED, "bert_feature and phones not match")
+                        return EaseVoiceResponse(ResponseStatus.FAILED, "bert_feature and phones not match", step_name=self.step_name + " text")
                     torch.save(bert_feature, path_bert)
                 phones = " ".join(phones)
                 res.append([name, phones, word2ph, norm_text])
             except:
                 print(name, text, traceback.format_exc())
-                return EaseVoiceResponse(ResponseStatus.FAILED, "failed to process text")
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "success")
+                return EaseVoiceResponse(ResponseStatus.FAILED, "failed to process text", step_name=self.step_name + " text")
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "success", step_name=self.step_name + " text")
 
     def ssl(self) -> EaseVoiceResponse:
         with open(self.refinements_output_path, "r", encoding="utf8") as f:
@@ -142,8 +143,8 @@ class Normalize(object):
             self.cfg.is_half = False
             for (wav_name, wav_path) in failed_wavs:
                 if self._name2go(wav_name, wav_path) is False:
-                    return EaseVoiceResponse(ResponseStatus.FAILED, "failed to process wav")
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "success")
+                    return EaseVoiceResponse(ResponseStatus.FAILED, "failed to process wav", step_name=self.step_name + " ssl")
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "success", step_name=self.step_name + " ssl")
 
     def _name2go(self, wav_name, wav_path) -> bool:
         hubert_path = os.path.join(self.hubert_output_dir, wav_name + ".pt")
@@ -205,4 +206,4 @@ class Normalize(object):
 
         with open(self.semantic_output_path, "w", encoding="utf8") as f:
             f.write("\n".join(opt) + "\n")
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "success")
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "success", step_name=self.step_name + " token")

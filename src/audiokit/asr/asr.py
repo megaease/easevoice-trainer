@@ -13,6 +13,7 @@ from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
 class FunAsr(object):
+    step_name = "asr"
     def __init__(self, model_size: str, language: str, precision: str):
         model_vad = os.path.join(asr_root, "speech_fsmn_vad_zh-cn-16k-common-pytorch")
         model_punc = os.path.join(asr_root, "punc_ct-transformer_zh-cn-common-vocab272727-pytorch")
@@ -55,15 +56,16 @@ class FunAsr(object):
             except:
                 print(traceback.format_exc())
                 trace_data[file] = ResponseStatus.FAILED
-                return EaseVoiceResponse(status=ResponseStatus.FAILED, message="Failed to recognize audio", data=trace_data)
+                return EaseVoiceResponse(status=ResponseStatus.FAILED, message="Failed to recognize audio", data=trace_data, step_name=self.step_name)
 
         with open(output_file, "w", encoding="utf-8") as f:
             f.write("\n".join(output))
 
-        return EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="asr success", data=trace_data)
+        return EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="asr success", data=trace_data, step_name=self.step_name)
 
 
 class WhisperAsr(object):
+    step_name = "asr"
     def __init__(self, model_size: str, language: str, precision: str):
         valid_model_size = [
             "tiny", "tiny.en",
@@ -117,7 +119,7 @@ class WhisperAsr(object):
             model = WhisperModel(self.model_path, device=device, compute_type=self.precision)
         except:
             print(traceback.format_exc())
-            return EaseVoiceResponse(status=ResponseStatus.FAILED, message="Failed to load model")
+            return EaseVoiceResponse(status=ResponseStatus.FAILED, message="Failed to load model", step_name=self.step_name)
 
         output = []
         trace_data = {}
@@ -135,9 +137,9 @@ class WhisperAsr(object):
             except:
                 print(traceback.format_exc())
                 trace_data[file] = ResponseStatus.FAILED
-                return EaseVoiceResponse(status=ResponseStatus.FAILED, message="Failed to recognize audio", data=trace_data)
+                return EaseVoiceResponse(status=ResponseStatus.FAILED, message="Failed to recognize audio", data=trace_data, step_name=self.step_name)
 
         with open(output_file, "w", encoding="utf-8") as f:
             f.write("\n".join(output))
 
-        return EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="asr success", data=trace_data)
+        return EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="asr success", data=trace_data, step_name=self.step_name)

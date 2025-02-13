@@ -402,7 +402,7 @@ class AudioAPI:
         logger.error(f"failed to asr: {result}")
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
 
-    async def list_audio_refinement(self, input_dir: str, output_dir: str):
+    def list_audio_refinement(self, input_dir: str, output_dir: str):
         service = AudioService(source_dir=input_dir, output_dir=output_dir)
         result = service.refinement_reload()
         if isinstance(result, EaseVoiceResponse):
@@ -470,24 +470,57 @@ class EaseVoiceAPI:
         self.router.post("/easevoice")(self.easevoice)
 
     async def easevoice(self, request: EaseVoiceRequest):
-        audio_service = AudioService(source_dir=request.source_dir, output_dir=request.output_dir)
-        self._check_response(audio_service.uvr5(model_name=request.model_name))
+        result = self._easevoice(request)
+
+        # session_guard wrapper return a dict
+        if isinstance(result, EaseVoiceResponse):
+            return result
+        logger.error(f"failed to easevoice: {result}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
+    @session_guard("EaseVoice")
+    def _easevoice(self, request: EaseVoiceRequest):
+        session_manager.update_session_info({
+            "total_steps": 7,
+            "current_step": 0,
+            "progress": 0,
+            "current_step_description": "Prepare for starting EaseVoice",
+        })
+        output_dir = os.path.join(request.source_dir, "output")
+        audio_service = AudioService(source_dir=request.source_dir, output_dir=str(output_dir))
+        self._check_response(audio_service.uvr5())
         self._check_response(audio_service.slicer())
         self._check_response(audio_service.denoise())
         self._check_response(audio_service.asr())
-        normalize_service = NormalizeService(processing_path=request.output_dir)
+        normalize_service = NormalizeService(processing_path=output_dir)
         response = self._check_response(normalize_service.normalize())
         normalize_path = response.data["normalize_path"]
         gpt_service = TrainGPTService(GPTTrainParams(train_input_dir=normalize_path))
         self._check_response(gpt_service.train())
         sovits_service = TrainSovitsService(SovitsTrainParams(train_input_dir=normalize_path))
-        self._check_response(sovits_service.train())
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice completed successfully")
+        response = self._check_response(sovits_service.train())
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice completed successfully", step_name="EaseVoice", data=response.data)
 
     @staticmethod
     def _check_response(response) -> EaseVoiceResponse:
+        details = session_manager.get_session_info().get("details", [])
+        details.append(response.to_dict())
+        session_manager.update_session_info({
+            "current_step": session_manager.get_session_info()["current_step"] + 1,
+            "details": details,
+        })
         if response.status == ResponseStatus.FAILED:
+            session_manager.update_session_info({
+                "current_step_description": f"Failed at step {session_manager.get_session_info()['current_step']}: {response.step_name}",
+                "progress": 100,
+            })
+            session_manager.fail_session(response)
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=response.message)
+
+        session_manager.update_session_info({
+            "current_step_description": f"Step {session_manager.get_session_info()['current_step']}: {response.step_name}",
+            "progress": session_manager.get_session_info()["current_step"] / session_manager.get_session_info()["total_steps"] * 100,
+        })
         return response
 
 
