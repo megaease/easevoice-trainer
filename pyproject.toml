@@ -46,5 +46,6 @@ dependencies = [
     "torchaudio==2.1.1",
     "pandas",
     "tensorboard",
-    "psutil>=6.1.1"
+    "psutil>=6.1.1",
+    "multiprocess==0.70.17",
 ]
