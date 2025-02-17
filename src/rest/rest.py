@@ -235,7 +235,7 @@ class VoiceCloneAPI:
     def _register_routes(self):
         self.router.post("/voiceclone/start")(self.start_service)
         self.router.post("/voiceclone/clone")(self.clone)
-        self.router.post("/voiceclone/stop")(self.stop_service)
+        self.router.delete("/voiceclone/stop")(self.stop_service)
         self.router.get("/voiceclone/models")(self.get_available_models)
         self.router.get("/voiceclone/status")(self.get_status)
 
@@ -305,7 +305,7 @@ class TrainAPI:
 
     def _register_routes(self):
         self.router.post("/train/gpt/start")(self.train_gpt)
-        self.router.post("/train/gpt/stop")(self.train_gpt_stop)
+        self.router.delete("/train/gpt/stop")(self.train_gpt_stop)
         self.router.get("/train/gpt/status")(self.train_gpt_status)
         self.router.post("/train/sovits")(self.train_sovits)
 
@@ -351,7 +351,7 @@ class NormalizeAPI:
 
     def _register_routes(self):
         self.router.post("/normalize/start")(self.normalize)
-        self.router.post("/normalize/stop")(self.normalize_stop)
+        self.router.delete("/normalize/stop")(self.normalize_stop)
         self.router.get("/normalize/status")(self.normalize_status)
 
     async def normalize(self, request: NormalizeParams, background_tasks: BackgroundTasks):
@@ -386,16 +386,16 @@ class AudioAPI:
 
     def _register_routes(self):
         self.router.post("/audio/uvr5/start")(self.audio_uvr5)
-        self.router.post("/audio/uvr5/stop")(self.audio_uvr5_stop)
+        self.router.delete("/audio/uvr5/stop")(self.audio_uvr5_stop)
         self.router.get("/audio/uvr5/status")(self.audio_uvr5_status)
         self.router.post("/audio/slicer/start")(self.audio_slicer)
-        self.router.post("/audio/slicer/stop")(self.audio_slicer_stop)
+        self.router.delete("/audio/slicer/stop")(self.audio_slicer_stop)
         self.router.get("/audio/slicer/status")(self.audio_slicer_status)
         self.router.post("/audio/denoise/start")(self.audio_denoise)
-        self.router.post("/audio/denoise/stop")(self.audio_denoise_stop)
+        self.router.delete("/audio/denoise/stop")(self.audio_denoise_stop)
         self.router.get("/audio/denoise/status")(self.audio_denoise_status)
         self.router.post("/audio/asr/start")(self.audio_asr)
-        self.router.post("/audio/asr/stop")(self.audio_asr_stop)
+        self.router.delete("/audio/asr/stop")(self.audio_asr_stop)
         self.router.get("/audio/asr/status")(self.audio_asr_status)
         self.router.get("/audio/refinement")(self.list_audio_refinement)
         self.router.post("/audio/refinement")(self.update_audio_refinement)
@@ -542,7 +542,7 @@ class EaseVoiceAPI:
 
     def _register_routes(self):
         self.router.post("/easevoice/start")(self.easevoice)
-        self.router.post("/easevoice/stop")(self.easevoice_stop)
+        self.router.delete("/easevoice/stop")(self.easevoice_stop)
         self.router.get("/easevoice/status")(self.easevoice_status)
 
     async def easevoice(self, request: EaseVoiceRequest, background_tasks: BackgroundTasks):
@@ -636,7 +636,7 @@ class TestAPI:
     def _register_routes(self):
         self.router.get("/test")(self.test)
         self.router.get("/test/status")(self.test_status)
-        self.router.post("/test/stop")(self.test_stop)
+        self.router.delete("/test/stop")(self.test_stop)
 
     async def test_stop(self, uid: str):
         try:
