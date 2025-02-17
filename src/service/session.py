@@ -1,4 +1,4 @@
-from multiprocess import Process, Queue
+from multiprocess import Process, Queue, Manager
 import os
 import signal
 import threading
@@ -23,6 +23,7 @@ class SessionManager:
 
     _instance = None
     _lock = threading.Lock()
+    MAX_SESSIONS = 10
 
     def __new__(cls):
         """Singleton pattern to ensure only one instance of SessionManager exists."""
@@ -30,62 +31,69 @@ class SessionManager:
             with cls._lock:
                 if not cls._instance:
                     cls._instance = super(SessionManager, cls).__new__(cls)
-                    cls._instance._session_lock = threading.Lock()  # Protects session state
-                    cls._instance.current_session = None
-                    cls._instance.last_session = None
+                    cls._instance.exist_session = False
+                    cls._instance.session_list = dict()
+                    cls._instance.session_uuids = list()
         return cls._instance
 
-    def start_session(self, task_name: str):
+    def start_session(self, uuid: str, task_name: str):
         """Attempts to start a new session; rejects if another task is already running."""
-        with self._session_lock:
-            if self.current_session is not None:
-                raise RuntimeError(
-                    f"A task '{self.current_session['task_name']}' is already running. Cannot submit another task!"
-                )
+        if self.exist_session:
+            raise RuntimeError(
+                f"A task is already running. Cannot submit another task!"
+            )
 
-            self.current_session = {
-                "task_name": task_name,
-                "status": Status.RUNNING,
-                "error": None,  # Stores error details if task fails
-            }
+        self.session_list[uuid] = {
+            "uuid": uuid,
+            "task_name": task_name,
+            "status": Status.RUNNING,
+            "error": None,  # Stores error details if task fails
+        }
+        self.exist_session = True
+        self.session_uuids.append(uuid)
+        # do not need use transaction here, we only care about the final state
+        while len(self.session_uuids) > self.MAX_SESSIONS:
+            self.session_list.pop(self.session_uuids.pop(0))
+            self.session_uuids.pop(0)
 
-    def end_session(self, result: Any):
+    def end_session(self, uuid: str, result: Any):
         """Marks task as completed successfully."""
-        with self._session_lock:
-            if self.current_session:
-                self.current_session["status"] = Status.COMPLETED
-                self.current_session["result"] = result
-                self.last_session = self.current_session.copy()
-                self.current_session = None  # Clear session after completion
+        if self.exist_session:
+            session = self.session_list[uuid]
+            session["status"] = Status.COMPLETED
+            session["result"] = result
+            self.exist_session = False
+            self.session_list[uuid] = session
 
-    def fail_session(self, error: str):
+    def fail_session(self, uuid: str, error: str):
         """Marks task as failed and stores error information."""
-        with self._session_lock:
-            if self.current_session:
-                self.current_session["status"] = Status.FAILED
-                self.current_session["error"] = error
-                self.last_session = self.current_session.copy()
-                self.current_session = None  # Clear session after failure
+        if self.exist_session:
+            session = self.session_list[uuid]
+            session["status"] = Status.FAILED
+            session["error"] = error
+            self.exist_session = False
+            self.session_list[uuid] = session
 
-    def update_session_info(self, info: Dict[str, Any]):
+    def update_session_info(self, uuid: str, info: Dict[str, Any]):
         """Updates task session with arbitrary info."""
-        with self._session_lock:
-            if not self.current_session or self.current_session["status"] != Status.RUNNING:
-                raise RuntimeError("No active task to update session info!")
-            self.current_session.update(info)
+        if not self.exist_session or not self.session_list[uuid] or not self.session_list[uuid]["status"] == Status.RUNNING:
+            raise RuntimeError("No active task to update session info!")
+        self.session_list[uuid].update(info)
 
     def get_session_info(self) -> Optional[Dict[str, Any]]:
         """Returns current task state information."""
-        with self._session_lock:
-            return {
-                "current_session": self.current_session.copy() if self.current_session else None,
-                "last_session": self.last_session.copy() if self.last_session else None,
-            }
+        return self.session_list
+
+    def exist_running_session(self):
+        """Returns whether there is a running session."""
+        return self.exist_session
+
 
 session_manager = SessionManager()
 
+
 # Decorator to wrap task execution logic
-def session_guard(task_name: str):
+def session_guard(task_name: str, uuid: str):
     """Ensures tasks are managed within SessionManager and handles failure states."""
 
     def decorator(func):
@@ -94,17 +102,17 @@ def session_guard(task_name: str):
             session_manager = SessionManager()
 
             try:
-                session_manager.start_session(task_name)
+                session_manager.start_session(uuid, task_name)
             except Exception as e:
                 return {"error": f"failed to start session: {e}"}
 
             try:
                 result = func(*args, **kwargs)  # Execute the training task
-                session_manager.end_session(result)
+                session_manager.end_session(uuid, result)
                 return result
             except Exception as e:
                 print(traceback.format_exc())
-                session_manager.fail_session(str(e))  # Record failure details
+                session_manager.fail_session(uuid, str(e))  # Record failure details
                 # NOTICE: No Re-raise exception here,
                 # as we capture the error and record it in session info.
                 # raise e
@@ -115,45 +123,54 @@ def session_guard(task_name: str):
     return decorator
 
 
-def start_session_with_subprocess(func, target_name: str, **kwargs):
+def start_session_with_subprocess(func, uuid: str, target_name: str, **kwargs):
     """Starts a new session in a separate process."""
-    session_manager.start_session(target_name)
-    return_queue = Queue()
+    try:
+        try:
+            session_manager.start_session(uuid, target_name)
+        except Exception as e:
+            print(traceback.format_exc())
+            session_manager.fail_session(uuid, "There is an another task running.")
+            return
+        return_queue = Queue()
 
-    def wrapper(queue, **kwargs):
-        result = func(**kwargs)
-        queue.put(result)
+        def wrapper(queue, **kws):
+            result = func(**kws)
+            queue.put(result)
 
-    process = Process(target=wrapper, args=(return_queue,), kwargs=kwargs)
-    process.start()
-    session_manager.update_session_info({
-        "status": Status.RUNNING,
-        "pid": process.pid,
-    })
-    process.join()
+        process = Process(target=wrapper, args=(return_queue,), kwargs=kwargs)
+        process.start()
+        session_manager.update_session_info(uuid, {
+            "status": Status.RUNNING,
+            "pid": process.pid,
+        })
+        process.join()
 
-    if not return_queue.empty():
-        session_manager.end_session(return_queue.get())
-    else:
-        session_manager.fail_session("No result returned from subprocess.")
+        if not return_queue.empty():
+            session_manager.end_session(uuid, return_queue.get())
+        else:
+            session_manager.fail_session(uuid, "No result returned from subprocess.")
+    except Exception as e:
+        print(traceback.format_exc())
+        session_manager.fail_session(uuid, str(e))
 
 
-def stop_session_with_subprocess(task_name: str):
+def stop_session_with_subprocess(uuid: str, task_name: str):
     """Stops a session started in a separate process."""
     session_info = session_manager.get_session_info()
     if not session_info:
         response = EaseVoiceResponse(ResponseStatus.SUCCESS, "No active task to stop.")
-        session_manager.end_session(response)
+        session_manager.end_session(uuid, response)
         return response
-    current_session = session_info.get("current_session", {})
+    current_session = session_info.get(uuid, {})
     if current_session.get("task_name") != task_name or current_session.get("status") != Status.RUNNING:
         response = EaseVoiceResponse(ResponseStatus.FAILED, "Task name does not match.")
-        session_manager.end_session(response)
+        session_manager.end_session(uuid, response)
         return response
     if current_session.get("pid"):
         _kill_proc_tree(current_session.get("pid"))
     response = EaseVoiceResponse(ResponseStatus.SUCCESS, "Task stopped by user.")
-    session_manager.end_session(response)
+    session_manager.end_session(uuid, response)
     return response
 
 
@@ -175,21 +192,19 @@ def _kill_proc_tree(pid, including_parent=True):
         except OSError:
             pass
 
-
 # Example for using SessionManager and session_guard decorator.
-@session_guard("TrainingModel")
-def train_model():
-    session_manager = SessionManager()
-
-    for epoch in range(1, 6):
-        if epoch == 3:  # Simulate task failure
-            raise RuntimeError("Error occurred at epoch 3!")
-
-        session_manager.update_session_info({
-            "progress": epoch / 5,
-            "loss": 0.05 * (6 - epoch),
-            "epoch": epoch,
-        })
-
-    return "Training Completed"
-
+# @session_guard("TrainingModel")
+# def train_model():
+#     session_manager = SessionManager()
+#
+#     for epoch in range(1, 6):
+#         if epoch == 3:  # Simulate task failure
+#             raise RuntimeError("Error occurred at epoch 3!")
+#
+#         session_manager.update_session_info("", {
+#             "progress": epoch / 5,
+#             "loss": 0.05 * (6 - epoch),
+#             "epoch": epoch,
+#         })
+#
+#     return "Training Completed"

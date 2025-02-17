@@ -1,5 +1,5 @@
-import asyncio
 import os
+import uuid
 from http import HTTPStatus
 from time import sleep
 
@@ -22,14 +22,14 @@ from src.service.audio import AudioUVR5Params, AudioSlicerParams, AudioASRParams
 from src.service.file import FileService
 from src.service.namespace import NamespaceService
 from src.service.normalize import NormalizeService, NormalizeParams
-from src.service.session import SessionManager, session_guard, start_session_with_subprocess, stop_session_with_subprocess
+from src.service.session import SessionManager, start_session_with_subprocess, stop_session_with_subprocess
+from src.service.session import session_manager
 from src.service.train import TrainGPTService, TrainSovitsService
 from src.service.voice import VoiceCloneService
 from src.train.gpt import GPTTrainParams
 from src.train.helper import list_train_gpts, list_train_sovits
 from src.train.sovits import SovitsTrainParams
 from src.utils.response import EaseVoiceResponse, ResponseStatus
-from src.service.session import session_manager
 
 
 class NamespaceAPI:
@@ -255,9 +255,10 @@ class VoiceCloneAPI:
         return {"status": status}
 
     async def start_service(self):
+        uid = uuid.uuid4()
         if self.service is None:
             try:
-                self.session_manager.start_session(self._name)
+                self.session_manager.start_session(str(uid), self._name)
             except Exception as e:
                 msg = f"failed to start session for voice clone service: {str(e)}"
                 logger.error(msg)
@@ -268,9 +269,9 @@ class VoiceCloneAPI:
                 msg = f"failed to start voice clone service: {str(e)}"
                 logger.error(msg)
                 self.service = None
-                self.session_manager.fail_session(msg)
+                self.session_manager.fail_session(str(uid), msg)
                 raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": msg})
-        return {"message": "Voice Clone Service is started"}
+        return {"message": "Voice Clone Service is started", "uid": str(uid)}
 
     async def clone(self, request: dict):
         if self.service is None:
@@ -281,17 +282,17 @@ class VoiceCloneAPI:
             logger.error(f"failed to clone voice for {request}, err: {e}", exc_info=True)
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to clone voice: {e}"})
 
-    async def stop_service(self):
+    async def stop_service(self, uid: str):
         if self.service is not None:
             try:
                 self.service.close()
                 self.service = None
-                self.session_manager.end_session("stop voice clone service")
+                self.session_manager.end_session(uid, "stop voice clone service")
             except Exception as e:
                 msg = f"failed to stop voice clone service: {str(e)}"
                 logger.error(msg)
                 self.service = None
-                self.session_manager.fail_session(msg)
+                self.session_manager.fail_session(uid, msg)
                 raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": msg})
             return {"message": "Voice Clone Service is stopped"}
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail={"error": "voice clone service is not started"})
@@ -309,34 +310,38 @@ class TrainAPI:
         self.router.post("/train/sovits")(self.train_sovits)
 
     async def train_gpt(self, params: GPTTrainParams, background_tasks: BackgroundTasks):
-        background_tasks.add_task(self._do_train_gpt, params)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", step_name="train_gpt")
+        if session_manager.exist_running_session():
+            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
+        uid = uuid.uuid4()
+        background_tasks.add_task(self._do_train_gpt, uid=str(uid), params=params)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", step_name="train_gpt", uid=str(uid))
 
     async def train_sovits(self, params: SovitsTrainParams, background_tasks: BackgroundTasks):
-        background_tasks.add_task(self._do_train_sovits, params)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", step_name="train_gpt")
+        if session_manager.exist_running_session():
+            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
+        uid = uuid.uuid4()
+        background_tasks.add_task(self._do_train_sovits, uid=str(uid), params=params)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", step_name="train_gpt", uid=str(uid))
 
-    async def train_gpt_stop(self):
+    async def train_gpt_stop(self, uid: str):
         try:
-            stop_session_with_subprocess("TrainGPT")
+            stop_session_with_subprocess(uid, "TrainGPT")
             return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training stopped", step_name="train_gpt")
         except Exception as e:
             logger.error(f"failed to stop GPT training: {e}")
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop GPT training: {e}"})
 
-    async def train_gpt_status(self):
+    def train_gpt_status(self):
         session_info = session_manager.get_session_info()
-        if session_info is None:
-            return {"status": "No active task"}
         return session_info
 
-    def _do_train_gpt(self, params: GPTTrainParams):
+    def _do_train_gpt(self, uid: str, params: GPTTrainParams):
         service = TrainGPTService(params)
-        start_session_with_subprocess(service.train, "TrainGPT")
+        start_session_with_subprocess(service.train, uid, "TrainGPT")
 
-    def _do_train_sovits(self, params: SovitsTrainParams):
+    def _do_train_sovits(self, uid: str, params: SovitsTrainParams):
         service = TrainSovitsService(params)
-        start_session_with_subprocess(service.train, "TrainSovits")
+        start_session_with_subprocess(service.train, uid, "TrainSovits")
 
 
 class NormalizeAPI:
@@ -350,12 +355,16 @@ class NormalizeAPI:
         self.router.get("/normalize/status")(self.normalize_status)
 
     async def normalize(self, request: NormalizeParams, background_tasks: BackgroundTasks):
-        background_tasks.add_task(self._do_normalize, request)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalize started", step_name="Normalize")
+        if session_manager.exist_running_session():
+            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
-    async def normalize_stop(self):
+        uid = uuid.uuid4()
+        background_tasks.add_task(self._do_normalize, uid=str(uid), params=request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalize started", step_name="Normalize", uid=str(uid))
+
+    async def normalize_stop(self, uid: str):
         try:
-            stop_session_with_subprocess("Normalize")
+            stop_session_with_subprocess(uid, "Normalize")
             return {"message": "Normalize stopped"}
         except Exception as e:
             logger.error(f"failed to stop Normalize: {e}")
@@ -363,13 +372,11 @@ class NormalizeAPI:
 
     async def normalize_status(self):
         session_info = session_manager.get_session_info()
-        if session_info is None:
-            return {"status": "No active task"}
         return session_info
 
-    def _do_normalize(self, params: NormalizeParams):
+    def _do_normalize(self, uid: str, params: NormalizeParams):
         service = NormalizeService(params.output_dir)
-        start_session_with_subprocess(service.normalize, "Normalize")
+        start_session_with_subprocess(service.normalize, uid, "Normalize")
 
 
 class AudioAPI:
@@ -395,48 +402,64 @@ class AudioAPI:
         self.router.delete("/audio/refinement")(self.delete_audio_refinement)
 
     async def audio_uvr5(self, request: AudioUVR5Params, background_tasks: BackgroundTasks):
-        background_tasks.add_task(self._do_audio_uvr5, request)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio UVR5 started", step_name="AudioUVR5")
+        if session_manager.exist_running_session():
+            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
+
+        uid = uuid.uuid4()
+        background_tasks.add_task(self._do_audio_uvr5, uid=str(uid), params=request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio UVR5 started", step_name="AudioUVR5", uid=str(uid))
 
     async def audio_slicer(self, request: AudioSlicerParams, background_tasks: BackgroundTasks):
-        background_tasks.add_task(self._do_audio_slicer, request)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Slicer started", step_name="AudioSlicer")
+        if session_manager.exist_running_session():
+            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
+
+        uid = uuid.uuid4()
+        background_tasks.add_task(self._do_audio_slicer, uid=str(uid), params=request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Slicer started", step_name="AudioSlicer", uid=str(uid))
 
     async def audio_denoise(self, request: AudioDenoiseParams, background_tasks: BackgroundTasks):
-        background_tasks.add_task(self._do_audio_denoise, request)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Denoise started", step_name="AudioDenoise")
+        if session_manager.exist_running_session():
+            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
+
+        uid = uuid.uuid4()
+        background_tasks.add_task(self._do_audio_denoise, uid=str(uid), params=request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Denoise started", step_name="AudioDenoise", uid=str(uid))
 
     async def audio_asr(self, request: AudioASRParams, background_tasks: BackgroundTasks):
-        background_tasks.add_task(self._do_audio_asr, request)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio ASR started", step_name="AudioASR")
+        if session_manager.exist_running_session():
+            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
-    async def audio_uvr5_stop(self):
+        uid = uuid.uuid4()
+        background_tasks.add_task(self._do_audio_asr, uid=str(uid), params=request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio ASR started", step_name="AudioASR", uid=str(uid))
+
+    async def audio_uvr5_stop(self, uid: str):
         try:
-            stop_session_with_subprocess("AudioUVR5")
+            stop_session_with_subprocess(uid, "AudioUVR5")
             return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio UVR5 stopped", step_name="AudioUVR5")
         except Exception as e:
             logger.error(f"failed to stop Audio UVR5: {e}")
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio UVR5: {e}"})
 
-    async def audio_slicer_stop(self):
+    async def audio_slicer_stop(self, uid: str):
         try:
-            stop_session_with_subprocess("AudioSlicer")
+            stop_session_with_subprocess(uid, "AudioSlicer")
             return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Slicer stopped", step_name="AudioSlicer")
         except Exception as e:
             logger.error(f"failed to stop Audio Slicer: {e}")
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio Slicer: {e}"})
 
-    async def audio_denoise_stop(self):
+    async def audio_denoise_stop(self, uid: str):
         try:
-            stop_session_with_subprocess("AudioDenoise")
+            stop_session_with_subprocess(uid, "AudioDenoise")
             return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Denoise stopped", step_name="AudioDenoise")
         except Exception as e:
             logger.error(f"failed to stop Audio Denoise: {e}")
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio Denoise: {e}"})
 
-    async def audio_asr_stop(self):
+    async def audio_asr_stop(self, uid: str):
         try:
-            stop_session_with_subprocess("AudioASR")
+            stop_session_with_subprocess(uid, "AudioASR")
             return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio ASR stopped", step_name="AudioASR")
         except Exception as e:
             logger.error(f"failed to stop Audio ASR: {e}")
@@ -444,26 +467,18 @@ class AudioAPI:
 
     async def audio_uvr5_status(self):
         session_info = session_manager.get_session_info()
-        if session_info is None:
-            return {"status": "No active task"}
         return session_info
 
     async def audio_slicer_status(self):
         session_info = session_manager.get_session_info()
-        if session_info is None:
-            return {"status": "No active task"}
         return session_info
 
     async def audio_denoise_status(self):
         session_info = session_manager.get_session_info()
-        if session_info is None:
-            return {"status": "No active task"}
         return session_info
 
     async def audio_asr_status(self):
         session_info = session_manager.get_session_info()
-        if session_info is None:
-            return {"status": "No active task"}
         return session_info
 
     def list_audio_refinement(self, input_dir: str, output_dir: str):
@@ -490,13 +505,13 @@ class AudioAPI:
         logger.error(f"failed to delete audio refinement: {result}")
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
 
-    def _do_audio_uvr5(self, params: AudioUVR5Params):
+    def _do_audio_uvr5(self, uid: str, params: AudioUVR5Params):
         service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
-        start_session_with_subprocess(service.uvr5, "AudioUVR5", model_name=params.model_name, audio_format=params.audio_format)
+        start_session_with_subprocess(service.uvr5, uid, "AudioUVR5", model_name=params.model_name, audio_format=params.audio_format)
 
-    def _do_audio_slicer(self, params: AudioSlicerParams):
+    def _do_audio_slicer(self, uid: str, params: AudioSlicerParams):
         service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
-        start_session_with_subprocess(service.slicer, "AudioSlicer",
+        start_session_with_subprocess(service.slicer, uid, "AudioSlicer",
                                       threshold=params.threshold,
                                       min_length=params.min_length,
                                       min_interval=params.min_interval,
@@ -506,13 +521,13 @@ class AudioAPI:
                                       alpha_mix=params.alpha_mix,
                                       )
 
-    def _do_audio_denoise(self, params: AudioDenoiseParams):
+    def _do_audio_denoise(self, uid: str, params: AudioDenoiseParams):
         service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
-        start_session_with_subprocess(service.denoise, "AudioDenoise")
+        start_session_with_subprocess(service.denoise, uid, "AudioDenoise")
 
-    def _do_audio_asr(self, params: AudioASRParams):
+    def _do_audio_asr(self, uid: str, params: AudioASRParams):
         service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
-        start_session_with_subprocess(service.asr, "AudioASR",
+        start_session_with_subprocess(service.asr, uid, "AudioASR",
                                       asr_model=params.asr_model,
                                       model_size=params.model_size,
                                       language=params.language,
@@ -531,12 +546,16 @@ class EaseVoiceAPI:
         self.router.get("/easevoice/status")(self.easevoice_status)
 
     async def easevoice(self, request: EaseVoiceRequest, background_tasks: BackgroundTasks):
-        background_tasks.add_task(self._easevoice, request)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice started", step_name="EaseVoice")
+        if session_manager.exist_running_session():
+            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
-    async def easevoice_stop(self):
+        uid = uuid.uuid4()
+        background_tasks.add_task(self._easevoice, uid=str(uid), request=request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice started", step_name="EaseVoice", uid=str(uid))
+
+    async def easevoice_stop(self, uid: str):
         try:
-            stop_session_with_subprocess("EaseVoice")
+            stop_session_with_subprocess(uid, "EaseVoice")
             return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice stopped", step_name="EaseVoice")
         except Exception as e:
             logger.error(f"failed to stop EaseVoice: {e}")
@@ -544,15 +563,13 @@ class EaseVoiceAPI:
 
     async def easevoice_status(self):
         session_info = session_manager.get_session_info()
-        if session_info is None:
-            return {"status": "No active task"}
         return session_info
 
-    def _easevoice(self, request: EaseVoiceRequest):
-        start_session_with_subprocess(self._easevoice_easy, "EaseVoice", request=request)
+    def _easevoice(self, uid: str, request: EaseVoiceRequest):
+        start_session_with_subprocess(self._easevoice_easy, uid, "EaseVoice", request=request, uid=uid)
 
-    def _easevoice_easy(self, request: EaseVoiceRequest):
-        session_manager.update_session_info({
+    def _easevoice_easy(self, uid: str, request: EaseVoiceRequest):
+        session_manager.update_session_info(uid, {
             "total_steps": 7,
             "current_step": 0,
             "progress": 0,
@@ -560,92 +577,95 @@ class EaseVoiceAPI:
         })
         output_dir = os.path.join(request.source_dir, "output")
         audio_service = AudioService(source_dir=request.source_dir, output_dir=str(output_dir))
-        response = self._check_response(audio_service.uvr5())
+        response = self._check_response(uid, audio_service.uvr5())
         if response.status == ResponseStatus.FAILED:
             return response
-        response = self._check_response(audio_service.slicer())
+        response = self._check_response(uid, audio_service.slicer())
         if response.status == ResponseStatus.FAILED:
             return response
-        response = self._check_response(audio_service.denoise())
+        response = self._check_response(uid, audio_service.denoise())
         if response.status == ResponseStatus.FAILED:
             return response
-        response = self._check_response(audio_service.asr())
+        response = self._check_response(uid, audio_service.asr())
         if response.status == ResponseStatus.FAILED:
             return response
         normalize_service = NormalizeService(processing_path=output_dir)
-        response = self._check_response(normalize_service.normalize())
+        response = self._check_response(uid, normalize_service.normalize())
         if response.status == ResponseStatus.FAILED:
             return response
         normalize_path = response.data["normalize_path"]
         gpt_service = TrainGPTService(GPTTrainParams(train_input_dir=normalize_path))
-        response = self._check_response(gpt_service.train())
+        response = self._check_response(uid, gpt_service.train())
         if response.status == ResponseStatus.FAILED:
             return response
         sovits_service = TrainSovitsService(SovitsTrainParams(train_input_dir=normalize_path))
-        response = self._check_response(sovits_service.train())
+        response = self._check_response(uid, sovits_service.train())
         if response.status == ResponseStatus.FAILED:
             return response
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice completed successfully", step_name="EaseVoice", data=response.data)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice completed successfully", step_name="EaseVoice", data=response.data, uid=uid)
 
     @staticmethod
-    def _check_response(response) -> EaseVoiceResponse:
-        details = session_manager.get_session_info().get("details", [])
+    def _check_response(uid: str, response) -> EaseVoiceResponse:
+        session = session_manager.get_session_info().get(uid, {})
+        details = session.get("details", [])
         details.append(response.to_dict())
-        session_manager.update_session_info({
-            "current_step": session_manager.get_session_info()["current_step"] + 1,
+        session_manager.update_session_info(uid, {
+            "current_step": session.get("current_step") + 1,
             "details": details,
         })
         if response.status == ResponseStatus.FAILED:
-            session_manager.update_session_info({
-                "current_step_description": f"Failed at step {session_manager.get_session_info()['current_step']}: {response.step_name}",
+            session_manager.update_session_info(uid, {
+                "current_step_description": f"Failed at step {session.get('current_step')}: {response.step_name}",
                 "progress": 100,
             })
-            session_manager.fail_session(response)
+            session_manager.fail_session(uid, response)
             return response
 
-        session_manager.update_session_info({
-            "current_step_description": f"Step {session_manager.get_session_info()['current_step']}: {response.step_name}",
-            "progress": session_manager.get_session_info()["current_step"] / session_manager.get_session_info()["total_steps"] * 100,
+        session_manager.update_session_info(uid, {
+            "current_step_description": f"Step {session.get('current_step')}: {response.step_name}",
+            "progress": session.get("current_step") / session.get("total_steps") * 100,
         })
         return response
 
 
-# class TestAPI:
-#     def __init__(self):
-#         self.router = APIRouter()
-#         self._register_routes()
-#
-#     def _register_routes(self):
-#         self.router.get("/test")(self.test)
-#         self.router.get("/test/status")(self.test_status)
-#         self.router.post("/test/stop")(self.test_stop)
-#
-#     async def test_stop(self):
-#         try:
-#             stop_session_with_subprocess("TEST")
-#             return EaseVoiceResponse(ResponseStatus.SUCCESS, "Test stopped", step_name="test")
-#         except Exception as e:
-#             logger.error(f"failed to stop Test: {e}")
-#             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Test: {e}"})
-#
-#     async def test_status(self):
-#         session_info = session_manager.get_session_info()
-#         if session_info is None:
-#             return {"status": "No active task"}
-#         return session_info
-#
-#     async def test(self, background_tasks: BackgroundTasks):
-#         background_tasks.add_task(self._do_test)
-#         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Test started", step_name="test")
-#
-#     def _do_test(self):
-#         start_session_with_subprocess(mock_long_running_task, "TEST")
-#
-#
-# def mock_long_running_task():
-#     sleep(100)
-#     print("Long running task done")
-#     return "done"
+class TestAPI:
+    def __init__(self):
+        self.router = APIRouter()
+        self._register_routes()
+
+    def _register_routes(self):
+        self.router.get("/test")(self.test)
+        self.router.get("/test/status")(self.test_status)
+        self.router.post("/test/stop")(self.test_stop)
+
+    async def test_stop(self, uid: str):
+        try:
+            stop_session_with_subprocess(uid, "TEST")
+            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Test stopped", step_name="test")
+        except Exception as e:
+            logger.error(f"failed to stop Test: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Test: {e}"})
+
+    async def test_status(self):
+        session_info = session_manager.get_session_info()
+        return session_info
+
+    async def test(self, background_tasks: BackgroundTasks):
+        if session_manager.exist_running_session():
+            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
+
+        uid = uuid.uuid4()
+        background_tasks.add_task(self._do_test, uid=str(uid))
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Test started", step_name="test", uid=str(uid))
+
+    def _do_test(self, uid: str):
+        start_session_with_subprocess(mock_long_running_task, uid, "TEST")
+
+
+def mock_long_running_task():
+    sleep(100)
+    print("Long running task done")
+    return "done"
 
 
 # Initialize FastAPI and NamespaceService
@@ -677,5 +697,5 @@ app.include_router(audio_api.router, prefix="/apis/v1")
 easevoice_api = EaseVoiceAPI()
 app.include_router(easevoice_api.router, prefix="/apis/v1")
 
-# test_api = TestAPI()
-# app.include_router(test_api.router, prefix="/apis/v1")
+test_api = TestAPI()
+app.include_router(test_api.router, prefix="/apis/v1")
