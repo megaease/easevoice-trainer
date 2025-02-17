@@ -8,6 +8,7 @@ import re
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Callable, Dict, Optional
 
 import torch
 import yaml
@@ -91,7 +92,7 @@ class GPTCheckpoint(ModelCheckpoint):
 
 
 class GPTTrain(object):
-    def __init__(self, params: GPTTrainParams):
+    def __init__(self, params: GPTTrainParams, update_monitor_data_fn: Callable[[int, Dict[str, Any]]]):
         logging.getLogger("numba").setLevel(logging.WARNING)
         logging.getLogger("matplotlib").setLevel(logging.WARNING)
         torch.set_float32_matmul_precision("high")
@@ -156,7 +157,7 @@ class GPTTrain(object):
             use_distributed_sampler=False,
         )
         self.model: Text2SemanticLightningModule = Text2SemanticLightningModule(
-            self.config, Path(self.train_logs_output)
+            self.config, Path(self.train_logs_output), update_monitor_data=update_monitor_data_fn
         )
 
         self.data_module: Text2SemanticDataModule = Text2SemanticDataModule(

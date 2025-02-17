@@ -1,13 +1,13 @@
 from dataclasses import dataclass
 import logging
 import traceback
-from typing import Any, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 import torch.distributed as dist
 import os
 from src.train.helper import TrainOutput, get_sovits_train_dir, train_logs_path
 from src.utils import config
 from src.utils import helper
-from src.utils.helper import load_json
+from src.utils.helper import convert_tensor_to_python, load_json
 from src.utils.path import ckpt
 from random import randint
 from tqdm import tqdm
@@ -150,12 +150,13 @@ class SovitsTrain:
             hps.train.pretrained_s2D = params.pretrained_s2D
         return hps
 
-    def __init__(self, params: SovitsTrainParams):
+    def __init__(self, params: SovitsTrainParams, update_monitor_data_fn: Callable[[int, Dict[str, Any]]]):
         json_data = load_json(config.s2config_path)
         hps = TrainConfig(**json_data)
         self.hps = self._update_hparams(hps, params)
         self.step = 0
         self.device = "cpu"
+        self.update_monitor_data = update_monitor_data_fn
 
         warnings.filterwarnings("ignore")
         os.environ["CUDA_VISIBLE_DEVICES"] = hps.train.gpu_numbers.replace("-", ",")  # pyright: ignore
@@ -406,7 +407,6 @@ class SovitsTrain:
         device = self.device
         net_g, net_d = nets
         optim_g, optim_d = optims
-        # scheduler_g, scheduler_d = schedulers
         train_loader, eval_loader = loaders
         if writers is not None:
             writer, writer_eval = writers
@@ -540,6 +540,7 @@ class SovitsTrain:
                             "loss/g/kl": loss_kl,
                         }
                     )
+                    self.update_monitor_data(self.step, {"loss_g": convert_tensor_to_python(loss_gen_all), "loss_d": convert_tensor_to_python(loss_disc_all)})
 
                     image_dict = {
                         "slice/mel_org": helper.plot_spectrogram_to_numpy(

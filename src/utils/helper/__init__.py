@@ -135,3 +135,16 @@ def summarize(
         writer.add_image(k, v, global_step, dataformats="HWC")
     for k, v in audios.items():
         writer.add_audio(k, v, global_step, audio_sampling_rate)
+
+def convert_tensor_to_python(obj):
+    if isinstance(obj, torch.Tensor):
+        if obj.numel() == 1:
+            return obj.item()
+        else:
+            return obj.tolist()
+    elif isinstance(obj, list):
+        return [convert_tensor_to_python(o) for o in obj]
+    elif isinstance(obj, dict):
+        return {k: convert_tensor_to_python(v) for k, v in obj.items()}
+    else:
+        return obj
