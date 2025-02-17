@@ -312,14 +312,9 @@ class TrainAPI:
         background_tasks.add_task(self._do_train_gpt, params)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", step_name="train_gpt")
 
-    async def train_sovits(self, params: SovitsTrainParams):
-        result = self._do_train_sovits(params)
-
-        # session_guard wrapper return a dict
-        if isinstance(result, EaseVoiceResponse):
-            return result
-        logger.error(f"failed to train sovits: {result}")
-        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+    async def train_sovits(self, params: SovitsTrainParams, background_tasks: BackgroundTasks):
+        background_tasks.add_task(self._do_train_sovits, params)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", step_name="train_gpt")
 
     async def train_gpt_stop(self):
         try:
@@ -339,13 +334,9 @@ class TrainAPI:
         service = TrainGPTService(params)
         start_session_with_subprocess(service.train, "TrainGPT")
 
-    @session_guard("TrainSovits")
     def _do_train_sovits(self, params: SovitsTrainParams):
         service = TrainSovitsService(params)
-        resp = start_session_with_subprocess(service.train)
-        if resp is not None:
-            return resp
-        return EaseVoiceResponse(ResponseStatus.FAILED, "failed to train SoVITS", step_name="train_sovits")
+        start_session_with_subprocess(service.train, "TrainSovits")
 
 
 class NormalizeAPI:
