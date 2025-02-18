@@ -52,9 +52,10 @@ class Normalize(object):
             raise FileNotFoundError(self.normalize_token)
 
         self.cfg = cfg
-        self.device = self.cfg.device
-        if self.device != CPU:
-            self.device = self.device + ":0"
+
+        # TODO: Allow to use the GPU if available
+        self.device = "cpu"
+        self.is_half = False
 
         self.maxx = 0.95
         self.alpha = 0.5
@@ -62,7 +63,7 @@ class Normalize(object):
     def text(self) -> EaseVoiceResponse:
         tokenizer = AutoTokenizer.from_pretrained(self.normalize_text)
         bert_model = AutoModelForMaskedLM.from_pretrained(self.normalize_text)
-        bert_model = bert_model.half().to("cpu") if self.cfg.is_half else bert_model.to("cpu")
+        bert_model = bert_model.half().to("cpu") if self.is_half else bert_model.to("cpu")
         todo = []
         res = []
         with open(self.refinements_output_path, "r", encoding="utf8") as f:
@@ -138,8 +139,8 @@ class Normalize(object):
             wav_path = os.path.join(self.denoises_output_path, wav_name)
             if self._name2go(wav_name, wav_path) is False:
                 failed_wavs.append((wav_name, wav_path))
-        if len(failed_wavs) > 0 and self.cfg.is_half:
-            self.cfg.is_half = False
+        if len(failed_wavs) > 0 and self.is_half:
+            self.is_half = False
             for (wav_name, wav_path) in failed_wavs:
                 if self._name2go(wav_name, wav_path) is False:
                     return EaseVoiceResponse(ResponseStatus.FAILED, "failed to process wav")
@@ -159,7 +160,7 @@ class Normalize(object):
             tmp_audio32b, orig_sr=32000, target_sr=16000
         )
         tensor_wav16 = torch.from_numpy(tmp_audio)
-        tensor_wav16 = tensor_wav16.half().to("cpu") if self.cfg.is_half else tensor_wav16.to("cpu")
+        tensor_wav16 = tensor_wav16.half().to("cpu") if self.is_half else tensor_wav16.to("cpu")
         cnhubert_model = CNHubert(base_path=str(self.normalize_ssl))
         model = cnhubert_model.eval()
 
@@ -183,7 +184,7 @@ class Normalize(object):
             n_speakers=hps.data.n_speakers,
             **hps.model
         )
-        vq_model = vq_model.half().to("cpu") if self.cfg.is_half else vq_model.to("cpu")
+        vq_model = vq_model.half().to("cpu") if self.is_half else vq_model.to("cpu")
         vq_model.eval()
         vq_model.load_state_dict(torch.load(str(self.normalize_token), map_location="cpu")["weight"], strict=False)
         with open(self.refinements_output_path, "r", encoding="utf8") as f:
@@ -198,7 +199,7 @@ class Normalize(object):
             if not os.path.exists(hubert_path):
                 continue
             ssl_content = torch.load(hubert_path, map_location="cpu")
-            ssl_content = ssl_content.half().to("cpu") if self.cfg.is_half else ssl_content.to("cpu")
+            ssl_content = ssl_content.half().to("cpu") if self.is_half else ssl_content.to("cpu")
             codes = vq_model.extract_latent(ssl_content)
             semantic = " ".join([str(i) for i in codes[0, 0, :].tolist()])
             opt.append("%s\t%s" % (wav_name, semantic))
