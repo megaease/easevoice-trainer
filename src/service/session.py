@@ -24,6 +24,8 @@ class SessionManager:
     _instance = None
     _lock = threading.Lock()
     MAX_SESSIONS = 10
+    session_list = dict()
+    session_uuids = list()
 
     def __new__(cls):
         """Singleton pattern to ensure only one instance of SessionManager exists."""
@@ -52,9 +54,10 @@ class SessionManager:
         self.exist_session = True
         self.session_uuids.append(uuid)
         # do not need use transaction here, we only care about the final state
+
         while len(self.session_uuids) > self.MAX_SESSIONS:
-            self.session_list.pop(self.session_uuids.pop(0))
-            self.session_uuids.pop(0)
+            uuid = self.session_uuids.pop(0)
+            self.session_list.pop(uuid)
 
     def end_session(self, uuid: str, result: Any):
         """Marks task as completed successfully."""
