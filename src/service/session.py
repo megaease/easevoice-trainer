@@ -183,7 +183,7 @@ def start_train_session_with_spawn(func, uuid: str, target_name: str, params: An
         session_manager.fail_session(uuid, str(e))
 
 
-def start_session_with_subprocess(func, uuid: str, target_name: str, **kwargs):
+async def start_session_with_subprocess(func, uuid: str, target_name: str, **kwargs):
     """Starts a new session in a separate process."""
     try:
         session_manager.start_session(uuid, target_name)

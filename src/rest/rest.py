@@ -505,9 +505,9 @@ class AudioAPI:
         logger.error(f"failed to delete audio refinement: {result}")
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
 
-    def _do_audio_uvr5(self, uid: str, params: AudioUVR5Params):
+    async def _do_audio_uvr5(self, uid: str, params: AudioUVR5Params):
         service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
-        start_session_with_subprocess(service.uvr5, uid, "AudioUVR5", model_name=params.model_name, audio_format=params.audio_format)
+        await start_session_with_subprocess(service.uvr5, uid, "AudioUVR5", model_name=params.model_name, audio_format=params.audio_format)
 
     def _do_audio_slicer(self, uid: str, params: AudioSlicerParams):
         service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
