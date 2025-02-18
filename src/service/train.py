@@ -13,8 +13,8 @@ from src.train.sovits import SovitsTrain, SovitsTrainParams
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
-def do_train_gpt(params: GPTTrainParams, queue: Queue):
-    service = TrainGPTService(params, queue)
+def do_train_gpt(params: GPTTrainParams, train_monitor_queue: Queue):
+    service = TrainGPTService(params, train_monitor_queue)
     return service.train()
 
 

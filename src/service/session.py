@@ -100,7 +100,7 @@ class SessionManager:
             raise RuntimeError("No active task to update session info!")
         self.session_list[uuid].update(info)
 
-    def get_session_info(self) -> Optional[Dict[str, Any]]:
+    def get_session_info(self) -> Dict[str, Any]:
         """Returns current task state information."""
         return self.session_list
 
