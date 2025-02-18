@@ -79,7 +79,7 @@ class AudioService(object):
         self.output_dir = output_dir
         self.refinement = Refinement(os.path.join(self.output_dir, asrs_output, asr_file), os.path.join(self.output_dir, refinements_output, refinement_file))
 
-    def uvr5(self, model_name: str = "HP5_only_main_vocal", audio_format: str = "wav", **kwargs) -> EaseVoiceResponse:
+    async def uvr5(self, model_name: str = "HP5_only_main_vocal", audio_format: str = "wav", **kwargs) -> EaseVoiceResponse:
         trace_data = {}
         try:
             base_separator = SeparateBase(
