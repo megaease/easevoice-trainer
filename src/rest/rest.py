@@ -405,7 +405,7 @@ class AudioAPI:
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
         uid = uuid.uuid4()
-        self._do_audio_uvr5(uid=str(uid), params=request)
+        await self._do_audio_uvr5(uid=str(uid), params=request)
 
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio UVR5 started", step_name="AudioUVR5", uid=str(uid))
 
