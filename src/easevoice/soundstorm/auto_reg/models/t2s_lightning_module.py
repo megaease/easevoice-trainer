@@ -32,8 +32,8 @@ class Text2SemanticLightningModule(LightningModule):
         if is_train:
             self.automatic_optimization = False
             self.save_hyperparameters()
-            self.eval_dir.mkdir(parents=True, exist_ok=True)
             self.eval_dir = output_dir / "eval"
+            self.eval_dir.mkdir(parents=True, exist_ok=True)
 
     def training_step(self, batch: Dict, batch_idx: int):  # pyright: ignore
         opt: Any = self.optimizers()
