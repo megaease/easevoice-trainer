@@ -92,7 +92,7 @@ class GPTCheckpoint(ModelCheckpoint):
 
 
 class GPTTrain(object):
-    def __init__(self, params: GPTTrainParams, update_monitor_data_fn: Callable[[int, Dict[str, Any]]]):
+    def __init__(self, params: GPTTrainParams, update_monitor_data_fn):
         logging.getLogger("numba").setLevel(logging.WARNING)
         logging.getLogger("matplotlib").setLevel(logging.WARNING)
         torch.set_float32_matmul_precision("high")

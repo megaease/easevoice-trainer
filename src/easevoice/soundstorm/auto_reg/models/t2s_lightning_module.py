@@ -16,7 +16,7 @@ sys.path.append(os.getcwd())
 
 
 class Text2SemanticLightningModule(LightningModule):
-    def __init__(self, config, output_dir, is_train=True, update_monitor_data: Optional[Callable[[int, Dict[str, Any]]]] = None):
+    def __init__(self, config, output_dir, is_train=True, update_monitor_data = None):
         super().__init__()
         self.config = config
         self.top_k = 3

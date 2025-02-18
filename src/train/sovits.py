@@ -150,7 +150,7 @@ class SovitsTrain:
             hps.train.pretrained_s2D = params.pretrained_s2D
         return hps
 
-    def __init__(self, params: SovitsTrainParams, update_monitor_data_fn: Callable[[int, Dict[str, Any]]]):
+    def __init__(self, params: SovitsTrainParams, update_monitor_data_fn):
         json_data = load_json(config.s2config_path)
         hps = TrainConfig(**json_data)
         self.hps = self._update_hparams(hps, params)
