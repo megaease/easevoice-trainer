@@ -145,7 +145,8 @@ class AudioService(object):
             alpha_mix: float = 0.25,
     ) -> EaseVoiceResponse:
         os.makedirs(os.path.join(self.output_dir, slices_output), exist_ok=True)
-        files = self._get_files(vocals_output).extend(self._get_files(accompaniments_output))
+        files = self._get_files(vocals_output)
+        files.extend(self._get_files(accompaniments_output))
         slicer = Slicer(
             sr=32000,
             threshold=int(threshold),
