@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
-
+import traceback
 from dataclasses import dataclass
 
 from src.normalization.normalize import Normalize
@@ -32,4 +32,5 @@ class NormalizeService(object):
                 "normalize_path": normalize.output_path
             })
         except Exception as e:
+            print(traceback.format_exc())
             return EaseVoiceResponse(ResponseStatus.FAILED, str(e))
