@@ -4,7 +4,7 @@ import traceback
 from typing import Any, Callable, Dict, List, Tuple
 import torch.distributed as dist
 import os
-from src.train.helper import TrainMonitorQueue, TrainOutput, get_sovits_train_dir, train_logs_path
+from src.train.helper import TrainOutput, get_sovits_train_dir, train_logs_path
 from src.utils import config
 from src.utils import helper
 from src.utils.helper import convert_tensor_to_python, load_json
@@ -150,13 +150,12 @@ class SovitsTrain:
             hps.train.pretrained_s2D = params.pretrained_s2D
         return hps
 
-    def __init__(self, params: SovitsTrainParams, train_monitor_queue: TrainMonitorQueue):
+    def __init__(self, params: SovitsTrainParams):
         json_data = load_json(config.s2config_path)
         hps = TrainConfig(**json_data)
         self.hps = self._update_hparams(hps, params)
         self.step = 0
         self.device = "cpu"
-        self.train_monitor_queue = train_monitor_queue
 
         warnings.filterwarnings("ignore")
         os.environ["CUDA_VISIBLE_DEVICES"] = hps.train.gpu_numbers.replace("-", ",")  # pyright: ignore
@@ -540,8 +539,6 @@ class SovitsTrain:
                             "loss/g/kl": loss_kl,
                         }
                     )
-                    if self.train_monitor_queue is not None:
-                        self.train_monitor_queue.put({"step": self.step, "loss_g": convert_tensor_to_python(loss_gen_all), "loss_d": convert_tensor_to_python(loss_disc_all)})
 
                     image_dict = {
                         "slice/mel_org": helper.plot_spectrogram_to_numpy(

@@ -20,7 +20,7 @@ from pytorch_lightning.strategies import DDPStrategy  # pyright: ignore
 
 from src.easevoice.soundstorm.auto_reg.data.data_module import Text2SemanticDataModule
 from src.easevoice.soundstorm.auto_reg.models.t2s_lightning_module import Text2SemanticLightningModule
-from src.train.helper import TrainMonitorQueue, TrainOutput, get_gpt_train_dir, train_logs_path
+from src.train.helper import TrainOutput, get_gpt_train_dir, train_logs_path
 from src.utils.config import gpt_config_path, cfg, gpt_pretrained_model_path, semantic_output, text_output_name
 
 
@@ -92,7 +92,7 @@ class GPTCheckpoint(ModelCheckpoint):
 
 
 class GPTTrain(object):
-    def __init__(self, params: GPTTrainParams, queue: TrainMonitorQueue):
+    def __init__(self, params: GPTTrainParams):
         logging.getLogger("numba").setLevel(logging.WARNING)
         logging.getLogger("matplotlib").setLevel(logging.WARNING)
         torch.set_float32_matmul_precision("high")
@@ -157,7 +157,7 @@ class GPTTrain(object):
             use_distributed_sampler=False,
         )
         self.model: Text2SemanticLightningModule = Text2SemanticLightningModule(
-            self.config, Path(self.train_logs_output), queue=queue
+            self.config, Path(self.train_logs_output)
         )
 
         self.data_module: Text2SemanticDataModule = Text2SemanticDataModule(
