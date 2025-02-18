@@ -72,7 +72,7 @@ class AudioRefinementDeleteParams:
     source_file_path: str
 
 
-class AudioService():
+class AudioService(object):
     def __init__(self, source_dir: str, output_dir: str):
         super().__init__()
         self.source_dir = source_dir

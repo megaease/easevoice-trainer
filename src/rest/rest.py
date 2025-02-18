@@ -24,7 +24,7 @@ from src.service.namespace import NamespaceService
 from src.service.normalize import NormalizeService, NormalizeParams
 from src.service.session import SessionManager, start_session_with_subprocess, start_train_session_with_spawn, stop_session_with_subprocess
 from src.service.session import session_manager
-from src.service.train import TrainGPTService, TrainSovitsService, do_train_gpt, do_train_sovits
+from src.service.train import do_train_gpt, do_train_sovits
 from src.service.voice import VoiceCloneService
 from src.train.gpt import GPTTrainParams
 from src.train.helper import list_train_gpts, list_train_sovits
@@ -336,7 +336,7 @@ class TrainAPI:
         return session_info
 
     def _do_train_gpt(self, uid: str, params: GPTTrainParams):
-        start_train_session_with_spawn(do_train_gpt, uid, "TrainGPT", params=params)
+        start_session_with_subprocess(do_train_gpt, uid, "TrainGPT", params=params)
 
     def _do_train_sovits(self, uid: str, params: SovitsTrainParams):
         start_train_session_with_spawn(do_train_sovits, uid, "TrainSovits", params=params)
@@ -399,12 +399,14 @@ class AudioAPI:
         self.router.post("/audio/refinement")(self.update_audio_refinement)
         self.router.delete("/audio/refinement")(self.delete_audio_refinement)
 
-    async def audio_uvr5(self, request: AudioUVR5Params, background_tasks: BackgroundTasks):
+    # async def audio_uvr5(self, request: AudioUVR5Params, background_tasks: BackgroundTasks):
+    async def audio_uvr5(self, request: AudioUVR5Params):
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
         uid = uuid.uuid4()
-        background_tasks.add_task(self._do_audio_uvr5, uid=str(uid), params=request)
+        self._do_audio_uvr5(uid=str(uid), params=request)
+
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio UVR5 started", step_name="AudioUVR5", uid=str(uid))
 
     async def audio_slicer(self, request: AudioSlicerParams, background_tasks: BackgroundTasks):

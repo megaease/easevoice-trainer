@@ -1,3 +1,5 @@
+import asyncio
+
 from multiprocess import Process, Queue, Manager
 import os
 import signal
@@ -38,6 +40,7 @@ class SessionManager:
                     cls._instance.exist_session = None
                     cls._instance.session_list = dict()
                     cls._instance.session_uuids = list()
+                    cls._instance.session_task = dict()
         return cls._instance
 
     def _check_session_limit(self):
@@ -70,6 +73,15 @@ class SessionManager:
         self.session_uuids.append(uuid)
         # do not need use transaction here, we only care about the final state
         self._check_session_limit()
+
+    def add_session_task(self, uuid: str, task: asyncio.Task[Any]):
+        self.session_task[uuid] = task
+
+    def get_session_task(self, uuid: str):
+        return self.session_task.get(uuid)
+
+    def remove_session_task(self, uuid: str):
+        self.session_task.pop(uuid)
 
     def end_session(self, uuid: str, result: Any):
         """Marks task as completed successfully."""
@@ -165,7 +177,7 @@ def start_train_session_with_spawn(func, uuid: str, target_name: str, params: An
         # if not return_queue.empty():
         session_manager.end_session(uuid, {"result": "Training Completed"})
         # else:
-            # session_manager.fail_session(uuid, "No result returned from subprocess.")
+        # session_manager.fail_session(uuid, "No result returned from subprocess.")
     except Exception as e:
         print(traceback.format_exc())
         session_manager.fail_session(uuid, str(e))
@@ -174,33 +186,45 @@ def start_train_session_with_spawn(func, uuid: str, target_name: str, params: An
 def start_session_with_subprocess(func, uuid: str, target_name: str, **kwargs):
     """Starts a new session in a separate process."""
     try:
-        try:
-            session_manager.start_session(uuid, target_name)
-        except Exception as e:
-            print(traceback.format_exc())
-            session_manager.fail_session(uuid, "There is an another task running.")
-            return
-        return_queue = Queue()
-
-        def wrapper(queue, **kws):
-            result = func(**kws)
-            queue.put(result)
-
-        process = Process(target=wrapper, args=(return_queue,), kwargs=kwargs)
-        process.start()
-        session_manager.update_session_info(uuid, {
-            "status": Status.RUNNING,
-            "pid": process.pid,
-        })
-        process.join()
-
-        if not return_queue.empty():
-            session_manager.end_session(uuid, return_queue.get())
-        else:
-            session_manager.fail_session(uuid, "No result returned from subprocess.")
+        session_manager.start_session(uuid, target_name)
     except Exception as e:
         print(traceback.format_exc())
-        session_manager.fail_session(uuid, str(e))
+        session_manager.fail_session(uuid, "There is an another task running.")
+        return
+
+    # return_queue = Queue()
+    #
+    # def wrapper(queue, **kws):
+    #     result = func(**kws)
+    #     queue.put(result)
+
+    # process = Process(target=wrapper, args=(return_queue,), kwargs=kwargs)
+    # process.start()
+    # session_manager.update_session_info(uuid, {
+    #     "status": Status.RUNNING,
+    #     "pid": process.pid,
+    # })
+    # process.join()
+
+    def _done_callback(future):
+        try:
+            resp = future.result()
+            if isinstance(resp, EaseVoiceResponse):
+                session_manager.end_session(uuid, resp)
+            else:
+                session_manager.end_session(uuid, EaseVoiceResponse(ResponseStatus.SUCCESS, "Task completed successfully.", resp))
+        except Exception as e:
+            print(traceback.format_exc())
+            session_manager.fail_session(uuid, str(e))
+
+    task = asyncio.create_task(func(**kwargs))
+    task.add_done_callback(_done_callback)
+    session_manager.add_session_task(uuid, task)
+
+    # if not return_queue.empty():
+    #     session_manager.end_session(uuid, return_queue.get())
+    # else:
+    #     session_manager.fail_session(uuid, "No result returned from subprocess.")
 
 
 def stop_session_with_subprocess(uuid: str, task_name: str):
@@ -215,9 +239,17 @@ def stop_session_with_subprocess(uuid: str, task_name: str):
         response = EaseVoiceResponse(ResponseStatus.FAILED, "Task name does not match.")
         session_manager.end_session(uuid, response)
         return response
-    if current_session.get("pid"):
-        _kill_proc_tree(current_session.get("pid"))
-    response = EaseVoiceResponse(ResponseStatus.SUCCESS, "Task stopped by user.")
+    # if current_session.get("pid"):
+    #     _kill_proc_tree(current_session.get("pid"))
+    task = session_manager.get_session_task(uuid)
+    if task:
+        task.cancel()
+        session_manager.remove_session_task(uuid)
+
+        response = EaseVoiceResponse(ResponseStatus.SUCCESS, "Task stopped by user.")
+        session_manager.end_session(uuid, response)
+        return response
+    response = EaseVoiceResponse(ResponseStatus.FAILED, "No task to stop.")
     session_manager.end_session(uuid, response)
     return response
 
