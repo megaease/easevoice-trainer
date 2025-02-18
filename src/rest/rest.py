@@ -1,9 +1,8 @@
 import os
 import uuid
 from http import HTTPStatus
-from time import sleep
 
-from fastapi import FastAPI, APIRouter, HTTPException, BackgroundTasks
+from fastapi import FastAPI, APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
 from src.api.api import (
@@ -307,7 +306,7 @@ class TrainAPI:
         self.router.post("/train/sovits")(self.train_sovits)
         self.router.delete("/train/sovits/stop")(self.train_sovits_stop)
 
-    async def train_gpt(self, params: GPTTrainParams, background_tasks: BackgroundTasks):
+    async def train_gpt(self, params: GPTTrainParams):
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
@@ -315,7 +314,7 @@ class TrainAPI:
         await async_start_session(do_train_gpt, str(uid), "TrainGPT", params=params)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", uid=str(uid))
 
-    async def train_sovits(self, params: SovitsTrainParams, background_tasks: BackgroundTasks):
+    async def train_sovits(self, params: SovitsTrainParams):
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
         uid = uuid.uuid4()
@@ -347,7 +346,7 @@ class NormalizeAPI:
         self.router.post("/normalize/start")(self.normalize)
         self.router.delete("/normalize/stop")(self.normalize_stop)
 
-    async def normalize(self, request: NormalizeParams, background_tasks: BackgroundTasks):
+    async def normalize(self, request: NormalizeParams):
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
@@ -393,7 +392,7 @@ class AudioAPI:
 
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio UVR5 started", uid=str(uid))
 
-    async def audio_slicer(self, request: AudioSlicerParams, background_tasks: BackgroundTasks):
+    async def audio_slicer(self, request: AudioSlicerParams):
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
@@ -410,7 +409,7 @@ class AudioAPI:
                                   )
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Slicer started", uid=str(uid))
 
-    async def audio_denoise(self, request: AudioDenoiseParams, background_tasks: BackgroundTasks):
+    async def audio_denoise(self, request: AudioDenoiseParams):
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
@@ -419,7 +418,7 @@ class AudioAPI:
         await async_start_session(service.denoise, str(uid), "AudioDenoise")
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Denoise started", uid=str(uid))
 
-    async def audio_asr(self, request: AudioASRParams, background_tasks: BackgroundTasks):
+    async def audio_asr(self, request: AudioASRParams):
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
@@ -499,7 +498,7 @@ class EaseVoiceAPI:
         self.router.post("/easevoice/start")(self.easevoice)
         self.router.delete("/easevoice/stop")(self.easevoice_stop)
 
-    async def easevoice(self, request: EaseVoiceRequest, background_tasks: BackgroundTasks):
+    async def easevoice(self, request: EaseVoiceRequest):
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
@@ -575,47 +574,6 @@ class EaseVoiceAPI:
         })
         return response
 
-
-class TestAPI:
-    def __init__(self):
-        self.router = APIRouter()
-        self._register_routes()
-
-    def _register_routes(self):
-        self.router.get("/test")(self.test)
-        self.router.get("/test/status")(self.test_status)
-        self.router.delete("/test/stop")(self.test_stop)
-
-    async def test_stop(self, uid: str):
-        try:
-            async_stop_session(uid, "TEST")
-            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Test stopped")
-        except Exception as e:
-            logger.error(f"failed to stop Test: {e}")
-            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Test: {e}"})
-
-    async def test_status(self):
-        session_info = session_manager.get_session_info()
-        return session_info
-
-    async def test(self, background_tasks: BackgroundTasks):
-        if session_manager.exist_running_session():
-            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
-
-        uid = uuid.uuid4()
-        background_tasks.add_task(self._do_test, uid=str(uid))
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Test started", uid=str(uid))
-
-    def _do_test(self, uid: str):
-        async_start_session(mock_long_running_task, uid, "TEST")
-
-
-def mock_long_running_task():
-    sleep(100)
-    print("Long running task done")
-    return "done"
-
-
 # Initialize FastAPI and NamespaceService
 app = FastAPI()
 
@@ -644,6 +602,3 @@ app.include_router(audio_api.router, prefix="/apis/v1")
 
 easevoice_api = EaseVoiceAPI()
 app.include_router(easevoice_api.router, prefix="/apis/v1")
-
-test_api = TestAPI()
-app.include_router(test_api.router, prefix="/apis/v1")

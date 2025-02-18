@@ -15,7 +15,7 @@ from src.audiokit.refinement import Refinement
 from src.audiokit.slicer import Slicer
 from src.audiokit.uvr5.separate import SeparateBase, SeparateMDXNet, SeparateMDXC, SeparateVR, SeparateVREcho
 from src.utils.audio import load_audio
-from src.utils.config import vocals_output, slices_output, denoises_output, asrs_output, asr_file, refinements_output, refinement_file
+from src.utils.config import vocals_output, slices_output, denoises_output, asrs_output, asr_file, refinements_output, refinement_file, accompaniments_output
 from src.utils.response import ResponseStatus, EaseVoiceResponse
 
 
@@ -145,7 +145,7 @@ class AudioService(object):
             alpha_mix: float = 0.25,
     ) -> EaseVoiceResponse:
         os.makedirs(os.path.join(self.output_dir, slices_output), exist_ok=True)
-        files = self._get_files(vocals_output)
+        files = self._get_files(vocals_output).extend(self._get_files(accompaniments_output))
         slicer = Slicer(
             sr=32000,
             threshold=int(threshold),

@@ -55,7 +55,6 @@ class FunAsr(object):
             except:
                 print(traceback.format_exc())
                 trace_data[file] = ResponseStatus.FAILED
-                return EaseVoiceResponse(status=ResponseStatus.FAILED, message="Failed to recognize audio", data=trace_data)
 
         with open(output_file, "w", encoding="utf-8") as f:
             f.write("\n".join(output))
