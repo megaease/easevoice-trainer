@@ -22,7 +22,7 @@ from src.service.audio import AudioUVR5Params, AudioSlicerParams, AudioASRParams
 from src.service.file import FileService
 from src.service.namespace import NamespaceService
 from src.service.normalize import NormalizeService, NormalizeParams
-from src.service.session import SessionManager, async_start_session, start_train_session_with_spawn, async_stop_session
+from src.service.session import SessionManager, async_start_session, async_stop_session
 from src.service.session import session_manager
 from src.service.train import do_train_gpt, do_train_sovits
 from src.service.voice import VoiceCloneService

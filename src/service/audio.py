@@ -116,7 +116,7 @@ class AudioService(object):
                         trace_data[file_name] = ResponseStatus.SUCCESS
                 except:
                     need_reformat = 1
-                    traceback.print_exc()
+                    print(traceback.format_exc())
                 if need_reformat == 1:
                     tmp_path = "%s/%s.reformatted.wav" % (self.source_dir, file_name.split(".")[0])
                     os.system(f'ffmpeg -i "{input_path}" -vn -acodec pcm_s16le -ac 2 -ar 44100 "{tmp_path}" -y')
@@ -125,7 +125,7 @@ class AudioService(object):
                         separator.separate("%s.reformatted.wav" % file_name.split(".")[0])
                         trace_data[file_name] = ResponseStatus.SUCCESS
                 except:
-                    traceback.print_exc()
+                    print(traceback.format_exc())
                     trace_data[file_name] = ResponseStatus.FAILED
         except:
             return EaseVoiceResponse(ResponseStatus.FAILED, traceback.format_exc(), trace_data)

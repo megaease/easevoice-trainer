@@ -8,7 +8,6 @@ import re
 from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional
 
 import torch
 import yaml
