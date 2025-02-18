@@ -203,6 +203,7 @@ class AudioService(object):
         output_file = os.path.join(self.output_dir, asrs_output, asr_file)
         dump_file = os.path.join(self.output_dir, refinements_output, refinement_file)
         os.makedirs(os.path.join(self.output_dir, asrs_output), exist_ok=True)
+        os.makedirs(os.path.join(self.output_dir, refinements_output), exist_ok=True)
         if asr_model == "faster-whisper":
             model = WhisperAsr(model_size, language, precision)
             return model.recognize(file_list, output_file, dump_file)
