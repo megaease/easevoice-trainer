@@ -10,6 +10,7 @@ import multiprocessing as mp
 import psutil
 from typing import Optional
 
+from src.train.helper import TrainMonitorQueue
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
@@ -140,6 +141,52 @@ def session_guard(task_name: str, uuid: str):
         return wrapper
 
     return decorator
+
+def _train_session_wrapper(func, return_queue, params: Any, monitor_queue: Queue):
+    result = func(params, monitor_queue)
+    return_queue.put(result)
+
+
+def start_train_session_with_spawn(func, uuid: str, target_name: str, params: Any):
+    try:
+        try:
+            session_manager.start_session(uuid, target_name)
+        except Exception as e:
+            print(traceback.format_exc())
+            session_manager.fail_session(uuid, "There is an another task running.")
+            return
+        
+        # input
+        return_queue = Queue()
+        monitor_queue = Queue()
+        train_monitor_queue = TrainMonitorQueue(monitor_queue)
+
+        # start process with spawn
+        ctx = mp.get_context("spawn")
+        process = ctx.Process(target=_train_session_wrapper, args=(func, return_queue, params, monitor_queue))
+        process.start()
+        session_manager.update_session_info(uuid, {
+            "status": Status.RUNNING,
+            "pid": process.pid,
+        })
+
+        # get train status
+        train_status = []
+        for data in train_monitor_queue.range():
+            train_status.append(data)
+            session_manager.update_session_info(uuid, {
+                "train_status": train_status,
+            })
+
+        process.join()
+
+        if not return_queue.empty():
+            session_manager.end_session(uuid, return_queue.get())
+        else:
+            session_manager.fail_session(uuid, "No result returned from subprocess.")
+    except Exception as e:
+        print(traceback.format_exc())
+        session_manager.fail_session(uuid, str(e))
 
 
 def start_session_with_subprocess(func, uuid: str, target_name: str, **kwargs):

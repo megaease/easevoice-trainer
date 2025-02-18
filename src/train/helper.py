@@ -1,13 +1,36 @@
 
 from dataclasses import dataclass
 import datetime
+from multiprocessing import Queue
 import os
 from pathlib import Path
 from typing import Optional
+from src.logger import logger
 from src.utils import config
 
 train_logs_path = "logs"
 
+
+class TrainMonitorQueue:
+    def __init__(self, queue: Queue):
+        self.queue = queue
+
+    def put(self, data: dict):
+        self.queue.put(data)
+
+    def close(self):
+        self.queue.put(False)
+
+    def range(self):
+        while True:
+            try:
+                data = self.queue.get(timeout=300)
+            except Exception as e:
+                logger.error("TrainMonitorQueue range error: %s", e)
+                break
+            if data is False:
+                break
+            yield data
 
 
 def generate_random_name():

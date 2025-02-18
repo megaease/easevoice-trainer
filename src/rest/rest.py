@@ -22,9 +22,9 @@ from src.service.audio import AudioUVR5Params, AudioSlicerParams, AudioASRParams
 from src.service.file import FileService
 from src.service.namespace import NamespaceService
 from src.service.normalize import NormalizeService, NormalizeParams
-from src.service.session import SessionManager, start_session_with_subprocess, stop_session_with_subprocess
+from src.service.session import SessionManager, start_session_with_subprocess, start_train_session_with_spawn, stop_session_with_subprocess
 from src.service.session import session_manager
-from src.service.train import TrainGPTService, TrainSovitsService
+from src.service.train import TrainGPTService, TrainSovitsService, do_train_gpt, do_train_sovits
 from src.service.voice import VoiceCloneService
 from src.train.gpt import GPTTrainParams
 from src.train.helper import list_train_gpts, list_train_sovits
@@ -336,12 +336,10 @@ class TrainAPI:
         return session_info
 
     def _do_train_gpt(self, uid: str, params: GPTTrainParams):
-        service = TrainGPTService(params)
-        start_session_with_subprocess(service.train, uid, "TrainGPT")
+        start_train_session_with_spawn(do_train_gpt, uid, "TrainGPT", params=params)
 
     def _do_train_sovits(self, uid: str, params: SovitsTrainParams):
-        service = TrainSovitsService(params)
-        start_session_with_subprocess(service.train, uid, "TrainSovits")
+        start_train_session_with_spawn(do_train_sovits, uid, "TrainSovits", params=params)
 
 
 class NormalizeAPI:
@@ -594,15 +592,16 @@ class EaseVoiceAPI:
         if response.status == ResponseStatus.FAILED:
             return response
         normalize_path = response.data["normalize_path"]
-        gpt_service = TrainGPTService(GPTTrainParams(train_input_dir=normalize_path))
-        response = self._check_response(uid, gpt_service.train())
-        if response.status == ResponseStatus.FAILED:
-            return response
-        sovits_service = TrainSovitsService(SovitsTrainParams(train_input_dir=normalize_path))
-        response = self._check_response(uid, sovits_service.train())
-        if response.status == ResponseStatus.FAILED:
-            return response
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice completed successfully", step_name="EaseVoice", data=response.data, uid=uid)
+        # TODO: do this after spawn is working
+        # gpt_service = TrainGPTService(GPTTrainParams(train_input_dir=normalize_path))
+        # response = self._check_response(uid, gpt_service.train())
+        # if response.status == ResponseStatus.FAILED:
+        #     return response
+        # sovits_service = TrainSovitsService(SovitsTrainParams(train_input_dir=normalize_path))
+        # response = self._check_response(uid, sovits_service.train())
+        # if response.status == ResponseStatus.FAILED:
+        #     return response
+        # return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice completed successfully", step_name="EaseVoice", data=response.data, uid=uid)
 
     @staticmethod
     def _check_response(uid: str, response) -> EaseVoiceResponse:

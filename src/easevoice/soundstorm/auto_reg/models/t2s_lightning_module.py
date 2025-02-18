@@ -2,10 +2,11 @@
 # reference: https://github.com/lifeiteng/vall-e
 from pytorch_lightning import LightningModule
 import torch
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 import os
 import sys
 
+from src.train.helper import TrainMonitorQueue
 from src.utils.helper import convert_tensor_to_python
 
 from ..modules.optim import ScaledAdam
@@ -16,7 +17,7 @@ sys.path.append(os.getcwd())
 
 
 class Text2SemanticLightningModule(LightningModule):
-    def __init__(self, config, output_dir, is_train=True, update_monitor_data = None):
+    def __init__(self, config, output_dir, is_train=True, queue: Optional[TrainMonitorQueue] = None):
         super().__init__()
         self.config = config
         self.top_k = 3
@@ -34,7 +35,7 @@ class Text2SemanticLightningModule(LightningModule):
             self.save_hyperparameters()
             self.eval_dir.mkdir(parents=True, exist_ok=True)
             self.eval_dir = output_dir / "eval"
-        self.update_monitor_data = update_monitor_data
+        self.train_monitor_queue = queue
 
     def training_step(self, batch: Dict, batch_idx: int):  # pyright: ignore
         opt: Any = self.optimizers()
@@ -76,8 +77,8 @@ class Text2SemanticLightningModule(LightningModule):
             prog_bar=True,
             sync_dist=True,
         )
-        if self.update_monitor_data is not None:
-            self.update_monitor_data(batch_idx, {"loss": convert_tensor_to_python(loss), "acc": convert_tensor_to_python(acc)})
+        if self.train_monitor_queue is not None:
+            self.train_monitor_queue.put({"step": batch_idx, "loss": convert_tensor_to_python(loss), "acc": convert_tensor_to_python(acc)})
 
     def validation_step(self, batch: Dict, batch_idx: int):
         return
