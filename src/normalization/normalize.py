@@ -62,7 +62,7 @@ class Normalize(object):
     def text(self) -> EaseVoiceResponse:
         tokenizer = AutoTokenizer.from_pretrained(self.normalize_text)
         bert_model = AutoModelForMaskedLM.from_pretrained(self.normalize_text)
-        bert_model = bert_model.half().to(self.device) if self.cfg.is_half else bert_model.to(self.device)
+        bert_model = bert_model.half().to("cpu") if self.cfg.is_half else bert_model.to("cpu")
         todo = []
         res = []
         with open(self.refinements_output_path, "r", encoding="utf8") as f:
@@ -86,7 +86,7 @@ class Normalize(object):
         with torch.no_grad():
             inputs = tokenizer(text, return_tensors="pt")
             for i in inputs:
-                inputs[i] = inputs[i].to(self.device)
+                inputs[i] = inputs[i].to("cpu")
             res = bert_model(**inputs, output_hidden_states=True)
             res = torch.cat(res["hidden_states"][-3:-2], -1)[0].cpu()[1:-1]
 
@@ -159,7 +159,7 @@ class Normalize(object):
             tmp_audio32b, orig_sr=32000, target_sr=16000
         )
         tensor_wav16 = torch.from_numpy(tmp_audio)
-        tensor_wav16 = tensor_wav16.half().to(self.device) if self.cfg.is_half else tensor_wav16.to(self.device)
+        tensor_wav16 = tensor_wav16.half().to("cpu") if self.cfg.is_half else tensor_wav16.to("cpu")
         cnhubert_model = CNHubert(base_path=str(self.normalize_ssl))
         model = cnhubert_model.eval()
 
@@ -183,7 +183,7 @@ class Normalize(object):
             n_speakers=hps.data.n_speakers,
             **hps.model
         )
-        vq_model = vq_model.half().to(self.cfg.device) if self.cfg.is_half else vq_model.to(self.cfg.device)
+        vq_model = vq_model.half().to("cpu") if self.cfg.is_half else vq_model.to("cpu")
         vq_model.eval()
         vq_model.load_state_dict(torch.load(str(self.normalize_token), map_location="cpu")["weight"], strict=False)
         with open(self.refinements_output_path, "r", encoding="utf8") as f:
@@ -198,7 +198,7 @@ class Normalize(object):
             if not os.path.exists(hubert_path):
                 continue
             ssl_content = torch.load(hubert_path, map_location="cpu")
-            ssl_content = ssl_content.half().to(self.cfg.device) if self.cfg.is_half else ssl_content.to(self.cfg.device)
+            ssl_content = ssl_content.half().to("cpu") if self.cfg.is_half else ssl_content.to("cpu")
             codes = vq_model.extract_latent(ssl_content)
             semantic = " ".join([str(i) for i in codes[0, 0, :].tolist()])
             opt.append("%s\t%s" % (wav_name, semantic))
