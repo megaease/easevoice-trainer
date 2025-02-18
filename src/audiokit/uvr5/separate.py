@@ -76,7 +76,6 @@ class SeparateBase:
 
 
 class SeparateVR(SeparateBase):
-    step_name = "uvr5"
     def __init__(self, base_instance: SeparateBase, **kwargs):
         super().__init__(base_instance.model_name, base_instance.input_dir, base_instance.output_dir, base_instance.audio_format, **base_instance.kwargs, **kwargs)
         self.data = {
@@ -103,7 +102,7 @@ class SeparateVR(SeparateBase):
 
     def separate(self, file_name: str) -> EaseVoiceResponse:
         if self.input_dir is None or self.output_dir is None:
-            return EaseVoiceResponse(ResponseStatus.FAILED, "Input or output directory is not provided", step_name=self.step_name)
+            return EaseVoiceResponse(ResponseStatus.FAILED, "Input or output directory is not provided")
         x_wave, y_wave, x_spec_s, y_spec_s = {}, {}, {}, {}
         band_n = len(self.mp.param["band"])
         input_high_end = None
@@ -194,7 +193,7 @@ class SeparateVR(SeparateBase):
             name=file_name,
             is_vocal=True,
         )
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Separation completed", step_name=self.step_name)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Separation completed")
 
     def inference(self, x_spec, device, model, aggressiveness, data):
         def _execute(_x_mag_pad, _roi_size, _n_window, _device, _model, _aggressiveness, _is_half=True):
@@ -301,7 +300,6 @@ class SeparateVREcho(SeparateVR):
 
 
 class SeparateMDXNet(SeparateBase):
-    step_name = "uvr5"
     def __init__(self, base_instance: SeparateBase, **kwargs):
         super().__init__(base_instance.model_name, base_instance.input_dir, base_instance.output_dir, base_instance.audio_format, **base_instance.kwargs, **kwargs)
         self.onnx = f"{uvr5_root}/{uvr5_onnx_name}"
@@ -440,11 +438,10 @@ class SeparateMDXNet(SeparateBase):
             name=file_name,
             is_vocal=False,
         )
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Separation completed", step_name=self.step_name)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Separation completed")
 
 
 class SeparateMDXC(SeparateBase):
-    step_name = "uvr5"
     def __init__(self, base_instance: SeparateBase, **kwargs):
         super().__init__(base_instance.model_name, base_instance.input_dir, base_instance.output_dir, base_instance.audio_format, **base_instance.kwargs, **kwargs)
         model = self.get_model_from_config()
@@ -583,7 +580,7 @@ class SeparateMDXC(SeparateBase):
         try:
             mix, sr = librosa.load(path, sr=44100, mono=False)
         except Exception:
-            return EaseVoiceResponse(ResponseStatus.FAILED, "Failed to load audio file", step_name=self.step_name)
+            return EaseVoiceResponse(ResponseStatus.FAILED, "Failed to load audio file")
 
         # Convert mono to stereo if needed
         if len(mix.shape) == 1:
@@ -607,4 +604,4 @@ class SeparateMDXC(SeparateBase):
             name=file_name,
             is_vocal=False,
         )
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Separation completed", step_name=self.step_name)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Separation completed")

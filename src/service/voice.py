@@ -21,7 +21,6 @@ class VoiceCloneStatus(Enum):
 
 
 class VoiceCloneService:
-    step_name = "Voice Clone"
     """
     VoiceService is a long run service that listens for voice clone tasks and processes them.
     """
@@ -52,7 +51,7 @@ class VoiceCloneService:
         sf.write(buffer, data, sampling_rate, format="WAV")
         audio = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice cloned successfully", {"sampling_rate": sampling_rate, "audio": audio}, step_name=self.step_name)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice cloned successfully", {"sampling_rate": sampling_rate, "audio": audio})
 
     def update_task_path(self, data: InferenceTaskData):
         if data.gpt_path == "default":

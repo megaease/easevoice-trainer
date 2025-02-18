@@ -123,6 +123,7 @@ class AudioService(object):
                 try:
                     if done == 0:
                         separator.separate("%s.reformatted.wav" % file_name.split(".")[0])
+                        trace_data[file_name] = ResponseStatus.SUCCESS
                 except:
                     traceback.print_exc()
                     trace_data[file_name] = ResponseStatus.FAILED
@@ -131,9 +132,9 @@ class AudioService(object):
         finally:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "UVR5 Success", trace_data, step_name="uvr5")
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "UVR5 Success", trace_data)
 
-    def slicer(
+    async def slicer(
             self,
             threshold: int = -34,
             min_length: int = 4000,
@@ -172,11 +173,11 @@ class AudioService(object):
                 data[name] = ResponseStatus.SUCCESS
             except:
                 print(file, " slice failed ", traceback.format_exc())
-                EaseVoiceResponse(ResponseStatus.FAILED, "Slice Failed", {"file_name": name}, step_name="slicer")
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Slice Success", data, step_name="slicer")
+                EaseVoiceResponse(ResponseStatus.FAILED, "Slice Failed", {"file_name": name})
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Slice Success", data)
 
 
-    def denoise(self) -> EaseVoiceResponse:
+    async def denoise(self) -> EaseVoiceResponse:
         os.makedirs(os.path.join(self.output_dir, denoises_output), exist_ok=True)
         trace_data = {}
         try:
@@ -190,13 +191,13 @@ class AudioService(object):
                 trace_data[file_name] = ResponseStatus.SUCCESS
         except:
             print(traceback.format_exc())
-            return EaseVoiceResponse(ResponseStatus.FAILED, traceback.format_exc(), trace_data, step_name="denoise")
+            return EaseVoiceResponse(ResponseStatus.FAILED, traceback.format_exc(), trace_data)
         finally:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Denoise Success", trace_data, step_name="denoise")
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Denoise Success", trace_data)
 
-    def asr(self, asr_model: str = "funasr", model_size: str = "large", language: str = "zh", precision: str = "float32") -> EaseVoiceResponse:
+    async def asr(self, asr_model: str = "funasr", model_size: str = "large", language: str = "zh", precision: str = "float32") -> EaseVoiceResponse:
         file_list = self._get_files(denoises_output)
         output_file = os.path.join(self.output_dir, asrs_output, asr_file)
         os.makedirs(os.path.join(self.output_dir, asrs_output), exist_ok=True)
@@ -207,7 +208,7 @@ class AudioService(object):
             model = FunAsr(model_size, language, precision)
             return model.recognize(file_list, output_file)
         else:
-            return EaseVoiceResponse(ResponseStatus.FAILED, "ASR model not supported", {}, step_name="asr")
+            return EaseVoiceResponse(ResponseStatus.FAILED, "ASR model not supported", {})
 
     def _get_files(self, output_path: str):
         files = []
@@ -223,16 +224,16 @@ class AudioService(object):
             self.refinement.load_text()
             self.refinement.save_file()
         resp = self.refinement.source_file_content
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Load Source Success", resp, step_name="refinement")
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Load Source Success", resp)
 
     def refinement_submit_text(self, index: str, language: str, text_content: str) -> EaseVoiceResponse:
         self.refinement.submit_text(index, language.upper(), text_content)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Submit Text Success", self.refinement.source_file_content, step_name="refinement")
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Submit Text Success", self.refinement.source_file_content)
 
     def refinement_delete_text(self, file_index: str):
         self.refinement.delete_text(file_index)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Delete Text Success", self.refinement.source_file_content, step_name="refinement")
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Delete Text Success", self.refinement.source_file_content)
 
     def refinement_reload(self):
         self.refinement.load_text()
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Reload Success", self.refinement.source_file_content, step_name="refinement")
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Reload Success", self.refinement.source_file_content)

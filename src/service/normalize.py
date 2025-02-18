@@ -13,11 +13,10 @@ class NormalizeParams:
 
 
 class NormalizeService(object):
-    step_name = "normalize"
     def __init__(self, processing_path: str):
         self.processing_path = processing_path
 
-    def normalize(self) -> EaseVoiceResponse:
+    async def normalize(self) -> EaseVoiceResponse:
         try:
             normalize = Normalize(self.processing_path)
             text_resp = normalize.text()
@@ -31,6 +30,6 @@ class NormalizeService(object):
                 return token_resp
             return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalization completed successfully", data={
                 "normalize_path": normalize.output_path
-            }, step_name=self.step_name)
+            })
         except Exception as e:
-            return EaseVoiceResponse(ResponseStatus.FAILED, str(e), step_name=self.step_name)
+            return EaseVoiceResponse(ResponseStatus.FAILED, str(e))
