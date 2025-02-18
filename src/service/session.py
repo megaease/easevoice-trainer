@@ -103,7 +103,7 @@ class SessionManager:
             else:
                 session["status"] = Status.FAILED
                 session["error"] = result.message
-            if len(result.data) > 0:
+            if result.data and len(result.data) > 0:
                 session["data"] = result.data
             self.session_list[uuid] = session
 
