@@ -3,6 +3,7 @@
 import os
 
 import torch
+torch.multiprocessing.set_start_method('spawn')
 from ..helper import str2bool
 from ...logger import logger
 from src.utils.path import get_base_path
