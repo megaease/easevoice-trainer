@@ -44,19 +44,22 @@ class FunAsr(object):
         self.language = language
         self.precision = precision
 
-    def recognize(self, file_list: list, output_file: str) -> EaseVoiceResponse:
+    def recognize(self, file_list: list, output_file: str, dump_file: str) -> EaseVoiceResponse:
         output = []
         trace_data = {}
         for file in tqdm(file_list):
             try:
                 text = self.model.generate(input=file)[0]["text"]
-                output.append(f"{file}|{self.language.upper()}|{text}")
+                output.append(f"{file}|{self.language.lower()}|{text}")
                 trace_data[file] = ResponseStatus.SUCCESS
             except:
                 print(traceback.format_exc())
                 trace_data[file] = ResponseStatus.FAILED
 
         with open(output_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(output))
+
+        with open(dump_file, "w", encoding="utf-8") as f:
             f.write("\n".join(output))
 
         return EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="asr success", data=trace_data)
@@ -110,7 +113,7 @@ class WhisperAsr(object):
         self.language = language if language != "auto" else None
         self.precision = precision
 
-    def recognize(self, file_list: list, output_file: str) -> EaseVoiceResponse:
+    def recognize(self, file_list: list, output_file: str, dump_file: str) -> EaseVoiceResponse:
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         try:
             model = WhisperModel(self.model_path, device=device, compute_type=self.precision)
@@ -137,6 +140,9 @@ class WhisperAsr(object):
                 return EaseVoiceResponse(status=ResponseStatus.FAILED, message="Failed to recognize audio", data=trace_data)
 
         with open(output_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(output))
+
+        with open(dump_file, "w", encoding="utf-8") as f:
             f.write("\n".join(output))
 
         return EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="asr success", data=trace_data)

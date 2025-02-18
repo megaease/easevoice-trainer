@@ -201,13 +201,14 @@ class AudioService(object):
     async def asr(self, asr_model: str = "funasr", model_size: str = "large", language: str = "zh", precision: str = "float32") -> EaseVoiceResponse:
         file_list = self._get_files(denoises_output)
         output_file = os.path.join(self.output_dir, asrs_output, asr_file)
+        dump_file = os.path.join(self.output_dir, refinements_output, refinement_file)
         os.makedirs(os.path.join(self.output_dir, asrs_output), exist_ok=True)
         if asr_model == "faster-whisper":
             model = WhisperAsr(model_size, language, precision)
-            return model.recognize(file_list, output_file)
+            return model.recognize(file_list, output_file, dump_file)
         elif asr_model == "funasr":
             model = FunAsr(model_size, language, precision)
-            return model.recognize(file_list, output_file)
+            return model.recognize(file_list, output_file, dump_file)
         else:
             return EaseVoiceResponse(ResponseStatus.FAILED, "ASR model not supported", {})
 
