@@ -4,8 +4,6 @@ import subprocess
 from dataclasses import dataclass
 from typing import Optional
 
-import logger
-
 from src.utils.response import EaseVoiceResponse
 
 
@@ -75,7 +73,6 @@ class MultiProcessOutputConnector:
                 if isinstance(line, bytes):
                     line = line.decode('utf-8')
 
-                logger.logger.error(f"read line: {line}")
                 parsed = self._parse_result(line.strip())
                 if parsed is not None:
                     yield parsed
@@ -120,6 +117,8 @@ class MultiProcessOutputConnector:
                 data = line[len(self._log_prefix):].strip()
                 data = json.loads(data)
                 return ConnectorData(dataType=ConnectorDataType.LOG, log=data)
+            else:
+                return line
         except Exception as e:
             print(f"meet error when parse stdout: {e}, input: <{line}>")
         return None
