@@ -64,9 +64,10 @@ class MultiProcessOutputConnector:
 
     def read_data(self, process: subprocess.Popen):
         while True:
-            ready, _, _ = select.select([process.stdout], [], [], 0.1)
-            if ready:
-                line = process.stdout.readline()  # pyright: ignore
+            ready, _, _ = select.select([process.stdout, process.stderr], [], [], 0.1)
+
+            for stream in ready:
+                line = stream.readline()
                 if not line:
                     continue
 
@@ -78,19 +79,23 @@ class MultiProcessOutputConnector:
                     yield parsed
 
             if process.poll() is not None:
-                if process.stdout:
-                    try:
-                        remaining = process.stdout.read()  # pyright: ignore
-                        if remaining:
-                            if isinstance(remaining, bytes):
-                                remaining = remaining.decode('utf-8')
-                            for l in remaining.splitlines():
-                                parsed = self._parse_result(l.strip())
-                                if parsed is not None:
-                                    yield parsed
-                    except ValueError:
-                        print("meet error when read remaining stdout")
+                for stream in [process.stdout, process.stderr]:
+                    if stream:
+                        try:
+                            remaining = stream.read()
+                            if remaining:
+                                if isinstance(remaining, bytes):
+                                    remaining = remaining.decode('utf-8')
+                                for l in remaining.splitlines():
+                                    parsed = self._parse_result(l.strip())
+                                    if parsed is not None:
+                                        yield parsed
+                        except ValueError:
+                            print("Error when reading remaining output")
+
                 break
+
+        process.wait()
 
     def _parse_result(self, line: str):
         try:
