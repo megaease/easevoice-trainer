@@ -1,22 +1,15 @@
 import asyncio
 
-from dataclasses import asdict, dataclass, is_dataclass
-from http import HTTPStatus
+from dataclasses import asdict, is_dataclass
+from datetime import datetime
 import os
 import signal
 import threading
 import traceback
 from enum import Enum
-from functools import wraps
 from typing import Dict, Any
-import multiprocessing as mp
-import uuid
-from fastapi import HTTPException
 import psutil
 from typing import Optional
-
-from sympy import Union
-from logger import logger
 
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
@@ -60,32 +53,27 @@ class SessionManager:
         """Attempts to start a new session; rejects if another task is already running."""
         if is_dataclass(request):
             request = asdict(request)
-        if self.exist_session is not None:
-            self.session_list[uuid] = {
-                "uuid": uuid,
-                "task_name": task_name,
-                "request": request,
-                "status": Status.FAILED,
-                "error": "There is an another task running.",
-            }
-            self.session_uuids.append(uuid)
-            self._check_session_limit()
-
-            raise RuntimeError(
-                f"A task is already running. Cannot submit another task!"
-            )
 
         self.session_list[uuid] = {
             "uuid": uuid,
             "task_name": task_name,
             "request": request,
             "status": Status.RUNNING,
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "error": None,  # Stores error details if task fails
         }
-        self.exist_session = uuid
         self.session_uuids.append(uuid)
-        # do not need use transaction here, we only care about the final state
         self._check_session_limit()
+
+        if self.exist_session is not None:
+            self.session_list[uuid].update({
+                "status": Status.FAILED,
+                "error": "There is an another task running.",
+            })
+            raise RuntimeError(
+                f"A task is already running. Cannot submit another task!"
+            )
+        self.exist_session = uuid
 
     def add_session_task(self, uuid: str, task: asyncio.Task[Any]):
         self.session_task[uuid] = task
@@ -116,6 +104,7 @@ class SessionManager:
                 session["message"] = result.message
             else:
                 session["status"] = Status.FAILED
+                session["message"] = result.message
                 session["error"] = result.message
             if result.data and len(result.data) > 0:
                 session["data"] = result.data

@@ -268,7 +268,7 @@ class VoiceCloneAPI:
 
                 result = service.clone(uid, request)
             except Exception as e:
-                logger.error(f"Failed to clone voice for {request}: {e}")
+                logger.error(f"Failed to clone voice for {request}: {e}", exc_info=True)
                 result = EaseVoiceResponse(ResponseStatus.FAILED, str(e))
             finally:
                 if service is not None:
@@ -283,6 +283,7 @@ class VoiceCloneAPI:
                 else:
                     session_manager.end_session(uid, result)
             except Exception as e:
+                logger.error(f"Failed to clone voice for voice clone {request}: {e}", exc_info=True)
                 session_manager.fail_session(uid, str(e))
 
         thread = threading.Thread(target=wrapper)
