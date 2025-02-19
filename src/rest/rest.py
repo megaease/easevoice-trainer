@@ -22,10 +22,9 @@ from src.rest.types import TaskType, TaskCMD
 from src.service.audio import AudioUVR5Params, AudioSlicerParams, AudioASRParams, AudioService, AudioDenoiseParams, AudioRefinementSubmitParams, AudioRefinementDeleteParams
 from src.service.file import FileService
 from src.service.namespace import NamespaceService
-from src.service.normalize import NormalizeService, NormalizeParams
-from src.service.session import SessionManager, async_start_session, async_stop_session, backtask_with_session_guard, start_task_with_subprocess, stop_task_with_subprocess
+from src.service.normalize import NormalizeParams
+from src.service.session import SessionManager, backtask_with_session_guard, start_task_with_subprocess, stop_task_with_subprocess
 from src.service.session import session_manager
-from src.service.train import do_train_gpt
 from src.service.voice import VoiceCloneService
 from src.train.gpt import GPTTrainParams
 from src.train.helper import list_train_gpts, list_train_sovits
@@ -324,15 +323,13 @@ class NormalizeAPI:
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
-        uid = uuid.uuid4()
-        service = NormalizeService(request.output_dir)
-        await async_start_session(service.normalize, str(uid), "Normalize")
+        uid = str(uuid.uuid4())
+        backtask_with_session_guard(uid, TaskType.normalize, asdict(request), start_task_with_subprocess, uid=uid, request=request, cmd_file=TaskCMD.normalize)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalize started", uuid=str(uid))
 
     async def normalize_stop(self, uid: str):
         try:
-            async_stop_session(uid, "Normalize")
-            return {"message": "Normalize stopped"}
+            return stop_task_with_subprocess(uid, TaskType.normalize)
         except Exception as e:
             logger.error(f"failed to stop Normalize: {e}")
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Normalize: {e}"})
@@ -360,80 +357,58 @@ class AudioAPI:
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
-        uid = uuid.uuid4()
-        service = AudioService(source_dir=request.source_dir, output_dir=request.output_dir)
-        await async_start_session(service.uvr5, str(uid), "AudioUVR5", model_name=request.model_name, audio_format=request.audio_format)
-
+        uid = str(uuid.uuid4())
+        backtask_with_session_guard(uid, TaskType.audio_uvr5, asdict(request), start_task_with_subprocess, uid=uid, request=request, cmd_file=TaskCMD.audio_uvr5)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio UVR5 started", uuid=str(uid))
+
+    async def audio_uvr5_stop(self, uid: str):
+        try:
+            return stop_task_with_subprocess(uid, TaskType.audio_uvr5)
+        except Exception as e:
+            logger.error(f"failed to stop Audio UVR5: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio UVR5: {e}"})
 
     async def audio_slicer(self, request: AudioSlicerParams):
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
         uid = uuid.uuid4()
-        service = AudioService(source_dir=request.source_dir, output_dir=request.output_dir)
-        await async_start_session(service.slicer, str(uid), "AudioSlicer",
-                                  threshold=request.threshold,
-                                  min_length=request.min_length,
-                                  min_interval=request.min_interval,
-                                  hop_size=request.hop_size,
-                                  max_silent_kept=request.max_silent_kept,
-                                  normalize_max=request.normalize_max,
-                                  alpha_mix=request.alpha_mix,
-                                  )
+        backtask_with_session_guard(uid, TaskType.audio_slicer, asdict(request), start_task_with_subprocess, uid=uid, request=request, cmd_file=TaskCMD.audio_slicer)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Slicer started", uuid=str(uid))
+
+    async def audio_slicer_stop(self, uid: str):
+        try:
+            return stop_task_with_subprocess(uid, TaskType.audio_slicer)
+        except Exception as e:
+            logger.error(f"failed to stop Audio Slicer: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio Slicer: {e}"})
 
     async def audio_denoise(self, request: AudioDenoiseParams):
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
-        uid = uuid.uuid4()
-        service = AudioService(source_dir=request.source_dir, output_dir=request.output_dir)
-        await async_start_session(service.denoise, str(uid), "AudioDenoise")
+        uid = str(uuid.uuid4())
+        backtask_with_session_guard(uid, TaskType.audio_denoise, asdict(request), start_task_with_subprocess, uid=uid, request=request, cmd_file=TaskCMD.audio_denoise)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Denoise started", uuid=str(uid))
+
+    async def audio_denoise_stop(self, uid: str):
+        try:
+            return stop_task_with_subprocess(uid, TaskType.audio_denoise)
+        except Exception as e:
+            logger.error(f"failed to stop Audio Denoise: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio Denoise: {e}"})
 
     async def audio_asr(self, request: AudioASRParams):
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
-        uid = uuid.uuid4()
-        service = AudioService(source_dir=request.source_dir, output_dir=request.output_dir)
-        await async_start_session(service.asr, str(uid), "AudioASR",
-                                  asr_model=request.asr_model,
-                                  model_size=request.model_size,
-                                  language=request.language,
-                                  precision=request.precision,
-                                  )
+        uid = str(uuid.uuid4())
+        backtask_with_session_guard(uid, TaskType.audio_asr, asdict(request), start_task_with_subprocess, uid=uid, request=request, cmd_file=TaskCMD.audio_asr)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio ASR started", uuid=str(uid))
-
-    async def audio_uvr5_stop(self, uid: str):
-        try:
-            async_stop_session(uid, "AudioUVR5")
-            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio UVR5 stopped")
-        except Exception as e:
-            logger.error(f"failed to stop Audio UVR5: {e}")
-            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio UVR5: {e}"})
-
-    async def audio_slicer_stop(self, uid: str):
-        try:
-            async_stop_session(uid, "AudioSlicer")
-            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Slicer stopped")
-        except Exception as e:
-            logger.error(f"failed to stop Audio Slicer: {e}")
-            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio Slicer: {e}"})
-
-    async def audio_denoise_stop(self, uid: str):
-        try:
-            async_stop_session(uid, "AudioDenoise")
-            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Denoise stopped")
-        except Exception as e:
-            logger.error(f"failed to stop Audio Denoise: {e}")
-            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio Denoise: {e}"})
 
     async def audio_asr_stop(self, uid: str):
         try:
-            async_stop_session(uid, "AudioASR")
-            return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio ASR stopped")
+            return stop_task_with_subprocess(uid, TaskType.audio_asr)
         except Exception as e:
             logger.error(f"failed to stop Audio ASR: {e}")
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Audio ASR: {e}"})
