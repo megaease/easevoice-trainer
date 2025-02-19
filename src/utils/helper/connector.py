@@ -77,7 +77,10 @@ class MultiProcessOutputConnector:
 
                 parsed = self._parse_result(line.strip())
                 if parsed is not None:
-                    yield parsed
+                    if parsed.dataType == ConnectorDataType.OTHER:
+                        print(parsed.other)
+                    else:
+                        yield parsed
 
             if process.poll() is not None:
                 for stream in [process.stdout, process.stderr]:
@@ -90,7 +93,10 @@ class MultiProcessOutputConnector:
                                 for l in remaining.splitlines():
                                     parsed = self._parse_result(l.strip())
                                     if parsed is not None:
-                                        yield parsed
+                                        if parsed.dataType == ConnectorDataType.OTHER:
+                                            print(parsed.other)
+                                        else:
+                                            yield parsed
                         except ValueError:
                             print("Error when reading remaining output")
 
