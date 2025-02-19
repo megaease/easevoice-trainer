@@ -1,19 +1,25 @@
 import asyncio
-
-from dataclasses import asdict, is_dataclass
-from datetime import datetime
-from http import HTTPStatus
+import json
 import os
 import signal
+import subprocess
+import sys
+import tempfile
 import threading
 import traceback
+from dataclasses import asdict, is_dataclass
+from datetime import datetime
 from enum import Enum
+from http import HTTPStatus
 from typing import Dict, Any
-from fastapi import HTTPException
-import psutil
 from typing import Optional
-import uuid
+
+import psutil
+from fastapi import HTTPException
 from logger import logger
+
+from src.utils import config
+from src.utils.helper.connector import MultiProcessOutputConnector, ConnectorDataType
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
@@ -33,6 +39,7 @@ class SessionManager:
     session_uuids = list()
     session_task = dict()
     exist_session: Optional[str] = None
+    session_subprocess = dict()
 
     def __new__(cls):
         """Singleton pattern to ensure only one instance of SessionManager exists."""
@@ -44,6 +51,7 @@ class SessionManager:
                     cls._instance.session_list = dict()
                     cls._instance.session_uuids = list()
                     cls._instance.session_task = dict()
+                    cls._instance.session_subprocess = dict()
         return cls._instance
 
     def _check_session_limit(self):
@@ -86,6 +94,15 @@ class SessionManager:
 
     def remove_session_task(self, uuid: str):
         self.session_task.pop(uuid)
+
+    def add_session_subprocess(self, uuid: str, pid: int):
+        self.session_subprocess[uuid] = pid
+
+    def remove_session_subprocess(self, uuid: str):
+        self.session_subprocess.pop(uuid)
+
+    def get_session_subprocess(self, uuid: str) -> Optional[int]:
+        return self.session_subprocess.get(uuid)
 
     def end_session(self, uuid: str, result: Any):
         """Marks task as completed successfully."""
@@ -195,20 +212,47 @@ def backtask_with_session_guard(uid: str, task_name: str, request: dict, func, *
     return uid
 
 
-def async_stop_session(uuid: str, task_name: str):
-    """Stops a session started in coroutine."""
+def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
+    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as fp:
+        params = asdict(request)
+        params = json.dumps(params)
+        fp.write(params)
+        fp.seek(0)
+        proc = subprocess.Popen(
+            [sys.executable, os.path.join(config.cmd_path, cmd_file, "-c", fp.name)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=config.base_path,
+        )
+        session_manager.add_session_subprocess(uid, proc.pid)
+        connector = MultiProcessOutputConnector()
+        for data in connector.read_data(proc):
+            if data.dataType == ConnectorDataType.RESP:
+                resp = data.response
+                session_manager.end_session_with_ease_voice_response(uid, resp)
+                session_manager.remove_session_subprocess(uid)
+
+
+def _check_session(uid: str, task_name: str) -> Optional[EaseVoiceResponse]:
     session_info = session_manager.get_session_info()
     if not session_info:
         response = EaseVoiceResponse(ResponseStatus.FAILED, "No active task to stop.")
-        session_manager.end_session_with_ease_voice_response(uuid, response)
-        session_manager.remove_session_task(uuid)
+        session_manager.end_session_with_ease_voice_response(uid, response)
+        session_manager.remove_session_task(uid)
         return response
-    current_session = session_info.get(uuid, {})
+    current_session = session_info.get(uid, {})
     if current_session.get("task_name") != task_name or current_session.get("status") != Status.RUNNING:
         response = EaseVoiceResponse(ResponseStatus.FAILED, "Task name does not match.")
-        session_manager.end_session_with_ease_voice_response(uuid, response)
-        session_manager.remove_session_task(uuid)
+        session_manager.end_session_with_ease_voice_response(uid, response)
+        session_manager.remove_session_task(uid)
         return response
+    return None
+
+
+def async_stop_session(uuid: str, task_name: str):
+    """Stops a session started in coroutine."""
+    response = _check_session(uuid, task_name)
+    if response:
+        return response
+
     task = session_manager.get_session_task(uuid)
     if task:
         task.cancel()
@@ -220,6 +264,23 @@ def async_stop_session(uuid: str, task_name: str):
     response = EaseVoiceResponse(ResponseStatus.FAILED, "No task to stop.")
     session_manager.end_session_with_ease_voice_response(uuid, response)
     session_manager.remove_session_task(uuid)
+    return response
+
+
+def stop_task_with_subprocess(uuid: str, task_name: str):
+    response = _check_session(uuid, task_name)
+    if response:
+        return response
+
+    pid = session_manager.get_session_subprocess(uuid)
+    if pid:
+        _kill_proc_tree(pid)
+        session_manager.remove_session_subprocess(uuid)
+        response = EaseVoiceResponse(ResponseStatus.SUCCESS, "Task stopped by user.")
+        session_manager.end_session_with_ease_voice_response(uuid, response)
+        return response
+    response = EaseVoiceResponse(ResponseStatus.FAILED, "No task to stop.")
+    session_manager.end_session_with_ease_voice_response(uuid, response)
     return response
 
 

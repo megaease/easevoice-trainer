@@ -1,10 +1,6 @@
-from dataclasses import asdict
-import json
 import os
-import subprocess
-import sys
-import tempfile
 import uuid
+from dataclasses import asdict
 from http import HTTPStatus
 
 from fastapi import FastAPI, APIRouter, HTTPException
@@ -22,20 +18,18 @@ from src.api.api import (
     ListDirectoryResponse, EaseVoiceRequest,
 )
 from src.logger import logger
-from src.rest.types import TaskType
+from src.rest.types import TaskType, TaskCMD
 from src.service.audio import AudioUVR5Params, AudioSlicerParams, AudioASRParams, AudioService, AudioDenoiseParams, AudioRefinementSubmitParams, AudioRefinementDeleteParams
 from src.service.file import FileService
 from src.service.namespace import NamespaceService
 from src.service.normalize import NormalizeService, NormalizeParams
-from src.service.session import SessionManager, async_start_session, async_stop_session, backtask_with_session_guard
+from src.service.session import SessionManager, async_start_session, async_stop_session, backtask_with_session_guard, start_task_with_subprocess, stop_task_with_subprocess
 from src.service.session import session_manager
 from src.service.train import do_train_gpt
 from src.service.voice import VoiceCloneService
 from src.train.gpt import GPTTrainParams
 from src.train.helper import list_train_gpts, list_train_sovits
 from src.train.sovits import SovitsTrainParams
-from src.utils import config
-from src.utils.helper.connector import ConnectorDataType, MultiProcessOutputConnector
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
@@ -289,43 +283,24 @@ class TrainAPI:
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
-        uid = uuid.uuid4()
-        await async_start_session(do_train_gpt, str(uid), "TrainGPT", params=params)
+        uid = str(uuid.uuid4())
+        backtask_with_session_guard(uid, TaskType.train_gpt, asdict(params), start_task_with_subprocess, uid=uid, request=params, cmd_file=TaskCMD.train_gpt)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", uid=str(uid))
 
     async def train_sovits(self, params: SovitsTrainParams):
         uid = str(uuid.uuid4())
-        backtask_with_session_guard(uid, TaskType.train_sovits, asdict(params), TrainAPI._do_train_sovits, id=uid, params=params)
+        backtask_with_session_guard(uid, TaskType.train_sovits, asdict(params), start_task_with_subprocess, uid=uid, request=params, cmd_file=TaskCMD.tran_sovits)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Sovits training started", uid=uid)
-
-    @staticmethod
-    def _do_train_sovits(id: str, params: SovitsTrainParams):
-        with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as fp:
-            data = asdict(params)
-            data = json.dumps(data)
-            fp.write(data)
-            proc = subprocess.Popen(
-                [sys.executable, os.path.join(config.cmd_path, "train_sovits.py", "-c", fp.name)],
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=config.base_path,
-            )
-            connector = MultiProcessOutputConnector()
-            for data in connector.read_data(proc):
-                if data.dataType == ConnectorDataType.RESP:
-                    resp = data.response
-                    resp.uuid = id  # pyright: ignore
-                    session_manager.end_session_with_ease_voice_response(id, resp)  # pyright: ignore
-                # TODO
-                # add loss
 
     async def train_gpt_stop(self, uid: str):
         try:
-            async_stop_session(uid, "TrainGPT")
-            return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training stopped")
+            return stop_task_with_subprocess(uid, TaskType.train_gpt)
         except Exception as e:
             logger.error(f"failed to stop GPT training: {e}")
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop GPT training: {e}"})
 
     async def train_sovits_stop(self, uid: str):
+        pass
         # TODO
         ...
         # try:

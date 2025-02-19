@@ -6,3 +6,9 @@ class TaskType:
     """
     voice_clone = "voice_clone"
     train_sovits = "train_sovits"
+    train_gpt = "train_gpt"
+
+
+class TaskCMD:
+    tran_sovits = "train_sovits.py"
+    train_gpt = "train_gpt.py"

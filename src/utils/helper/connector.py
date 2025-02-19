@@ -1,5 +1,3 @@
-
-
 from dataclasses import dataclass
 import json
 import select
@@ -80,14 +78,18 @@ class MultiProcessOutputConnector:
                     yield parsed
 
             if process.poll() is not None:
-                remaining = process.stdout.read()  # pyright: ignore
-                if remaining:
-                    if isinstance(remaining, bytes):
-                        remaining = remaining.decode('utf-8')
-                    for l in remaining.splitlines():
-                        parsed = self._parse_result(l.strip())
-                        if parsed is not None:
-                            yield parsed
+                if process.stdout:
+                    try:
+                        remaining = process.stdout.read()  # pyright: ignore
+                        if remaining:
+                            if isinstance(remaining, bytes):
+                                remaining = remaining.decode('utf-8')
+                            for l in remaining.splitlines():
+                                parsed = self._parse_result(l.strip())
+                                if parsed is not None:
+                                    yield parsed
+                    except ValueError:
+                        print("meet error when read remaining stdout")
                 break
 
     def _parse_result(self, line: str):
