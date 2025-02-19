@@ -188,9 +188,9 @@ async def async_start_session(func, uuid: str, target_name: str, **kwargs):
     session_manager.add_session_task(uuid, task)
 
 
-def backtask_with_session_guard(uuid: str, task_name: str, request: dict, func, **kwargs):
+def backtask_with_session_guard(uuid: str, task_name: str, request_params: dict, func, **kwargs):
     try:
-        session_manager.start_session(uuid, task_name, request)
+        session_manager.start_session(uuid, task_name, request_params)
     except Exception as e:
         logger.error(f"Failed to start session for task {task_name}: {e}", exc_info=True)
         session_manager.end_session_with_ease_voice_response(uuid, EaseVoiceResponse(ResponseStatus.FAILED, "There is an another task running."))
@@ -204,7 +204,7 @@ def backtask_with_session_guard(uuid: str, task_name: str, request: dict, func, 
             else:
                 session_manager.end_session(uuid, result)
         except Exception as e:
-            logger.error(f"Failed to do task for {task_name} with {request}: {e}", exc_info=True)
+            logger.error(f"Failed to do task for {task_name} with {request_params}: {e}", exc_info=True)
             session_manager.fail_session(uuid, str(e))
 
     thread = threading.Thread(target=wrapper)
