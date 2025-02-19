@@ -17,11 +17,12 @@ from src.api.api import (
     ListDirectoryResponse, EaseVoiceRequest,
 )
 from src.logger import logger
+from src.rest.types import TaskType
 from src.service.audio import AudioUVR5Params, AudioSlicerParams, AudioASRParams, AudioService, AudioDenoiseParams, AudioRefinementSubmitParams, AudioRefinementDeleteParams
 from src.service.file import FileService
 from src.service.namespace import NamespaceService
 from src.service.normalize import NormalizeService, NormalizeParams
-from src.service.session import SessionManager, async_start_session, async_stop_session
+from src.service.session import SessionManager, async_start_session, async_stop_session, threading_backtask_with_session_guard
 from src.service.session import session_manager
 from src.service.train import do_train_gpt, do_train_sovits
 from src.service.voice import VoiceCloneService
@@ -230,11 +231,8 @@ class VoiceCloneAPI:
         self.service = None
 
     def _register_routes(self):
-        self.router.post("/voiceclone/start")(self.start_service)
         self.router.post("/voiceclone/clone")(self.clone)
-        self.router.delete("/voiceclone/stop")(self.stop_service)
         self.router.get("/voiceclone/models")(self.get_available_models)
-        self.router.get("/voiceclone/status")(self.get_status)
 
     async def get_available_models(self):
         try:
@@ -245,54 +243,22 @@ class VoiceCloneAPI:
             logger.error(f"failed to get available models: {e}")
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to get available models: {e}"})
 
-    async def get_status(self):
-        if self.service is None:
-            raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail={"error": "voice clone service is not started"})
-        status = self.service.get_status()
-        return {"status": status}
-
-    async def start_service(self):
-        uid = uuid.uuid4()
-        if self.service is None:
-            try:
-                self.session_manager.start_session(str(uid), self._name)
-            except Exception as e:
-                msg = f"failed to start session for voice clone service: {str(e)}"
-                logger.error(msg)
-                raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": msg})
-            try:
-                self.service = VoiceCloneService()
-            except Exception as e:
-                msg = f"failed to start voice clone service: {str(e)}"
-                logger.error(msg)
-                self.service = None
-                self.session_manager.fail_session(str(uid), msg)
-                raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": msg})
-        return {"message": "Voice Clone Service is started", "uid": str(uid)}
-
     async def clone(self, request: dict):
-        if self.service is None:
-            raise HTTPException(status_code=HTTPStatus.SERVICE_UNAVAILABLE, detail={"error": "please start the service before clone"})
-        try:
-            return self.service.clone(request)
-        except Exception as e:
-            logger.error(f"failed to clone voice for {request}, err: {e}", exc_info=True)
-            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to clone voice: {e}"})
+        uid = threading_backtask_with_session_guard(TaskType.voice_clone, VoiceCloneAPI._do_clone, request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice clone started", uid=str(uid))
 
-    async def stop_service(self, uid: str):
-        if self.service is not None:
-            try:
-                self.service.close()
-                self.service = None
-                self.session_manager.end_session(uid, "stop voice clone service")
-            except Exception as e:
-                msg = f"failed to stop voice clone service: {str(e)}"
-                logger.error(msg)
-                self.service = None
-                self.session_manager.fail_session(uid, msg)
-                raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": msg})
-            return {"message": "Voice Clone Service is stopped"}
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail={"error": "voice clone service is not started"})
+    @staticmethod
+    def _do_clone(request: dict):
+        service = None
+        try:
+            service = VoiceCloneService()
+            result = service.clone(request)
+        except Exception as e:
+            result = EaseVoiceResponse(ResponseStatus.FAILED, f"failed to clone voice: {e}")
+        finally:
+            if service is not None:
+                service.close()
+        return result
 
 
 class TrainAPI:
@@ -336,6 +302,7 @@ class TrainAPI:
         except Exception as e:
             logger.error(f"failed to stop Sovits training: {e}")
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Sovits training: {e}"})
+
 
 class NormalizeAPI:
     def __init__(self):
@@ -573,6 +540,7 @@ class EaseVoiceAPI:
             "progress": session.get("current_step") / session.get("total_steps") * 100,
         })
         return response
+
 
 # Initialize FastAPI and NamespaceService
 app = FastAPI()

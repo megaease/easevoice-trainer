@@ -1,5 +1,6 @@
 import asyncio
 
+from http import HTTPStatus
 import os
 import signal
 import threading
@@ -8,8 +9,11 @@ from enum import Enum
 from functools import wraps
 from typing import Dict, Any
 import multiprocessing as mp
+import uuid
+from fastapi import HTTPException
 import psutil
 from typing import Optional
+from logger import logger
 
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
@@ -28,6 +32,7 @@ class SessionManager:
     MAX_SESSIONS = 10
     session_list = dict()
     session_uuids = list()
+    session_task = dict()
     exist_session: Optional[str] = None
 
     def __new__(cls):
@@ -47,17 +52,19 @@ class SessionManager:
             uuid = self.session_uuids.pop(0)
             self.session_list.pop(uuid)
 
-    def start_session(self, uuid: str, task_name: str):
+    def start_session(self, uuid: str, task_name: str, request: Optional[dict] = None):
         """Attempts to start a new session; rejects if another task is already running."""
         if self.exist_session is not None:
             self.session_list[uuid] = {
                 "uuid": uuid,
                 "task_name": task_name,
+                "request": request,
                 "status": Status.FAILED,
                 "error": "There is an another task running.",
             }
             self.session_uuids.append(uuid)
             self._check_session_limit()
+
             raise RuntimeError(
                 f"A task is already running. Cannot submit another task!"
             )
@@ -65,6 +72,7 @@ class SessionManager:
         self.session_list[uuid] = {
             "uuid": uuid,
             "task_name": task_name,
+            "request": request,
             "status": Status.RUNNING,
             "error": None,  # Stores error details if task fails
         }
@@ -168,6 +176,31 @@ def session_guard(task_name: str, uuid: str):
         return wrapper
 
     return decorator
+
+
+def threading_backtask_with_session_guard(task_name: str, fn, request: Any):
+    uid = str(uuid.uuid4())
+    try:
+        session_manager.start_session(uid, task_name, request)
+    except Exception as e:
+        logger.error(f"Failed to start session for task {task_name}: {e}")
+        session_manager.end_session_with_ease_voice_response(uid, EaseVoiceResponse(ResponseStatus.FAILED, "There is an another task running."))
+        raise HTTPException(status_code=HTTPStatus.CONFLICT, detail="There is an another task running.")
+
+    def wrapper():
+        try:
+            result = fn(request)
+            if isinstance(result, EaseVoiceResponse):
+                session_manager.end_session_with_ease_voice_response(uid, result)
+            else:
+                session_manager.end_session(uid, result)
+        except Exception as e:
+            logger.error(f"Error occurred in task {task_name}: {e}", exc_info=True)
+            session_manager.fail_session(uid, str(e))
+
+    thread = threading.Thread(target=wrapper)
+    thread.start()
+    return uid
 
 
 def start_train_session_with_spawn(func, uuid: str, target_name: str, params: Any):

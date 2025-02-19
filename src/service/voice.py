@@ -1,8 +1,6 @@
 import base64
-from enum import Enum
 import gc
 import io
-import multiprocessing as mp
 import numpy as np
 import soundfile as sf
 import torch
@@ -14,46 +12,33 @@ from src.train.helper import list_train_gpts, list_train_sovits
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
-class VoiceCloneStatus(Enum):
-    RUNNING = "Running"
-    COMPLETED = "Completed"
-    ERROR = "Error"
-
-
 class VoiceCloneService:
     """
     VoiceService is a long run service that listens for voice clone tasks and processes them.
     """
 
     def __init__(self):
-        self.queue = mp.Queue()
-        self.runner_process = Runner()
+        self.runner = Runner()
 
     def close(self):
-        if self.runner_process is not None:
-            self.runner_process = None
+        if self.runner is not None:
+            self.runner = None
             gc.collect()
             torch.cuda.empty_cache()
 
-    def get_status(self):
-        if self.runner_process is None:
-            return VoiceCloneStatus.COMPLETED
-        return VoiceCloneStatus.RUNNING
-
     def clone(self, params: dict):
         data = InferenceTaskData(**params)
-        data = self.update_task_path(data)
-        items, seed = self.runner_process.inference(data)  # pyright: ignore
+        data = self._update_task_path(data)
+        items, seed = self.runner.inference(data)  # pyright: ignore
 
         sampling_rate = items[0][0]
         data = np.concatenate([item[1] for item in items])
         buffer = io.BytesIO()
         sf.write(buffer, data, sampling_rate, format="WAV")
         audio = base64.b64encode(buffer.getvalue()).decode("utf-8")
-
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice cloned successfully", {"sampling_rate": sampling_rate, "audio": audio})
 
-    def update_task_path(self, data: InferenceTaskData):
+    def _update_task_path(self, data: InferenceTaskData):
         if data.gpt_path == "default":
             data.gpt_path = ""
         if data.sovits_path == "default":
