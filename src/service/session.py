@@ -212,21 +212,23 @@ def backtask_with_session_guard(uuid: str, task_name: str, request_params: dict,
 
 
 def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
-    with tempfile.TemporaryFile(mode="w+", encoding="utf-8") as fp:
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8", delete=False) as fp:
         params = asdict(request)
         params = json.dumps(params)
         fp.write(params)
-        proc = subprocess.Popen(
-            [sys.executable, os.path.join(config.cmd_path, cmd_file), "-c", fp.name],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=config.base_path,
-        )
-        session_manager.add_session_subprocess(uid, proc.pid)
-        connector = MultiProcessOutputConnector()
-        for data in connector.read_data(proc):
-            if data.dataType == ConnectorDataType.RESP:
-                resp = data.response
-                session_manager.end_session_with_ease_voice_response(uid, resp)
-                session_manager.remove_session_subprocess(uid)
+        temp_file_path = fp.name
+
+    proc = subprocess.Popen(
+        [sys.executable, os.path.join(config.cmd_path, cmd_file), "-c", temp_file_path],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=config.base_path,
+    )
+    session_manager.add_session_subprocess(uid, proc.pid)
+    connector = MultiProcessOutputConnector()
+    for data in connector.read_data(proc):
+        if data.dataType == ConnectorDataType.RESP:
+            resp = data.response
+            session_manager.end_session_with_ease_voice_response(uid, resp)
+            session_manager.remove_session_subprocess(uid)
 
 
 def _check_session(uid: str, task_name: str) -> Optional[EaseVoiceResponse]:
