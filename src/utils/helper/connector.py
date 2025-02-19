@@ -1,0 +1,116 @@
+
+
+from dataclasses import dataclass
+import json
+import select
+from typing import Optional
+
+from matplotlib.ft2font import LOAD_CROP_BITMAP
+from src.utils.response import EaseVoiceResponse
+import subprocess
+
+
+class ConnectorDataType:
+    RESP = "response"
+    LOSS = "loss"
+    LOG = "LOG"
+
+
+@dataclass
+class ConnectorDataLoss:
+    step: int
+    loss: float
+    other: dict
+
+
+@dataclass
+class ConnectorData:
+    dataType: str
+    response: Optional[EaseVoiceResponse] = None
+    loss: Optional[ConnectorDataLoss] = None
+    log: Optional[dict] = None
+
+
+class MultiProcessOutputConnector:
+    """
+    MultiProcessOutputConnector: works like multiprocessing Queue.
+    When use Popen start a new process, write result or log use this class.
+    Then main process can easily read data from stdout or stderr use this class.
+    """
+
+    def __init__(self):
+        self._resp_prefix = "response-of-easevoice"
+        self._loss_prefix = "loss-of-easevoice"
+        self._log_prefix = "log-of-easevoice"
+
+    def _print(self, prefix: str, data: str):
+        print(f"{prefix} {data}")
+
+    def write_response(self, resp: EaseVoiceResponse):
+        data = json.dumps(resp)
+        self._print(self._resp_prefix, data)
+
+    def write_loss(self, step: int, loss: float, other: Optional[dict] = None):
+        data = {
+            "step": step,
+            "loss": loss
+        }
+        if other is not None:
+            data.update(other)
+        json_data = json.dumps(data)
+        self._print(self._loss_prefix, json_data)
+
+    def write_log(self, log: dict):
+        json_data = json.dumps(log)
+        self._print(self._log_prefix, json_data)
+
+    def read_data(self, process: subprocess.Popen):
+        while True:
+            ready, _, _ = select.select([process.stdout], [], [], 0.1)
+            if ready:
+                line = process.stdout.readline()  # pyright: ignore
+                if not line:
+                    continue
+
+                if isinstance(line, bytes):
+                    line = line.decode('utf-8')
+
+                parsed = self._parse_result(line.strip())
+                if parsed is not None:
+                    yield parsed
+
+            if process.poll() is not None:
+                remaining = process.stdout.read()  # pyright: ignore
+                if remaining:
+                    if isinstance(remaining, bytes):
+                        remaining = remaining.decode('utf-8')
+                    for l in remaining.splitlines():
+                        parsed = self._parse_result(l.strip())
+                        if parsed is not None:
+                            yield parsed
+                break
+
+    def _parse_result(self, line: str):
+        try:
+            if line.startswith(self._resp_prefix):
+                data = line[len(self._resp_prefix):].strip()
+                data = json.loads(data)
+                return ConnectorData(dataType=ConnectorDataType.RESP, response=EaseVoiceResponse(**data))
+
+            elif line.startswith(self._loss_prefix):
+                data = line[len(self._loss_prefix):].strip()
+                data = json.loads(data)
+                loss = data["loss"]
+                step = data["step"]
+                data.pop("loss")
+                data.pop("step")
+                l = ConnectorDataLoss(step, loss, data)
+                return ConnectorData(dataType=ConnectorDataType.LOSS, loss=l)
+
+            elif line.startswith(self._log_prefix):
+                data = line[len(self._log_prefix):].strip()
+                data = json.loads(data)
+                return ConnectorData(dataType=ConnectorDataType.LOG, log=data)
+        except Exception as e:
+            print(f"meet error when parse stdout: {e}, input: <{line}>")
+        return None

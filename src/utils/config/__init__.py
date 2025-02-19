@@ -40,6 +40,7 @@ all_sovits_train_output_dir = os.path.join(base_path, model_root, "sovits_train"
 gpt_pretrained_model_path = os.path.join(normalize_root, "gsv-v2final-pretrained", "s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt")
 sovits_pretrained_model_path = os.path.join(normalize_root, "gsv-v2final-pretrained", "s2G2333k.pth")
 cfg = config.GlobalCFG()
+cmd_path = os.path.join(base_path, "src", "cmd")
 
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"

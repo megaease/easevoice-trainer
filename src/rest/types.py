@@ -5,3 +5,4 @@ class TaskType:
     Don't use Enum here to avoid json marshalling issues.
     """
     voice_clone = "voice_clone"
+    train_sovits = "train_sovits"

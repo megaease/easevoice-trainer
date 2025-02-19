@@ -29,22 +29,3 @@ class TrainGPTService(object):
             print(traceback.format_exc(), e)
             resp = EaseVoiceResponse(ResponseStatus.FAILED, str(e))
         return resp
-
-
-async def do_train_sovits(params: SovitsTrainParams):
-    service = TrainSovitsService(params)
-    return service.train()
-
-
-class TrainSovitsService(object):
-    def __init__(self, sovits_params: SovitsTrainParams):
-        self.sovits_train = SovitsTrain(sovits_params)
-
-    def train(self) -> EaseVoiceResponse:
-        try:
-            output = self.sovits_train.train()
-            resp = EaseVoiceResponse(ResponseStatus.SUCCESS, "Training Sovits completed successfully", data=dataclasses.asdict(output))
-        except Exception as e:
-            print(traceback.format_exc(), e)
-            resp = EaseVoiceResponse(ResponseStatus.FAILED, str(e))
-        return resp
