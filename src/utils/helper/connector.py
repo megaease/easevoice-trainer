@@ -12,6 +12,7 @@ class ConnectorDataType:
     LOSS = "loss"
     LOG = "LOG"
     OTHER = "other"
+    SESSION_DATA = "session_data"
 
 
 @dataclass
@@ -28,6 +29,7 @@ class ConnectorData:
     loss: Optional[ConnectorDataLoss] = None
     log: Optional[dict] = None
     other: Optional[str] = None
+    session_data: Optional[dict] = None
 
 
 class MultiProcessOutputConnector:
@@ -41,6 +43,7 @@ class MultiProcessOutputConnector:
         self._resp_prefix = "response-of-easevoice"
         self._loss_prefix = "loss-of-easevoice"
         self._log_prefix = "log-of-easevoice"
+        self._session_data_prefix = "session-data-of-easevoice"
 
     def _print(self, prefix: str, data: str):
         print(f"{prefix} {data}")
@@ -48,6 +51,10 @@ class MultiProcessOutputConnector:
     def write_response(self, resp: EaseVoiceResponse):
         data = json.dumps(resp.to_dict())
         self._print(self._resp_prefix, data)
+
+    def write_session_data(self, data: dict):
+        json_data = json.dumps(data)
+        self._print(self._session_data_prefix, json_data)
 
     def write_loss(self, step: int, loss: float, other: Optional[dict] = None):
         data = {
@@ -125,6 +132,11 @@ class MultiProcessOutputConnector:
                 data = line[len(self._log_prefix):].strip()
                 data = json.loads(data)
                 return ConnectorData(dataType=ConnectorDataType.LOG, log=data)
+
+            elif line.startswith(self._session_data_prefix):
+                data = line[len(self._session_data_prefix):].strip()
+                data = json.loads(data)
+                return ConnectorData(dataType=ConnectorDataType.SESSION_DATA, session_data=data)
             else:
                 return ConnectorData(dataType=ConnectorDataType.OTHER, other=line)
         except Exception as e:

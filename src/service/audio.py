@@ -79,7 +79,7 @@ class AudioService(object):
         self.output_dir = output_dir
         self.refinement = Refinement(os.path.join(self.output_dir, asrs_output, asr_file), os.path.join(self.output_dir, refinements_output, refinement_file))
 
-    async def uvr5(self, model_name: str = "HP5_only_main_vocal", audio_format: str = "wav", **kwargs) -> EaseVoiceResponse:
+    def uvr5(self, model_name: str = "HP5_only_main_vocal", audio_format: str = "wav", **kwargs) -> EaseVoiceResponse:
         trace_data = {}
         try:
             base_separator = SeparateBase(
@@ -134,7 +134,7 @@ class AudioService(object):
                 torch.cuda.empty_cache()
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "UVR5 Success", trace_data)
 
-    async def slicer(
+    def slicer(
             self,
             threshold: int = -34,
             min_length: int = 4000,
@@ -178,7 +178,7 @@ class AudioService(object):
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Slice Success", data)
 
 
-    async def denoise(self) -> EaseVoiceResponse:
+    def denoise(self) -> EaseVoiceResponse:
         os.makedirs(os.path.join(self.output_dir, denoises_output), exist_ok=True)
         trace_data = {}
         try:
@@ -198,7 +198,7 @@ class AudioService(object):
                 torch.cuda.empty_cache()
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Denoise Success", trace_data)
 
-    async def asr(self, asr_model: str = "funasr", model_size: str = "large", language: str = "zh", precision: str = "float32") -> EaseVoiceResponse:
+    def asr(self, asr_model: str = "funasr", model_size: str = "large", language: str = "zh", precision: str = "float32") -> EaseVoiceResponse:
         file_list = self._get_files(denoises_output)
         output_file = os.path.join(self.output_dir, asrs_output, asr_file)
         dump_file = os.path.join(self.output_dir, refinements_output, refinement_file)

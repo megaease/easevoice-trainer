@@ -16,7 +16,7 @@ class NormalizeService(object):
     def __init__(self, processing_path: str):
         self.processing_path = processing_path
 
-    async def normalize(self) -> EaseVoiceResponse:
+    def normalize(self) -> EaseVoiceResponse:
         try:
             normalize = Normalize(self.processing_path)
             text_resp = normalize.text()

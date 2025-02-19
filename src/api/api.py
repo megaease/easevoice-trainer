@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from pydantic import BaseModel, Field, field_validator
 from typing import List
 from datetime import datetime
@@ -150,6 +152,7 @@ class CreateTaskRequest(BaseModel):
     args: dict
 
 
-class EaseVoiceRequest(BaseModel):
+@dataclass
+class EaseVoiceRequest:
     """Request model for creating a new namespace."""
     source_dir: str

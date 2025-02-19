@@ -476,77 +476,16 @@ class EaseVoiceAPI:
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
-        uid = uuid.uuid4()
-        await async_start_session(self._easevoice_easy, str(uid), "EaseVoice", request=request, uid=uid)
+        uid = str(uuid.uuid4())
+        backtask_with_session_guard(uid, TaskType.ease_voice, asdict(request), start_task_with_subprocess, uid=uid, request=request, cmd_file=TaskCMD.ease_voice)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice started", uuid=str(uid))
 
     async def easevoice_stop(self, uid: str):
         try:
-            async_stop_session(uid, "EaseVoice")
-            return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice stopped")
+            return stop_task_with_subprocess(uid, TaskType.ease_voice)
         except Exception as e:
             logger.error(f"failed to stop EaseVoice: {e}")
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop EaseVoice: {e}"})
-
-    async def _easevoice_easy(self, uid: str, request: EaseVoiceRequest):
-        session_manager.update_session_info(uid, {
-            "total_steps": 7,
-            "current_step": 0,
-            "progress": 0,
-            "current_step_description": "Prepare for starting EaseVoice",
-        })
-        output_dir = os.path.join(request.source_dir, "output")
-        audio_service = AudioService(source_dir=request.source_dir, output_dir=str(output_dir))
-        resp = await audio_service.uvr5()
-        response = self._check_response(uid, resp, "Audio UVR5")
-        if response.status == ResponseStatus.FAILED:
-            return response
-        resp = await audio_service.slicer()
-        response = self._check_response(uid, resp, "Audio Slicer")
-        if response.status == ResponseStatus.FAILED:
-            return response
-        resp = await audio_service.denoise()
-        response = self._check_response(uid, resp, "Audio Denoise")
-        if response.status == ResponseStatus.FAILED:
-            return response
-        resp = await audio_service.asr()
-        response = self._check_response(uid, resp, "Audio ASR")
-        if response.status == ResponseStatus.FAILED:
-            return response
-        normalize_service = NormalizeService(processing_path=output_dir)
-        resp = await normalize_service.normalize()
-        response = self._check_response(uid, resp, "Normalize")
-        if response.status == ResponseStatus.FAILED:
-            return response
-        normalize_path = response.data["normalize_path"]
-        resp = await do_train_gpt(GPTTrainParams(train_input_dir=normalize_path))
-        response = self._check_response(uid, resp, "Train GPT")
-        if response.status == ResponseStatus.FAILED:
-            return response
-        # resp = await do_train_sovits(SovitsTrainParams(train_input_dir=normalize_path))
-        # response = self._check_response(uid, resp, "Train Sovits")
-        # if response.status == ResponseStatus.FAILED:
-        #     return response
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice completed successfully", data=response.data)
-
-    @staticmethod
-    def _check_response(uid: str, response: EaseVoiceResponse, step_name: str) -> EaseVoiceResponse:
-        session = session_manager.get_session_info().get(uid, {})
-        session_manager.update_session_info(uid, {
-            "current_step": session.get("current_step") + 1,
-        })
-        if response.status == ResponseStatus.FAILED:
-            session_manager.update_session_info(uid, {
-                "current_step_description": f"Failed at step {session.get('current_step')} - {step_name}",
-                "progress": 100,
-            })
-            return response
-
-        session_manager.update_session_info(uid, {
-            "current_step_description": f"Step {session.get('current_step')} - {step_name}",
-            "progress": session.get("current_step") / session.get("total_steps") * 100,
-        })
-        return response
 
 
 # Initialize FastAPI and NamespaceService
