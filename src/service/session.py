@@ -226,6 +226,9 @@ def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
         if data.dataType == ConnectorDataType.RESP:
             resp = data.response
             session_manager.end_session_with_ease_voice_response(uid, resp)
+        elif data.dataType == ConnectorDataType.SESSION_DATA:
+            resp = data.session_data
+            session_manager.update_session_info(uid, resp)
 
 
 def _check_session(uid: str, task_name: str) -> Optional[EaseVoiceResponse]:
