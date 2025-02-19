@@ -15,11 +15,11 @@ class ResponseStatus(Enum):
 
 
 class EaseVoiceResponse(object):
-    def __init__(self, status: ResponseStatus, message: str, data: Optional[dict] = None, uid: Optional[str] = None):
+    def __init__(self, status: ResponseStatus, message: str, data: Optional[dict] = None, uuid: Optional[str] = None):
         self.status = status
         self.message = message
         self.data = data
-        self.uuid = uid
+        self.uuid = uuid
 
     def to_dict(self):
         return {

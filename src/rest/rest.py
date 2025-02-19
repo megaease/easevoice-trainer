@@ -247,7 +247,7 @@ class VoiceCloneAPI:
     async def clone(self, request: dict):
         uid = str(uuid.uuid4())
         backtask_with_session_guard(uid, TaskType.voice_clone, request, VoiceCloneAPI._do_clone, uuid=uid, task=request)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice clone started", uid=str(uid))
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice clone started", uuid=str(uid))
 
     @staticmethod
     def _do_clone(uuid: str, task: dict):
@@ -285,12 +285,12 @@ class TrainAPI:
 
         uid = str(uuid.uuid4())
         backtask_with_session_guard(uid, TaskType.train_gpt, asdict(params), start_task_with_subprocess, uid=uid, request=params, cmd_file=TaskCMD.train_gpt)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", uid=str(uid))
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", uuid=str(uid))
 
     async def train_sovits(self, params: SovitsTrainParams):
         uid = str(uuid.uuid4())
         backtask_with_session_guard(uid, TaskType.train_sovits, asdict(params), start_task_with_subprocess, uid=uid, request=params, cmd_file=TaskCMD.tran_sovits)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Sovits training started", uid=uid)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Sovits training started", uuid=uid)
 
     async def train_gpt_stop(self, uid: str):
         try:
@@ -327,7 +327,7 @@ class NormalizeAPI:
         uid = uuid.uuid4()
         service = NormalizeService(request.output_dir)
         await async_start_session(service.normalize, str(uid), "Normalize")
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalize started", uid=str(uid))
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalize started", uuid=str(uid))
 
     async def normalize_stop(self, uid: str):
         try:
@@ -364,7 +364,7 @@ class AudioAPI:
         service = AudioService(source_dir=request.source_dir, output_dir=request.output_dir)
         await async_start_session(service.uvr5, str(uid), "AudioUVR5", model_name=request.model_name, audio_format=request.audio_format)
 
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio UVR5 started", uid=str(uid))
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio UVR5 started", uuid=str(uid))
 
     async def audio_slicer(self, request: AudioSlicerParams):
         if session_manager.exist_running_session():
@@ -381,7 +381,7 @@ class AudioAPI:
                                   normalize_max=request.normalize_max,
                                   alpha_mix=request.alpha_mix,
                                   )
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Slicer started", uid=str(uid))
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Slicer started", uuid=str(uid))
 
     async def audio_denoise(self, request: AudioDenoiseParams):
         if session_manager.exist_running_session():
@@ -390,7 +390,7 @@ class AudioAPI:
         uid = uuid.uuid4()
         service = AudioService(source_dir=request.source_dir, output_dir=request.output_dir)
         await async_start_session(service.denoise, str(uid), "AudioDenoise")
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Denoise started", uid=str(uid))
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Denoise started", uuid=str(uid))
 
     async def audio_asr(self, request: AudioASRParams):
         if session_manager.exist_running_session():
@@ -404,7 +404,7 @@ class AudioAPI:
                                   language=request.language,
                                   precision=request.precision,
                                   )
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio ASR started", uid=str(uid))
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio ASR started", uuid=str(uid))
 
     async def audio_uvr5_stop(self, uid: str):
         try:
@@ -478,7 +478,7 @@ class EaseVoiceAPI:
 
         uid = uuid.uuid4()
         await async_start_session(self._easevoice_easy, str(uid), "EaseVoice", request=request, uid=uid)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice started", uid=str(uid))
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice started", uuid=str(uid))
 
     async def easevoice_stop(self, uid: str):
         try:
