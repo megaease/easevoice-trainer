@@ -119,7 +119,8 @@ class SessionManager:
         """Marks task as completed successfully."""
         if uuid in self.session_list:
             session = self.session_list[uuid]
-            if result.status == ResponseStatus.SUCCESS:
+            status = session.get("status")
+            if result.status == ResponseStatus.SUCCESS and status != Status.FAILED:
                 session["status"] = Status.COMPLETED
                 session["message"] = result.message
             else:
@@ -228,9 +229,10 @@ def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
         if data.dataType == ConnectorDataType.RESP:
             resp = data.response
             session_manager.end_session_with_ease_voice_response(uid, resp)
-            session_manager.remove_session_subprocess(uid)
-        # else:
-        #     logger.error(data.other)
+
+    session_manager.remove_session_subprocess(uid)
+    # else:
+    #     logger.error(data.other)
 
 
 def _check_session(uid: str, task_name: str) -> Optional[EaseVoiceResponse]:
