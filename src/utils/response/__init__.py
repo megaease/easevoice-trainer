@@ -6,7 +6,7 @@ from enum import Enum
 from typing import Optional
 
 
-class ResponseStatus(Enum):
+class ResponseStatus:
     """
     Response status code
     """
@@ -23,7 +23,7 @@ class EaseVoiceResponse(object):
 
     def to_dict(self):
         return {
-            "status": self.status.value,
+            "status": self.status,
             "message": self.message,
             "data": self.data,
             "uuid": self.uuid
