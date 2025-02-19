@@ -27,7 +27,10 @@ def main():
             required=True,
         )
         args = parser.parse_args()
-        config = json.loads(args.config)
+        config_content = args.config.read()
+        args.config.close()
+        config = json.loads(config_content)
+
         params = GPTTrainParams(**config)
         train = GPTTrain(params=params)
         output = train.train()
