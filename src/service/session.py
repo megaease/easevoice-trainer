@@ -216,7 +216,7 @@ def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
         params = asdict(request)
         params = json.dumps(params)
         fp.write(params)
-        fp.seek(0)
+        print(config.cmd_path, cmd_file, fp.name)
         proc = subprocess.Popen(
             [sys.executable, os.path.join(config.cmd_path, cmd_file, "-c", fp.name)],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=config.base_path,
