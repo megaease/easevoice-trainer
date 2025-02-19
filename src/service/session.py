@@ -119,8 +119,7 @@ class SessionManager:
         """Marks task as completed successfully."""
         if uuid in self.session_list:
             session = self.session_list[uuid]
-            status = session.get("status")
-            if result.status == ResponseStatus.SUCCESS and status != Status.FAILED:
+            if result.status == ResponseStatus.SUCCESS:
                 session["status"] = Status.COMPLETED
                 session["message"] = result.message
             else:
@@ -199,14 +198,12 @@ def backtask_with_session_guard(uuid: str, task_name: str, request_params: dict,
 
     def wrapper():
         try:
-            result = func(**kwargs)
-            if isinstance(result, EaseVoiceResponse):
-                session_manager.end_session_with_ease_voice_response(uuid, result)
-            else:
-                session_manager.end_session(uuid, result)
+            func(**kwargs)
         except Exception as e:
             logger.error(f"Failed to do task for {task_name} with {request_params}: {e}", exc_info=True)
             session_manager.fail_session(uuid, str(e))
+        finally:
+            session_manager.remove_session_subprocess(uuid)
 
     thread = threading.Thread(target=wrapper)
     thread.start()
@@ -229,10 +226,6 @@ def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
         if data.dataType == ConnectorDataType.RESP:
             resp = data.response
             session_manager.end_session_with_ease_voice_response(uid, resp)
-
-    session_manager.remove_session_subprocess(uid)
-    # else:
-    #     logger.error(data.other)
 
 
 def _check_session(uid: str, task_name: str) -> Optional[EaseVoiceResponse]:
