@@ -3,12 +3,12 @@
 import os
 import sys
 
+sys.path.append('.')
+sys.path.append('..')
+
 from src.service.audio import AudioService
 from src.service.normalize import NormalizeService
 from src.train.sovits import SovitsTrain, SovitsTrainParams
-
-sys.path.append('.')
-sys.path.append('..')
 
 import argparse
 import json
