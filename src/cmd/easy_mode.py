@@ -84,6 +84,7 @@ def main():
         _check_response(connector, resp, "Normalization", 5)
         normalize_path = resp.data["normalize_path"]
         name = "gpt_" + generate_random_name()
+        # FIXME: @suchen, pls not the model_path in the response, it is the specific path of the model respectively, we have to refactor the output of the response
         # resp = SovitsTrain(SovitsTrainParams(train_input_dir=normalize_path, output_model_name=name)).train()
         # resp = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train sovits", data=asdict(resp))
         # _check_response(connector, resp, "Sovits Training", 6)
