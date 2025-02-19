@@ -83,9 +83,9 @@ def main():
         resp = normalize_service.normalize()
         _check_response(connector, resp, "Normalization", 5)
         normalize_path = resp.data["normalize_path"]
-        resp = SovitsTrain(SovitsTrainParams(train_input_dir=normalize_path)).train()
-        resp = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train sovits", data=asdict(resp))
-        _check_response(connector, resp, "Sovits Training", 6)
+        # resp = SovitsTrain(SovitsTrainParams(train_input_dir=normalize_path)).train()
+        # resp = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train sovits", data=asdict(resp))
+        # _check_response(connector, resp, "Sovits Training", 6)
         resp = GPTTrain(GPTTrainParams(train_input_dir=normalize_path)).train()
         resp_ease = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train gpt", data=asdict(resp))
         _check_response(connector, resp_ease, "GPT Training", 7)
