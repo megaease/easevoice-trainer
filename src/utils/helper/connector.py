@@ -4,6 +4,8 @@ import subprocess
 from dataclasses import dataclass
 from typing import Optional
 
+import logger
+
 from src.utils.response import EaseVoiceResponse
 
 
@@ -11,6 +13,7 @@ class ConnectorDataType:
     RESP = "response"
     LOSS = "loss"
     LOG = "LOG"
+    OTHER = "other"
 
 
 @dataclass
@@ -26,6 +29,7 @@ class ConnectorData:
     response: Optional[EaseVoiceResponse] = None
     loss: Optional[ConnectorDataLoss] = None
     log: Optional[dict] = None
+    other: Optional[str] = None
 
 
 class MultiProcessOutputConnector:
@@ -118,7 +122,7 @@ class MultiProcessOutputConnector:
                 data = json.loads(data)
                 return ConnectorData(dataType=ConnectorDataType.LOG, log=data)
             else:
-                return line
+                return ConnectorData(dataType=ConnectorDataType.OTHER, other=line)
         except Exception as e:
             print(f"meet error when parse stdout: {e}, input: <{line}>")
         return None
