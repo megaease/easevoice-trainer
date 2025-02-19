@@ -1,11 +1,10 @@
 
 from dataclasses import dataclass
 import datetime
-from multiprocessing import Queue
 import os
 from pathlib import Path
 from typing import Optional
-from src.logger import logger
+from uuid import uuid4
 from src.utils import config
 
 train_logs_path = "logs"

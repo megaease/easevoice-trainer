@@ -24,7 +24,7 @@ from src.service.audio import AudioUVR5Params, AudioSlicerParams, AudioASRParams
 from src.service.file import FileService
 from src.service.namespace import NamespaceService
 from src.service.normalize import NormalizeService, NormalizeParams
-from src.service.session import SessionManager, async_start_session, async_stop_session
+from src.service.session import SessionManager, async_start_session, async_stop_session, backtask_with_session_guard
 from src.service.session import session_manager
 from src.service.train import do_train_gpt, do_train_sovits
 from src.service.voice import VoiceCloneService
@@ -246,49 +246,27 @@ class VoiceCloneAPI:
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to get available models: {e}"})
 
     async def clone(self, request: dict):
-        uid = VoiceCloneAPI._do_clone(request)
+        uid = str(uuid.uuid4())
+        backtask_with_session_guard(uid, TaskType.voice_clone, request, VoiceCloneAPI._do_clone, uuid=uid, task=request)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice clone started", uid=str(uid))
 
     @staticmethod
-    def _do_clone(request: dict):
-        uid = str(uuid.uuid4())
+    def _do_clone(uuid: str, task: dict):
+        logger.info(f"Start to clone voice {uuid} for {task}")
+        service = None
         try:
-            session_manager.start_session(uid, TaskType.voice_clone, request)
+            session_manager.update_session_info(uuid, {"message": "start to load voice clone model"})
+            service = VoiceCloneService(session_manager)
+            session_manager.update_session_info(uuid, {"message": "voice clone model loaded"})
+
+            result = service.clone(uuid, task)
         except Exception as e:
-            logger.error(f"Failed to start session for task {TaskType.voice_clone}: {e}")
-            session_manager.end_session_with_ease_voice_response(uid, EaseVoiceResponse(ResponseStatus.FAILED, "There is an another task running."))
-            raise HTTPException(status_code=HTTPStatus.CONFLICT, detail="There is an another task running.")
-
-        def fn():
-            service = None
-            try:
-                session_manager.update_session_info(uid, {"message": "start to load voice clone model"})
-                service = VoiceCloneService(session_manager)
-                session_manager.update_session_info(uid, {"message": "voice clone model loaded"})
-
-                result = service.clone(uid, request)
-            except Exception as e:
-                logger.error(f"Failed to clone voice for {request}: {e}", exc_info=True)
-                result = EaseVoiceResponse(ResponseStatus.FAILED, str(e))
-            finally:
-                if service is not None:
-                    service.close()
-            return result
-
-        def wrapper():
-            try:
-                result = fn()
-                if isinstance(result, EaseVoiceResponse):
-                    session_manager.end_session_with_ease_voice_response(uid, result)
-                else:
-                    session_manager.end_session(uid, result)
-            except Exception as e:
-                logger.error(f"Failed to clone voice for voice clone {request}: {e}", exc_info=True)
-                session_manager.fail_session(uid, str(e))
-
-        thread = threading.Thread(target=wrapper)
-        thread.start()
-        return uid
+            logger.error(f"Failed to clone voice for {task}: {e}", exc_info=True)
+            result = EaseVoiceResponse(ResponseStatus.FAILED, str(e))
+        finally:
+            if service is not None:
+                service.close()
+        return result
 
 
 class TrainAPI:

@@ -2,15 +2,18 @@ import asyncio
 
 from dataclasses import asdict, is_dataclass
 from datetime import datetime
+from http import HTTPStatus
 import os
 import signal
 import threading
 import traceback
 from enum import Enum
 from typing import Dict, Any
+from fastapi import HTTPException
 import psutil
 from typing import Optional
-
+import uuid
+from logger import logger
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
@@ -166,6 +169,30 @@ async def async_start_session(func, uuid: str, target_name: str, **kwargs):
     task = asyncio.create_task(func(**kwargs))
     task.add_done_callback(_done_callback)
     session_manager.add_session_task(uuid, task)
+
+
+def backtask_with_session_guard(uid: str, task_name: str, request: dict, func, **kwargs):
+    try:
+        session_manager.start_session(uid, task_name, request)
+    except Exception as e:
+        logger.error(f"Failed to start session for task {task_name}: {e}", exc_info=True)
+        session_manager.end_session_with_ease_voice_response(uid, EaseVoiceResponse(ResponseStatus.FAILED, "There is an another task running."))
+        raise HTTPException(status_code=HTTPStatus.CONFLICT, detail="There is an another task running.")
+
+    def wrapper():
+        try:
+            result = func(**kwargs)
+            if isinstance(result, EaseVoiceResponse):
+                session_manager.end_session_with_ease_voice_response(uid, result)
+            else:
+                session_manager.end_session(uid, result)
+        except Exception as e:
+            logger.error(f"Failed to do task for {task_name} with {request}: {e}", exc_info=True)
+            session_manager.fail_session(uid, str(e))
+
+    thread = threading.Thread(target=wrapper)
+    thread.start()
+    return uid
 
 
 def async_stop_session(uuid: str, task_name: str):
