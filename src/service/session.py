@@ -146,7 +146,7 @@ class SessionManager:
 
     def update_session_info(self, uuid: str, info: Dict[str, Any]):
         """Updates task session with arbitrary info."""
-        if not self.exist_session or not self.session_list[uuid] or not self.session_list[uuid]["status"] == Status.RUNNING:
+        if not self.session_list[uuid]:
             raise RuntimeError("No active task to update session info!")
         self.session_list[uuid].update(info)
 
