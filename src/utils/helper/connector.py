@@ -1,11 +1,12 @@
-from dataclasses import dataclass
 import json
 import select
+import subprocess
+from dataclasses import dataclass
 from typing import Optional
 
-from matplotlib.ft2font import LOAD_CROP_BITMAP
+import logger
+
 from src.utils.response import EaseVoiceResponse
-import subprocess
 
 
 class ConnectorDataType:
@@ -74,6 +75,7 @@ class MultiProcessOutputConnector:
                 if isinstance(line, bytes):
                     line = line.decode('utf-8')
 
+                logger.logger.error(f"read line: {line}")
                 parsed = self._parse_result(line.strip())
                 if parsed is not None:
                     yield parsed
