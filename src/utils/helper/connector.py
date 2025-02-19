@@ -4,8 +4,6 @@ import subprocess
 from dataclasses import dataclass
 from typing import Optional
 
-import logger
-
 from src.utils.response import EaseVoiceResponse
 
 

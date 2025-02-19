@@ -222,7 +222,6 @@ def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
         [sys.executable, os.path.join(config.cmd_path, cmd_file), "-c", temp_file_path],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=config.base_path,
     )
-    logger.error(f"Subprocess started with pid {proc.pid}")
     session_manager.add_session_subprocess(uid, proc.pid)
     connector = MultiProcessOutputConnector()
     for data in connector.read_data(proc):
@@ -231,7 +230,7 @@ def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
             session_manager.end_session_with_ease_voice_response(uid, resp)
             session_manager.remove_session_subprocess(uid)
         else:
-            logger.error(f"Subprocess output: {data.other}")
+            continue
 
 
 def _check_session(uid: str, task_name: str) -> Optional[EaseVoiceResponse]:
