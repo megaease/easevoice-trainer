@@ -188,28 +188,27 @@ async def async_start_session(func, uuid: str, target_name: str, **kwargs):
     session_manager.add_session_task(uuid, task)
 
 
-def backtask_with_session_guard(uid: str, task_name: str, request: dict, func, **kwargs):
+def backtask_with_session_guard(uuid: str, task_name: str, request: dict, func, **kwargs):
     try:
-        session_manager.start_session(uid, task_name, request)
+        session_manager.start_session(uuid, task_name, request)
     except Exception as e:
         logger.error(f"Failed to start session for task {task_name}: {e}", exc_info=True)
-        session_manager.end_session_with_ease_voice_response(uid, EaseVoiceResponse(ResponseStatus.FAILED, "There is an another task running."))
+        session_manager.end_session_with_ease_voice_response(uuid, EaseVoiceResponse(ResponseStatus.FAILED, "There is an another task running."))
         raise HTTPException(status_code=HTTPStatus.CONFLICT, detail="There is an another task running.")
 
     def wrapper():
         try:
             result = func(**kwargs)
             if isinstance(result, EaseVoiceResponse):
-                session_manager.end_session_with_ease_voice_response(uid, result)
+                session_manager.end_session_with_ease_voice_response(uuid, result)
             else:
-                session_manager.end_session(uid, result)
+                session_manager.end_session(uuid, result)
         except Exception as e:
             logger.error(f"Failed to do task for {task_name} with {request}: {e}", exc_info=True)
-            session_manager.fail_session(uid, str(e))
+            session_manager.fail_session(uuid, str(e))
 
     thread = threading.Thread(target=wrapper)
     thread.start()
-    return uid
 
 
 def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
