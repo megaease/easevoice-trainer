@@ -8,6 +8,7 @@ import torch
 
 from src.easevoice.inference import InferenceTaskData, Runner
 from src.logger import logger
+from src.service.session import SessionManager
 from src.train.helper import list_train_gpts, list_train_sovits
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
@@ -17,8 +18,9 @@ class VoiceCloneService:
     VoiceService is a long run service that listens for voice clone tasks and processes them.
     """
 
-    def __init__(self):
+    def __init__(self, session_manager: SessionManager):
         self.runner = Runner()
+        self.session_manager = session_manager
 
     def close(self):
         if self.runner is not None:
@@ -26,10 +28,13 @@ class VoiceCloneService:
             gc.collect()
             torch.cuda.empty_cache()
 
-    def clone(self, params: dict):
+    def clone(self, uuid: str, params: dict):
         data = InferenceTaskData(**params)
         data = self._update_task_path(data)
+
+        self.session_manager.update_session_info(uuid, {"message": "voice clone started"})
         items, seed = self.runner.inference(data)  # pyright: ignore
+        self.session_manager.update_session_info(uuid, {"message": "voice clone completed"})
 
         sampling_rate = items[0][0]
         data = np.concatenate([item[1] for item in items])

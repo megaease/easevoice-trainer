@@ -1,5 +1,6 @@
 import asyncio
 
+from dataclasses import asdict, dataclass, is_dataclass
 from http import HTTPStatus
 import os
 import signal
@@ -13,6 +14,8 @@ import uuid
 from fastapi import HTTPException
 import psutil
 from typing import Optional
+
+from sympy import Union
 from logger import logger
 
 from src.utils.response import EaseVoiceResponse, ResponseStatus
@@ -52,8 +55,11 @@ class SessionManager:
             uuid = self.session_uuids.pop(0)
             self.session_list.pop(uuid)
 
+    # request is datatclass instance or dict
     def start_session(self, uuid: str, task_name: str, request: Optional[dict] = None):
         """Attempts to start a new session; rejects if another task is already running."""
+        if is_dataclass(request):
+            request = asdict(request)
         if self.exist_session is not None:
             self.session_list[uuid] = {
                 "uuid": uuid,
@@ -147,88 +153,6 @@ class SessionManager:
 session_manager = SessionManager()
 
 
-# Decorator to wrap task execution logic
-def session_guard(task_name: str, uuid: str):
-    """Ensures tasks are managed within SessionManager and handles failure states."""
-
-    def decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            session_manager = SessionManager()
-
-            try:
-                session_manager.start_session(uuid, task_name)
-            except Exception as e:
-                return {"error": f"failed to start session: {e}"}
-
-            try:
-                result = func(*args, **kwargs)  # Execute the training task
-                session_manager.end_session(uuid, result)
-                return result
-            except Exception as e:
-                print(traceback.format_exc())
-                session_manager.fail_session(uuid, str(e))  # Record failure details
-                # NOTICE: No Re-raise exception here,
-                # as we capture the error and record it in session info.
-                # raise e
-                return {"error": f"failed to run {task_name}: {e}"}
-
-        return wrapper
-
-    return decorator
-
-
-def threading_backtask_with_session_guard(task_name: str, fn, request: Any):
-    uid = str(uuid.uuid4())
-    try:
-        session_manager.start_session(uid, task_name, request)
-    except Exception as e:
-        logger.error(f"Failed to start session for task {task_name}: {e}")
-        session_manager.end_session_with_ease_voice_response(uid, EaseVoiceResponse(ResponseStatus.FAILED, "There is an another task running."))
-        raise HTTPException(status_code=HTTPStatus.CONFLICT, detail="There is an another task running.")
-
-    def wrapper():
-        try:
-            result = fn(request)
-            if isinstance(result, EaseVoiceResponse):
-                session_manager.end_session_with_ease_voice_response(uid, result)
-            else:
-                session_manager.end_session(uid, result)
-        except Exception as e:
-            logger.error(f"Error occurred in task {task_name}: {e}", exc_info=True)
-            session_manager.fail_session(uid, str(e))
-
-    thread = threading.Thread(target=wrapper)
-    thread.start()
-    return uid
-
-
-def start_train_session_with_spawn(func, uuid: str, target_name: str, params: Any):
-    try:
-        try:
-            session_manager.start_session(uuid, target_name)
-        except Exception as e:
-            print(traceback.format_exc())
-            session_manager.fail_session(uuid, "There is an another task running.")
-            return
-
-        # start process with spawn
-        ctx = mp.get_context("spawn")
-        process = ctx.Process(target=func, args=(params,))
-        process.start()
-        session_manager.update_session_info(uuid, {
-            "status": Status.RUNNING,
-            "pid": process.pid,
-        })
-        process.join()
-
-        # TODO: write result and train loss to file
-        session_manager.end_session(uuid, {"result": "Training Completed"})
-    except Exception as e:
-        print(traceback.format_exc())
-        session_manager.fail_session(uuid, str(e))
-
-
 async def async_start_session(func, uuid: str, target_name: str, **kwargs):
     """Starts a new session in coroutine."""
     try:
@@ -300,20 +224,3 @@ def _kill_proc_tree(pid, including_parent=True):
             os.kill(parent.pid, signal.SIGTERM)
         except OSError:
             pass
-
-# Example for using SessionManager and session_guard decorator.
-# @session_guard("TrainingModel")
-# def train_model():
-#     session_manager = SessionManager()
-#
-#     for epoch in range(1, 6):
-#         if epoch == 3:  # Simulate task failure
-#             raise RuntimeError("Error occurred at epoch 3!")
-#
-#         session_manager.update_session_info("", {
-#             "progress": epoch / 5,
-#             "loss": 0.05 * (6 - epoch),
-#             "epoch": epoch,
-#         })
-#
-#     return "Training Completed"
