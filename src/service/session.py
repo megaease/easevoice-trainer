@@ -230,7 +230,7 @@ def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
             session_manager.end_session_with_ease_voice_response(uid, resp)
             session_manager.remove_session_subprocess(uid)
         else:
-            print(data.other)
+            logger.error(data.other)
 
 
 def _check_session(uid: str, task_name: str) -> Optional[EaseVoiceResponse]:
