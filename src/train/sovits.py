@@ -8,6 +8,7 @@ from src.train.helper import TrainOutput, get_sovits_train_dir, train_logs_path
 from src.utils import config
 from src.utils import helper
 from src.utils.helper import convert_tensor_to_python, load_json
+from src.utils.helper.connector import MultiProcessOutputConnector
 from src.utils.path import ckpt
 from random import randint
 from tqdm import tqdm
@@ -56,7 +57,7 @@ class TrainHparams(BaseModel):
     output_dir: str = ""
     save_weight_dir: str = ""
     train_logs_dir: str = ""
-    log_interval: int
+    log_interval: int = 10
     eval_interval: int
     seed: int
     epochs: int
@@ -404,6 +405,7 @@ class SovitsTrain:
     def _train_and_evaluate(
             self, rank, epoch, hps: TrainConfig, nets, optims, schedulers, scaler, loaders, logger, writers
     ):
+        connector = MultiProcessOutputConnector()
         device = self.device
         net_g, net_d = nets
         optim_g, optim_d = optims
@@ -523,6 +525,12 @@ class SovitsTrain:
                             epoch, 100.0 * batch_idx / len(train_loader)
                         )
                     )
+                    connector.write_loss(self.step, loss=loss_gen_all, other={
+                        "loss/g/total": loss_gen_all,
+                        "loss/d/total": loss_disc_all,
+                        "learning_rate": lr,
+                    })
+
                     logger.info([x.item() for x in losses] + [self.step, lr])
 
                     scalar_dict = {

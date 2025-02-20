@@ -1,5 +1,6 @@
 # modified from https://github.com/yangdongchao/SoundStorm/blob/master/soundstorm/s1/AR/models/t2s_lightning_module.py
 # reference: https://github.com/lifeiteng/vall-e
+from inflect import ten
 from pytorch_lightning import LightningModule
 import torch
 from typing import Any, Dict, Optional
@@ -24,12 +25,11 @@ class Text2SemanticLightningModule(LightningModule):
         self.model = Text2SemanticDecoder(config=config, top_k=self.top_k)
         pretrained_s1 = config.get("pretrained_s1")
         if pretrained_s1 and is_train:
-            # print(self.load_state_dict(torch.load(pretrained_s1,map_location="cpu")["state_dict"]))
-            print(
-                self.load_state_dict(
-                    torch.load(pretrained_s1, map_location="cpu")["weight"]
-                )
-            )
+            print("train gpt pretrained_s1 with",
+                  self.load_state_dict(
+                      torch.load(pretrained_s1, map_location="cpu")["weight"]
+                  )
+                  )
         if is_train:
             self.automatic_optimization = False
             self.save_hyperparameters()
@@ -77,6 +77,7 @@ class Text2SemanticLightningModule(LightningModule):
             prog_bar=True,
             sync_dist=True,
         )
+        self.connector.write_loss(step=batch_idx, loss=loss, other={"acc": acc, "lr": scheduler.get_last_lr()[0]})
 
     def validation_step(self, batch: Dict, batch_idx: int):
         return

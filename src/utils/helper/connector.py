@@ -2,7 +2,7 @@ import json
 import select
 import subprocess
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 from src.utils.response import EaseVoiceResponse
 
@@ -56,7 +56,7 @@ class MultiProcessOutputConnector:
         json_data = json.dumps(data)
         self._print(self._session_data_prefix, json_data)
 
-    def write_loss(self, step: int, loss: float, other: Optional[dict] = None):
+    def write_loss(self, step: int, loss: Any, other: Optional[dict] = None):
         data = {
             "step": step,
             "loss": loss
