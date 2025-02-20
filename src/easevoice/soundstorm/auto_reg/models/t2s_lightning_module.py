@@ -78,7 +78,7 @@ class Text2SemanticLightningModule(LightningModule):
             sync_dist=True,
         )
         self.connector.write_loss(
-            step=batch_idx,
+            step=self.current_epoch,
             loss=convert_tensor_to_python(loss),
             other={"acc": convert_tensor_to_python(acc), "lr": convert_tensor_to_python(scheduler.get_last_lr()[0])}
         )

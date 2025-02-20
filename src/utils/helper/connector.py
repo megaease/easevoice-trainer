@@ -46,7 +46,7 @@ class MultiProcessOutputConnector:
         self._session_data_prefix = "session-data-of-easevoice"
 
     def _print(self, prefix: str, data: str):
-        print(f"{prefix} {data}")
+        print(f"{prefix} {data}", flush=True)
 
     def write_response(self, resp: EaseVoiceResponse):
         data = json.dumps(resp.to_dict()) # pyright: ignore

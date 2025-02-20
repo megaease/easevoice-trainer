@@ -516,14 +516,16 @@ class SovitsTrain:
             scaler.step(optim_g)
             scaler.update()
 
-            connector.write_loss(
-                self.step,
-                loss=convert_tensor_to_python(loss_gen_all),
-                other={
-                    "loss/g/total": convert_tensor_to_python(loss_gen_all),
-                    "loss/d/total": convert_tensor_to_python(loss_disc_all),
-                    "learning_rate": convert_tensor_to_python(optim_g.param_groups[0]["lr"]),
-                })
+            if self.step % 10 == 0:
+                connector.write_loss(
+                    self.step,
+                    loss=convert_tensor_to_python(loss_gen_all),
+                    other={
+                        "loss/g/total": convert_tensor_to_python(loss_gen_all),
+                        "loss/d/total": convert_tensor_to_python(loss_disc_all),
+                        "learning_rate": convert_tensor_to_python(optim_g.param_groups[0]["lr"]),
+                    })
+                logger.info(f"step: {self.step}, loss: {convert_tensor_to_python(loss_gen_all)}")
 
             if rank == 0:
                 if self.step % hps.train.log_interval == 0:
