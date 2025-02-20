@@ -284,19 +284,19 @@ class VoiceCloneAPI:
 
     async def clone(self, request: dict):
         uid = str(uuid.uuid4())
-        backtask_with_session_guard(uid, TaskType.voice_clone, request, VoiceCloneAPI._do_clone, uuid=uid, task=request)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice clone started", uuid=str(uid))
+        backtask_with_session_guard(uid, TaskType.voice_clone, request, VoiceCloneAPI._do_clone, uid=uid, task=request)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice clone started", uuid=uid)
 
     @staticmethod
-    def _do_clone(uuid: str, task: dict):
+    def _do_clone(uid: str, task: dict):
         logger.info(f"Start to clone voice {uuid} for {task}")
         service = None
         try:
-            session_manager.update_session_info(uuid, {"message": "start to load voice clone model"})
+            session_manager.update_session_info(uid, {"message": "start to load voice clone model"})
             service = VoiceCloneService(session_manager)
-            session_manager.update_session_info(uuid, {"message": "voice clone model loaded"})
+            session_manager.update_session_info(uid, {"message": "voice clone model loaded"})
 
-            result = service.clone(uuid, task)
+            result = service.clone(uid, task)
         except Exception as e:
             logger.error(f"Failed to clone voice for {task}: {e}", exc_info=True)
             result = EaseVoiceResponse(ResponseStatus.FAILED, str(e))
@@ -347,15 +347,11 @@ class TrainAPI:
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop GPT training: {e}"})
 
     async def train_sovits_stop(self, uid: str):
-        pass
-        # TODO
-        ...
-        # try:
-        #     async_stop_session(uid, "TrainSovits")
-        #     return EaseVoiceResponse(ResponseStatus.SUCCESS, "Sovits training stopped")
-        # except Exception as e:
-        #     logger.error(f"failed to stop Sovits training: {e}")
-        #     raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Sovits training: {e}"})
+        try:
+            return stop_task_with_subprocess(uid, TaskType.train_sovits)
+        except Exception as e:
+            logger.error(f"failed to stop Sovits training: {e}")
+            raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop Sovits training: {e}"})
 
 
 class NormalizeAPI:
@@ -420,7 +416,7 @@ class AudioAPI:
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
-        uid = uuid.uuid4()
+        uid = str(uuid.uuid4())
         backtask_with_session_guard(uid, TaskType.audio_slicer, asdict(request), start_task_with_subprocess, uid=uid, request=request, cmd_file=TaskCMD.audio_slicer)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Audio Slicer started", uuid=str(uid))
 
@@ -522,7 +518,7 @@ async def lifespan_context(app: FastAPI) -> AsyncGenerator[None, None]:
     tensorboard_service.stop()
 
 # FastAPI app setup
-app = FastAPI(lifespan=lifespan_context)
+app = FastAPI(lifespan=lifespan_context) # pyright: ignore
 
 tb_log_dir = "tb_logs"
 tensorboard_service = TensorBoardService(tb_log_dir)

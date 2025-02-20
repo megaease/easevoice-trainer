@@ -49,7 +49,7 @@ class MultiProcessOutputConnector:
         print(f"{prefix} {data}")
 
     def write_response(self, resp: EaseVoiceResponse):
-        data = json.dumps(resp.to_dict())
+        data = json.dumps(resp.to_dict()) # pyright: ignore
         self._print(self._resp_prefix, data)
 
     def write_session_data(self, data: dict):

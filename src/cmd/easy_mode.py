@@ -1,24 +1,21 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
+from src.utils.response import EaseVoiceResponse, ResponseStatus
+from src.utils.helper.connector import MultiProcessOutputConnector
+from src.train.gpt import GPTTrainParams, GPTTrain
+from dataclasses import asdict, dataclass
+import traceback
+import json
+import argparse
+from src.train.sovits import SovitsTrain, SovitsTrainParams
+from src.train.helper import generate_random_name
+from src.service.normalize import NormalizeService
+from src.service.audio import AudioService
 import os
 import sys
 
 sys.path.append('.')
 sys.path.append('..')
-
-from src.service.audio import AudioService
-from src.service.normalize import NormalizeService
-from src.train.helper import generate_random_name
-from src.train.sovits import SovitsTrain, SovitsTrainParams
-
-import argparse
-import json
-import traceback
-from dataclasses import asdict, dataclass
-
-from src.train.gpt import GPTTrainParams, GPTTrain
-from src.utils.helper.connector import MultiProcessOutputConnector
-from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
 @dataclass
@@ -70,6 +67,7 @@ def main():
         connector.write_session_data(session_data)
         output_dir = os.path.join(params.source_dir, "easy_mode")
         os.makedirs(output_dir, exist_ok=True)
+
         audio_service = AudioService(source_dir=params.source_dir, output_dir=str(output_dir))
         resp = audio_service.uvr5()
         _check_response(connector, resp, "Audio UVR5", 1)
@@ -82,13 +80,15 @@ def main():
         normalize_service = NormalizeService(processing_path=output_dir)
         resp = normalize_service.normalize()
         _check_response(connector, resp, "Normalization", 5)
-        normalize_path = resp.data["normalize_path"]
-        name = "gpt_" + generate_random_name()
-        # FIXME: @suchen, pls note the model_path in the response, it is the specific path of the model respectively, we have to refactor the output of the response
-        # resp = SovitsTrain(SovitsTrainParams(train_input_dir=normalize_path, output_model_name=name)).train()
-        # resp = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train sovits", data=asdict(resp))
-        # _check_response(connector, resp, "Sovits Training", 6)
-        resp = GPTTrain(GPTTrainParams(train_input_dir=normalize_path, output_model_name=name)).train()
+        normalize_path = resp.data["normalize_path"] # pyright: ignore
+
+        sovits_name = "sovits_" + generate_random_name()
+        resp = SovitsTrain(SovitsTrainParams(train_input_dir=normalize_path, output_model_name=sovits_name)).train()
+        resp = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train sovits", data=asdict(resp))
+        _check_response(connector, resp, "Sovits Training", 6)
+
+        gpt_name = "gpt_" + generate_random_name()
+        resp = GPTTrain(GPTTrainParams(train_input_dir=normalize_path, output_model_name=gpt_name)).train()
         resp_ease = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train gpt", data=asdict(resp))
         _check_response(connector, resp_ease, "GPT Training", 7)
         connector.write_response(EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="FTraining GPT completed successfully", data=asdict(resp)))

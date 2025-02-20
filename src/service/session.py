@@ -239,10 +239,10 @@ def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
     for data in connector.read_data(proc):
         if data.dataType == ConnectorDataType.RESP:
             resp = data.response
-            session_manager.end_session_with_ease_voice_response(uid, resp)
+            session_manager.end_session_with_ease_voice_response(uid, resp) # pyright: ignore
         elif data.dataType == ConnectorDataType.SESSION_DATA:
             resp = data.session_data
-            session_manager.update_session_info(uid, resp)
+            session_manager.update_session_info(uid, resp) # pyright: ignore
 
 
 def _check_session(uid: str, task_name: str) -> Optional[EaseVoiceResponse]:

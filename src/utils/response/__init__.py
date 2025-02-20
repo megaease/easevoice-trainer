@@ -2,8 +2,9 @@
 # -*- encoding=utf8 -*-
 
 
-from typing import Optional
+from typing import Literal, Optional
 
+ResponseStatusType = Literal["success", "failed"]
 
 class ResponseStatus:
     """
@@ -14,7 +15,7 @@ class ResponseStatus:
 
 
 class EaseVoiceResponse(object):
-    def __init__(self, status: ResponseStatus, message: str, data: Optional[dict] = None, uuid: Optional[str] = None):
+    def __init__(self, status: ResponseStatusType, message: str, data: Optional[dict] = None, uuid: Optional[str] = None):
         self.status = status
         self.message = message
         self.data = data
