@@ -516,6 +516,15 @@ class SovitsTrain:
             scaler.step(optim_g)
             scaler.update()
 
+            connector.write_loss(
+                self.step,
+                loss=convert_tensor_to_python(loss_gen_all),
+                other={
+                    "loss/g/total": convert_tensor_to_python(loss_gen_all),
+                    "loss/d/total": convert_tensor_to_python(loss_disc_all),
+                    "learning_rate": convert_tensor_to_python(optim_g.param_groups[0]["lr"]),
+                })
+
             if rank == 0:
                 if self.step % hps.train.log_interval == 0:
                     lr = optim_g.param_groups[0]["lr"]
@@ -525,13 +534,6 @@ class SovitsTrain:
                             epoch, 100.0 * batch_idx / len(train_loader)
                         )
                     )
-                    connector.write_loss(self.step, loss=convert_tensor_to_python(loss_gen_all), other={
-                        "loss/g/total": convert_tensor_to_python(loss_gen_all),
-                        "loss/d/total": convert_tensor_to_python(loss_disc_all),
-                        "learning_rate": convert_tensor_to_python(lr),
-                    })
-
-                    logger.info([x.item() for x in losses] + [self.step, lr])
 
                     scalar_dict = {
                         "loss/g/total": loss_gen_all,

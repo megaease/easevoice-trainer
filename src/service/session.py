@@ -35,6 +35,7 @@ class SessionManager:
     _instance = None
     _lock = threading.Lock()
     MAX_SESSIONS = 10
+    MAX_LOSS = 50
     session_list = dict()
     session_uuids = list()
     session_task = dict()
@@ -165,6 +166,8 @@ class SessionManager:
             raise RuntimeError("No active task to update session loss!")
         losses = self.session_list[uuid].get("losses", [])
         losses.append(asdict(loss))
+        if len(losses) > self.MAX_LOSS:
+            losses.pop(0)
         self.session_list[uuid]["losses"] = losses
 
     def get_session_info(self) -> Dict[str, Any]:
