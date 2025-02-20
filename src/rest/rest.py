@@ -29,7 +29,7 @@ from src.service.session import session_manager
 from src.service.voice import VoiceCloneService
 from src.service.tensorboard import TensorBoardService
 from src.train.gpt import GPTTrainParams
-from src.train.helper import list_train_gpts, list_train_sovits, generate_random_name
+from src.train.helper import list_train_gpts, list_train_sovits, generate_random_name, get_gpt_train_dir, get_sovits_train_dir
 from src.train.sovits import SovitsTrainParams
 from src.utils.helper import random_choice
 from src.utils.response import EaseVoiceResponse, ResponseStatus
@@ -328,9 +328,10 @@ class TrainAPI:
         # Note: it could not be empty, because the training processing has multiple processes, each process could generate a model name
         if params.output_model_name == "":
             params.output_model_name = "gpt_" + generate_random_name()
+        model_path = get_gpt_train_dir(params.output_model_name)
 
         backtask_with_session_guard(uid, TaskType.train_gpt, asdict(params), start_task_with_subprocess, uid=uid, request=params, cmd_file=TaskCMD.train_gpt)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", uuid=str(uid))
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", uuid=str(uid), data={"model_path": model_path})
 
     async def train_sovits(self, params: SovitsTrainParams):
         if session_manager.exist_running_session():
@@ -338,9 +339,10 @@ class TrainAPI:
         # Note: it could not be empty, because the training processing has multiple processes, each process could generate a model name
         if params.output_model_name == "":
             params.output_model_name = "sovits_" + generate_random_name()
+        model_path = get_sovits_train_dir(params.output_model_name)
         uid = str(uuid.uuid4())
         backtask_with_session_guard(uid, TaskType.train_sovits, asdict(params), start_task_with_subprocess, uid=uid, request=params, cmd_file=TaskCMD.tran_sovits)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Sovits training started", uuid=uid)
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Sovits training started", uuid=uid, data={"model_path": model_path})
 
     async def train_gpt_stop(self, uid: str):
         try:
@@ -499,9 +501,14 @@ class EaseVoiceAPI:
         if session_manager.exist_running_session():
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
+        gpt_output = "gpt_" + generate_random_name()
+        sovits_output = "sovits_" + generate_random_name()
+        request.gpt_output_name = gpt_output
+        request.sovits_output_name = sovits_output
+
         uid = str(uuid.uuid4())
         backtask_with_session_guard(uid, TaskType.ease_voice, asdict(request), start_task_with_subprocess, uid=uid, request=request, cmd_file=TaskCMD.ease_voice)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice started", uuid=str(uid))
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "EaseVoice started", uuid=str(uid), data={"sovits_output": sovits_output, "gpt_output": gpt_output})
 
     async def easevoice_stop(self, uid: str):
         try:

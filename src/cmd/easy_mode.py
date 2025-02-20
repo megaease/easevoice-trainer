@@ -7,6 +7,7 @@ sys.path.append('.')
 sys.path.append('..')
 
 from src.service.audio import AudioService
+from src.api.api import EaseVoiceRequest
 from src.service.normalize import NormalizeService
 from src.train.helper import generate_random_name
 from src.train.sovits import SovitsTrain, SovitsTrainParams
@@ -14,16 +15,11 @@ from src.train.sovits import SovitsTrain, SovitsTrainParams
 import argparse
 import json
 import traceback
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 
 from src.train.gpt import GPTTrainParams, GPTTrain
 from src.utils.helper.connector import MultiProcessOutputConnector
 from src.utils.response import EaseVoiceResponse, ResponseStatus
-
-
-@dataclass
-class EaseVoiceParams:
-    source_dir: str
 
 
 def _check_response(connector: MultiProcessOutputConnector, response: EaseVoiceResponse, step_name: str, current_step: int):
@@ -60,7 +56,7 @@ def main():
         args.config.close()
         config = json.loads(config_content)
 
-        params = EaseVoiceParams(**config)
+        params = EaseVoiceRequest(**config)
         session_data = {
             "total_steps": 7,
             "current_step": 0,
@@ -83,18 +79,21 @@ def main():
         normalize_service = NormalizeService(processing_path=output_dir)
         resp = normalize_service.normalize()
         _check_response(connector, resp, "Normalization", 5)
-        normalize_path = resp.data["normalize_path"] # pyright: ignore
+        normalize_path = resp.data["normalize_path"]  # pyright: ignore
 
-        sovits_name = "sovits_" + generate_random_name()
-        resp = SovitsTrain(SovitsTrainParams(train_input_dir=normalize_path, output_model_name=sovits_name)).train()
-        resp = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train sovits", data=asdict(resp))
+        sovits_name = params.sovits_output_name
+        sovits_output = SovitsTrain(SovitsTrainParams(train_input_dir=normalize_path, output_model_name=sovits_name)).train()
+        resp = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train sovits", data=asdict(sovits_output))
         _check_response(connector, resp, "Sovits Training", 6)
 
-        gpt_name = "gpt_" + generate_random_name()
-        resp = GPTTrain(GPTTrainParams(train_input_dir=normalize_path, output_model_name=gpt_name)).train()
-        resp_ease = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train gpt", data=asdict(resp))
+        gpt_name = params.gpt_output_name
+        gpt_output = GPTTrain(GPTTrainParams(train_input_dir=normalize_path, output_model_name=gpt_name)).train()
+        resp_ease = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train gpt", data=asdict(gpt_output))
         _check_response(connector, resp_ease, "GPT Training", 7)
-        connector.write_response(EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="FTraining GPT completed successfully", data=asdict(resp)))
+        connector.write_response(EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="FTraining GPT completed successfully", data={
+            "sovits_output": sovits_output.model_path,
+            "gpt_output": gpt_output.model_path,
+        }))
     except Exception as e:
         print(traceback.format_exc(), e)
         connector.write_response(EaseVoiceResponse(status=ResponseStatus.FAILED, message=f"{e}"))

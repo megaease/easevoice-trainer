@@ -67,6 +67,7 @@ class Namespace(BaseModel):
 """Response model for creating a new namespace."""
 CreateNamespaceResponse = Namespace
 
+
 class CreateNamespaceRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=64)
 
@@ -125,10 +126,12 @@ class FileMetadata(BaseModel):
     fileSize: int
     modifiedAt: str  # RFC3339 format timestamp
 
+
 class DirMetadata(BaseModel):
     """Metadata for a directory."""
     type: str
     directoryName: str
+
 
 class ListDirectoryResponse(BaseModel):
     """Response model for listing directory contents."""
@@ -144,6 +147,7 @@ class HTTPError(BaseModel):
     code: int
     message: str
 
+
 # Task models
 
 class CreateTaskRequest(BaseModel):
@@ -156,3 +160,5 @@ class CreateTaskRequest(BaseModel):
 class EaseVoiceRequest:
     """Request model for creating a new namespace."""
     source_dir: str
+    gpt_output_name: str = ""
+    sovits_output_name: str = ""
