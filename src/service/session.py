@@ -15,6 +15,7 @@ from typing import Dict, Any
 from typing import Optional
 
 import psutil
+import torch
 from fastapi import HTTPException
 from logger import logger
 
@@ -48,6 +49,7 @@ class SessionManager:
     def __new__(cls):
         """Singleton pattern to ensure only one instance of SessionManager exists."""
         if not cls._instance:
+            psutil.cpu_percent()
             with cls._lock:
                 if not cls._instance:
                     cls._instance = super(SessionManager, cls).__new__(cls)
@@ -172,6 +174,7 @@ class SessionManager:
 
     def get_session_info(self) -> Dict[str, Any]:
         """Returns current task state information."""
+        self.session_list.update(self._inject_monitor_metrics())
         return self.session_list
 
     def exist_running_session(self):
@@ -181,10 +184,25 @@ class SessionManager:
     def get_current_session_info(self):
         """Returns the current running session or last completed session."""
         if self.exist_session is not None:
-            return self.session_list.get(self.exist_session, None)
+            session = self.session_list.get(self.exist_session, {})
+            session.update(self._inject_monitor_metrics())
+            return session
         if self.last_runned_session is not None:
-            return self.session_list.get(self.last_runned_session, None)
-        return None
+            session = self.session_list.get(self.last_runned_session, {})
+            session.update(self._inject_monitor_metrics())
+            return session
+        return {}
+
+    @staticmethod
+    def _inject_monitor_metrics() -> Dict[str, Any]:
+        session = dict()
+        if torch.cuda.is_available():
+            session["gpu_percentage"] = f"{torch.cuda.utilization()}%"
+            session["memory_allocated_percentage"] = f"{torch.cuda.memory_allocated() / torch.cuda.max_memory_allocated() * 100:.2f}%"
+        session["cpu_percentage"] = f"{psutil.cpu_percent()}%"
+        return {
+            "monitor_metrics": session
+        }
 
 
 session_manager = SessionManager()
@@ -227,7 +245,7 @@ def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
         if data.dataType == ConnectorDataType.RESP:
             session_manager.end_session_with_ease_voice_response(uid, data.response)
         elif data.dataType == ConnectorDataType.SESSION_DATA:
-            session_manager.update_session_info(uid,  data.session_data)
+            session_manager.update_session_info(uid, data.session_data)
         elif data.dataType == ConnectorDataType.LOSS:
             session_manager.update_session_loss(uid, data.loss)
 
