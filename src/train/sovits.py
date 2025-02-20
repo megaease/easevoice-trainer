@@ -139,12 +139,12 @@ class SovitsTrain:
         os.makedirs(hps.train.train_logs_dir, exist_ok=True)
 
         # set pretrained model path
-        if params.pretrained_s2G == "":
+        if params.pretrained_s2G == "" or params.pretrained_s2G == "pretrained/gsv-v2final-pretrained/s2G2333k.pth":
             hps.train.pretrained_s2G = config.sovits_pretrained_model_path
         else:
             hps.train.pretrained_s2G = params.pretrained_s2G
 
-        if params.pretrained_s2D == "":
+        if params.pretrained_s2D == "" or params.pretrained_s2D == "pretrained/gsv-v2final-pretrained/s2D2333k.pth":
             hps.train.pretrained_s2D = config.sovits_pretrained_model_path.replace("s2G", "s2D")
         else:
             hps.train.pretrained_s2D = params.pretrained_s2D
