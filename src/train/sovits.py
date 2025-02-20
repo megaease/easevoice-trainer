@@ -154,7 +154,7 @@ class SovitsTrain:
         json_data = load_json(config.s2config_path)
         hps = TrainConfig(**json_data)
         self.hps = self._update_hparams(hps, params)
-        logger.info(f"train sovits with config: {asdict(self.hps)}")
+        logger.info(f"train sovits with config: {self.hps}")
         self.step = 0
         self.device = "cpu"
 
@@ -170,14 +170,14 @@ class SovitsTrain:
         torch.backends.cudnn.allow_tf32 = True
         torch.set_float32_matmul_precision("medium")
 
-    def _save_epoch(self, ckpt: Any, name, epoch, steps, hps: TrainConfig):
+    def _save_epoch(self, ckpts: Any, name, epoch, steps, hps: TrainConfig):
         try:
             opt = OrderedDict()
             opt["weight"] = {}
-            for key in ckpt.keys():
+            for key in ckpts.keys():
                 if "enc_q" in key:
                     continue
-                opt["weight"][key] = ckpt[key].half()
+                opt["weight"][key] = ckpts[key].half()
             opt["config"] = hps
             opt["info"] = "%sepoch_%siteration" % (epoch, steps)
 
@@ -190,10 +190,7 @@ class SovitsTrain:
             return traceback.format_exc()
 
     def train(self):
-        if torch.cuda.is_available():
-            n_gpus = torch.cuda.device_count()
-        else:
-            n_gpus = 1
+        n_gpus = 1
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = str(randint(20000, 55555))
 
