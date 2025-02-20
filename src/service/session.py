@@ -38,8 +38,11 @@ class SessionManager:
     session_list = dict()
     session_uuids = list()
     session_task = dict()
-    exist_session: Optional[str] = None
     session_subprocess = dict()
+    # exist_session is the current running session. When session is completed, it will be None.
+    # last_runned_session is the last completed session. It will be None if no session is completed.
+    exist_session: Optional[str] = None
+    last_runned_session: Optional[str] = None
 
     def __new__(cls):
         """Singleton pattern to ensure only one instance of SessionManager exists."""
@@ -114,6 +117,7 @@ class SessionManager:
 
         if self.exist_session is not None and self.exist_session == uuid:
             self.exist_session = None
+            self.last_runned_session = uuid
 
     def end_session_with_ease_voice_response(self, uuid: str, result: EaseVoiceResponse):
         """Marks task as completed successfully."""
@@ -132,6 +136,7 @@ class SessionManager:
 
         if self.exist_session is not None and self.exist_session == uuid:
             self.exist_session = None
+            self.last_runned_session = uuid
 
     def fail_session(self, uuid: str, error: str):
         """Marks task as failed and stores error information."""
@@ -143,6 +148,7 @@ class SessionManager:
 
         if self.exist_session is not None and self.exist_session == uuid:
             self.exist_session = None
+            self.last_runned_session = uuid
 
     def update_session_info(self, uuid: str, info: Dict[str, Any]):
         """Updates task session with arbitrary info."""
@@ -157,6 +163,14 @@ class SessionManager:
     def exist_running_session(self):
         """Returns whether there is a running session."""
         return self.exist_session is not None
+    
+    def get_current_session_info(self):
+        """Returns the current running session or last completed session."""
+        if self.exist_session is not None:
+            return self.session_list.get(self.exist_session, None)
+        if self.last_runned_session is not None:
+            return self.session_list.get(self.last_runned_session, None)
+        return None
 
 
 session_manager = SessionManager()

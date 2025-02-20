@@ -2,7 +2,6 @@
 # -*- encoding=utf8 -*-
 
 
-from enum import Enum
 from typing import Optional
 
 

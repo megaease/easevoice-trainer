@@ -209,15 +209,24 @@ class SessionAPI:
         """Register API routes."""
         self.router.add_api_route(
             path="/session",
-            endpoint=self.get_session,
+            endpoint=self.get_sessions,
+            methods=["GET"],
+            summary="List sessions info",
+        )
+        self.router.add_api_route(
+            path="/session/current",
+            endpoint=self.get_current_session,
             methods=["GET"],
             summary="Get current session info",
         )
 
-    async def get_session(self):
+    async def get_sessions(self):
         """Retrieve current session info."""
         session_info = self.session_manager.get_session_info()
         return session_info
+
+    async def get_current_session(self):
+        return self.session_manager.get_current_session_info()
 
 
 class VoiceCloneAPI:

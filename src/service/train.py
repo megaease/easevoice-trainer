@@ -24,8 +24,8 @@ class TrainGPTService(object):
     def train(self) -> EaseVoiceResponse:
         try:
             output = self.gpt_train.train()
-            resp = EaseVoiceResponse(ResponseStatus.SUCCESS, "Training GPT completed successfully", data=dataclasses.asdict(output))
+            resp = EaseVoiceResponse(ResponseStatus.SUCCESS, "Training GPT completed successfully", data=dataclasses.asdict(output)) # pyright: ignore
         except Exception as e:
             print(traceback.format_exc(), e)
-            resp = EaseVoiceResponse(ResponseStatus.FAILED, str(e))
+            resp = EaseVoiceResponse(ResponseStatus.FAILED, str(e)) # pyright: ignore
         return resp
