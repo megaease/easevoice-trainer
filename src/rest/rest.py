@@ -4,7 +4,8 @@ from dataclasses import asdict
 from http import HTTPStatus
 
 from fastapi import FastAPI, APIRouter, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
+from typing import AsyncGenerator
 
 from src.api.api import (
     Namespace,
@@ -26,10 +27,39 @@ from src.service.normalize import NormalizeParams
 from src.service.session import SessionManager, backtask_with_session_guard, start_task_with_subprocess, stop_task_with_subprocess
 from src.service.session import session_manager
 from src.service.voice import VoiceCloneService
+from src.service.tensorboard import TensorBoardService
 from src.train.gpt import GPTTrainParams
 from src.train.helper import list_train_gpts, list_train_sovits, generate_random_name
 from src.train.sovits import SovitsTrainParams
 from src.utils.response import EaseVoiceResponse, ResponseStatus
+
+class TensorBoardAPI:
+    """Class to encapsulate TensorBoard-related API endpoints."""
+
+    def __init__(self, log_dir: str):
+        self.router = APIRouter()
+        self.log_dir = log_dir
+        self._register_routes()
+
+    def _register_routes(self):
+        """Register API routes."""
+        self.router.add_api_route(
+            path="/tensorboard",
+            endpoint=self.view_tensorboard,
+            methods=["GET"],
+            response_class=HTMLResponse,
+            summary="View TensorBoard UI",
+        )
+
+    async def view_tensorboard(self):
+        """Serve the TensorBoard UI in an iframe."""
+        return f'''
+        <html>
+            <body>
+                <iframe src="http://localhost:6006" width="100%" height="1000px"></iframe>
+            </body>
+        </html>
+        '''
 
 
 class NamespaceAPI:
@@ -481,8 +511,23 @@ class EaseVoiceAPI:
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop EaseVoice: {e}"})
 
 
-# Initialize FastAPI and NamespaceService
-app = FastAPI()
+
+# TensorBoard setup
+async def lifespan_context(app: FastAPI) -> AsyncGenerator[None, None]:
+    """Lifespan event handler for application startup and shutdown."""
+    # Start TensorBoard as a background task when the app starts
+    tensorboard_service.start()
+    yield  # The application is running here
+    # Stop TensorBoard when the app shuts down
+    tensorboard_service.stop()
+
+# FastAPI app setup
+app = FastAPI(lifespan=lifespan_context)
+
+tb_log_dir = "tb_logs"
+tensorboard_service = TensorBoardService(tb_log_dir)
+tensorboard_api = TensorBoardAPI(tb_log_dir)
+app.include_router(tensorboard_api.router, prefix="/apis/v1")
 
 namespace_service = NamespaceService()
 namespace_api = NamespaceAPI(namespace_service)

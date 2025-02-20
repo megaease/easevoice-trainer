@@ -177,3 +177,5 @@ pkg
 models/**
 !models/pretrained/
 !models/pretrained/.gitkeep
+
+tb_logs/
