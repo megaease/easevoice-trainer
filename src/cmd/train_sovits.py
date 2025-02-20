@@ -1,4 +1,10 @@
+#!/usr/bin/env python
+# -*- encoding=utf8 -*-
 
+import sys
+
+sys.path.append('.')
+sys.path.append('..')
 
 import argparse
 from dataclasses import asdict
@@ -22,7 +28,10 @@ def main():
             required=True,
         )
         args = parser.parse_args()
-        config = json.loads(args.config)
+        config_content = args.config.read()
+        args.config.close()
+        config = json.loads(config_content)
+
         params = SovitsTrainParams(**config)
         train = SovitsTrain(params=params)
         output = train.train()
