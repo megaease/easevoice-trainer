@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import logging
 import traceback
 from typing import Any, List, Tuple
@@ -154,6 +154,7 @@ class SovitsTrain:
         json_data = load_json(config.s2config_path)
         hps = TrainConfig(**json_data)
         self.hps = self._update_hparams(hps, params)
+        logger.info(f"train sovits with config: {asdict(self.hps)}")
         self.step = 0
         self.device = "cpu"
 
@@ -180,9 +181,12 @@ class SovitsTrain:
             opt["config"] = hps
             opt["info"] = "%sepoch_%siteration" % (epoch, steps)
 
-            ckpt.save_with_torch(opt, os.path.join(hps.train.save_weight_dir, f"{name}.pth"))
+            path = os.path.join(hps.train.save_weight_dir, f"{name}.pth")
+            logger.info(f"saving ckpt to {path}")
+            ckpt.save_with_torch(opt, path)
             return "Success"
-        except:
+        except Exception as e:
+            logger.error(f"save ckpt failed, exception: {e}", exc_info=True)
             return traceback.format_exc()
 
     def train(self):
