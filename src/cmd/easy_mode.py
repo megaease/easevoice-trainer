@@ -1,21 +1,24 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
-from src.utils.response import EaseVoiceResponse, ResponseStatus
-from src.utils.helper.connector import MultiProcessOutputConnector
-from src.train.gpt import GPTTrainParams, GPTTrain
-from dataclasses import asdict, dataclass
-import traceback
-import json
-import argparse
-from src.train.sovits import SovitsTrain, SovitsTrainParams
-from src.train.helper import generate_random_name
-from src.service.normalize import NormalizeService
-from src.service.audio import AudioService
 import os
 import sys
 
 sys.path.append('.')
 sys.path.append('..')
+
+from src.service.audio import AudioService
+from src.service.normalize import NormalizeService
+from src.train.helper import generate_random_name
+from src.train.sovits import SovitsTrain, SovitsTrainParams
+
+import argparse
+import json
+import traceback
+from dataclasses import asdict, dataclass
+
+from src.train.gpt import GPTTrainParams, GPTTrain
+from src.utils.helper.connector import MultiProcessOutputConnector
+from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
 @dataclass
