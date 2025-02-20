@@ -77,7 +77,11 @@ class Text2SemanticLightningModule(LightningModule):
             prog_bar=True,
             sync_dist=True,
         )
-        self.connector.write_loss(step=batch_idx, loss=loss, other={"acc": acc, "lr": scheduler.get_last_lr()[0]})
+        self.connector.write_loss(
+            step=batch_idx,
+            loss=convert_tensor_to_python(loss),
+            other={"acc": convert_tensor_to_python(acc), "lr": convert_tensor_to_python(scheduler.get_last_lr()[0])}
+        )
 
     def validation_step(self, batch: Dict, batch_idx: int):
         return

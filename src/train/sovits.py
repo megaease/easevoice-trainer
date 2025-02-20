@@ -525,10 +525,10 @@ class SovitsTrain:
                             epoch, 100.0 * batch_idx / len(train_loader)
                         )
                     )
-                    connector.write_loss(self.step, loss=loss_gen_all, other={
-                        "loss/g/total": loss_gen_all,
-                        "loss/d/total": loss_disc_all,
-                        "learning_rate": lr,
+                    connector.write_loss(self.step, loss=convert_tensor_to_python(loss_gen_all), other={
+                        "loss/g/total": convert_tensor_to_python(loss_gen_all),
+                        "loss/d/total": convert_tensor_to_python(loss_disc_all),
+                        "learning_rate": convert_tensor_to_python(lr),
                     })
 
                     logger.info([x.item() for x in losses] + [self.step, lr])
