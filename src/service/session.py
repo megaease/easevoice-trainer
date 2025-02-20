@@ -19,7 +19,7 @@ from fastapi import HTTPException
 from logger import logger
 
 from src.utils import config
-from src.utils.helper.connector import MultiProcessOutputConnector, ConnectorDataType
+from src.utils.helper.connector import ConnectorDataLoss, MultiProcessOutputConnector, ConnectorDataType
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
@@ -59,12 +59,21 @@ class SessionManager:
 
     def _check_session_limit(self):
         while len(self.session_uuids) > self.MAX_SESSIONS:
-            uuid = self.session_uuids.pop(0)
+            # not remove the current running session
+            if self.exist_session is not None and self.exist_session == self.session_uuids[0]:
+                uuid = self.session_uuids.pop(1)
+            else:
+                uuid = self.session_uuids.pop(0)
             self.session_list.pop(uuid)
 
-    # request is datatclass instance or dict
     def start_session(self, uuid: str, task_name: str, request: Optional[dict] = None):
         """Attempts to start a new session; rejects if another task is already running."""
+        # if start session failed, raise exception, not store it
+        if self.exist_session is not None:
+            raise RuntimeError(
+                f"A task is already running. Cannot submit another task!"
+            )
+
         if is_dataclass(request):
             request = asdict(request)
 
@@ -78,15 +87,6 @@ class SessionManager:
         }
         self.session_uuids.append(uuid)
         self._check_session_limit()
-
-        if self.exist_session is not None:
-            self.session_list[uuid].update({
-                "status": Status.FAILED,
-                "error": "There is an another task running.",
-            })
-            raise RuntimeError(
-                f"A task is already running. Cannot submit another task!"
-            )
         self.exist_session = uuid
 
     def add_session_task(self, uuid: str, task: asyncio.Task[Any]):
@@ -156,6 +156,13 @@ class SessionManager:
             raise RuntimeError("No active task to update session info!")
         self.session_list[uuid].update(info)
 
+    def update_session_loss(self, uuid: str, loss: ConnectorDataLoss):
+        if not self.session_list[uuid]:
+            raise RuntimeError("No active task to update session loss!")
+        losses = self.session_list[uuid].get("losses", [])
+        losses.append(asdict(loss))
+        self.session_list[uuid]["losses"] = losses
+
     def get_session_info(self) -> Dict[str, Any]:
         """Returns current task state information."""
         return self.session_list
@@ -163,7 +170,7 @@ class SessionManager:
     def exist_running_session(self):
         """Returns whether there is a running session."""
         return self.exist_session is not None
-    
+
     def get_current_session_info(self):
         """Returns the current running session or last completed session."""
         if self.exist_session is not None:
@@ -176,38 +183,11 @@ class SessionManager:
 session_manager = SessionManager()
 
 
-async def async_start_session(func, uuid: str, target_name: str, **kwargs):
-    """Starts a new session in coroutine."""
-    try:
-        session_manager.start_session(uuid, target_name)
-    except Exception as e:
-        print(traceback.format_exc())
-        session_manager.end_session_with_ease_voice_response(uuid, EaseVoiceResponse(ResponseStatus.FAILED, "There is an another task running."))
-        return
-
-    def _done_callback(future):
-        try:
-            resp = future.result()
-            if isinstance(resp, EaseVoiceResponse):
-                session_manager.end_session_with_ease_voice_response(uuid, resp)
-            else:
-                # should not reach here
-                session_manager.end_session_with_ease_voice_response(uuid, EaseVoiceResponse(ResponseStatus.FAILED, "Unknown response type.", data={"response": resp}))
-        except Exception as e:
-            print(traceback.format_exc())
-            session_manager.fail_session(uuid, str(e))
-
-    task = asyncio.create_task(func(**kwargs))
-    task.add_done_callback(_done_callback)
-    session_manager.add_session_task(uuid, task)
-
-
 def backtask_with_session_guard(uuid: str, task_name: str, request_params: dict, func, **kwargs):
     try:
         session_manager.start_session(uuid, task_name, request_params)
     except Exception as e:
         logger.error(f"Failed to start session for task {task_name}: {e}", exc_info=True)
-        session_manager.end_session_with_ease_voice_response(uuid, EaseVoiceResponse(ResponseStatus.FAILED, "There is an another task running."))
         raise HTTPException(status_code=HTTPStatus.CONFLICT, detail="There is an another task running.")
 
     def wrapper():
@@ -238,11 +218,11 @@ def start_task_with_subprocess(uid: str, cmd_file: str, request: Any):
     connector = MultiProcessOutputConnector()
     for data in connector.read_data(proc):
         if data.dataType == ConnectorDataType.RESP:
-            resp = data.response
-            session_manager.end_session_with_ease_voice_response(uid, resp) # pyright: ignore
+            session_manager.end_session_with_ease_voice_response(uid, data.response)
         elif data.dataType == ConnectorDataType.SESSION_DATA:
-            resp = data.session_data
-            session_manager.update_session_info(uid, resp) # pyright: ignore
+            session_manager.update_session_info(uid,  data.session_data)
+        elif data.dataType == ConnectorDataType.LOSS:
+            session_manager.update_session_loss(uid, data.loss)
 
 
 def _check_session(uid: str, task_name: str) -> Optional[EaseVoiceResponse]:
