@@ -102,7 +102,11 @@ class SessionManager:
         self.session_subprocess[uuid] = pid
 
     def remove_session_subprocess(self, uuid: str):
-        self.session_subprocess.pop(uuid)
+        """
+        The voice clone task not use subprocess. It may cause error when remove subprocess.
+        """
+        if uuid in self.session_subprocess:
+            self.session_subprocess.pop(uuid)
 
     def get_session_subprocess(self, uuid: str) -> Optional[int]:
         return self.session_subprocess.get(uuid)

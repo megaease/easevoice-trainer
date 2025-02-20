@@ -7,6 +7,7 @@ import os
 import sys
 
 from src.utils.helper import convert_tensor_to_python
+from src.utils.helper.connector import MultiProcessOutputConnector
 
 from ..modules.optim import ScaledAdam
 from ..modules.lr_schedulers import WarmupCosineLRSchedule
@@ -34,6 +35,7 @@ class Text2SemanticLightningModule(LightningModule):
             self.save_hyperparameters()
             self.eval_dir = output_dir / "eval"
             self.eval_dir.mkdir(parents=True, exist_ok=True)
+        self.connector = MultiProcessOutputConnector()
 
     def training_step(self, batch: Dict, batch_idx: int):  # pyright: ignore
         opt: Any = self.optimizers()

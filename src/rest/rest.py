@@ -33,6 +33,7 @@ from src.train.helper import list_train_gpts, list_train_sovits, generate_random
 from src.train.sovits import SovitsTrainParams
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
+
 class TensorBoardAPI:
     """Class to encapsulate TensorBoard-related API endpoints."""
 
@@ -301,6 +302,7 @@ class VoiceCloneAPI:
             logger.error(f"Failed to clone voice for {task}: {e}", exc_info=True)
             result = EaseVoiceResponse(ResponseStatus.FAILED, str(e))
         finally:
+            session_manager.end_session_with_ease_voice_response(uid, result)
             if service is not None:
                 service.close()
         return result
@@ -507,7 +509,6 @@ class EaseVoiceAPI:
             raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail={"error": f"failed to stop EaseVoice: {e}"})
 
 
-
 # TensorBoard setup
 async def lifespan_context(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan event handler for application startup and shutdown."""
@@ -518,7 +519,7 @@ async def lifespan_context(app: FastAPI) -> AsyncGenerator[None, None]:
     tensorboard_service.stop()
 
 # FastAPI app setup
-app = FastAPI(lifespan=lifespan_context) # pyright: ignore
+app = FastAPI(lifespan=lifespan_context)  # pyright: ignore
 
 tb_log_dir = "tb_logs"
 tensorboard_service = TensorBoardService(tb_log_dir)

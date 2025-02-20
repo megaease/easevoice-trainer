@@ -34,7 +34,7 @@ class VoiceCloneService:
 
         self.session_manager.update_session_info(uuid, {"message": "voice clone started"})
         items, seed = self.runner.inference(data)  # pyright: ignore
-        self.session_manager.update_session_info(uuid, {"message": "voice clone completed"})
+        self.session_manager.update_session_info(uuid, {"message": "voice clone completed, start to write audio"})
 
         sampling_rate = items[0][0]
         data = np.concatenate([item[1] for item in items])
