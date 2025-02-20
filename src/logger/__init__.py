@@ -3,7 +3,7 @@ import os
 
 
 def _get_logger():
-    log_level = os.environ.get("EASEVOICE_LOG_LEVEL", "WARNING")
+    log_level = os.environ.get("EASEVOICE_LOG_LEVEL", "INFO")
     log_level = log_level.upper()
 
     logger = logging.getLogger(__name__)

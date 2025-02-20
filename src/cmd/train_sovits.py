@@ -2,6 +2,8 @@
 # -*- encoding=utf8 -*-
 
 import sys
+import trace
+import traceback
 
 sys.path.append('.')
 sys.path.append('..')
@@ -37,6 +39,7 @@ def main():
         output = train.train()
         connector.write_response(EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="Finish train sovits", data=asdict(output)))
     except Exception as e:
+        traceback.print_exc()
         connector.write_response(EaseVoiceResponse(status=ResponseStatus.FAILED, message=f"failed to train sovits, {e}"))
 
 

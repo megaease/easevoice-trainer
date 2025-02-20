@@ -1,14 +1,8 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
 import dataclasses
-from multiprocessing import Queue
 import traceback
-
-from requests import session
-
-from src.service.session import SessionManager
 from src.train.gpt import GPTTrainParams, GPTTrain
-from src.train.sovits import SovitsTrain, SovitsTrainParams
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 

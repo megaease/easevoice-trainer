@@ -284,7 +284,7 @@ class TrainAPI:
     def _register_routes(self):
         self.router.post("/train/gpt/start")(self.train_gpt)
         self.router.delete("/train/gpt/stop")(self.train_gpt_stop)
-        self.router.post("/train/sovits")(self.train_sovits)
+        self.router.post("/train/sovits/start")(self.train_sovits)
         self.router.delete("/train/sovits/stop")(self.train_sovits_stop)
 
     async def train_gpt(self, params: GPTTrainParams):
@@ -304,7 +304,7 @@ class TrainAPI:
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
         # Note: it could not be empty, because the training processing has multiple processes, each process could generate a model name
         if params.output_model_name == "":
-            params.output_model_name = "gpt_" + generate_random_name()
+            params.output_model_name = "sovits_" + generate_random_name()
         uid = str(uuid.uuid4())
         backtask_with_session_guard(uid, TaskType.train_sovits, asdict(params), start_task_with_subprocess, uid=uid, request=params, cmd_file=TaskCMD.tran_sovits)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Sovits training started", uuid=uid)

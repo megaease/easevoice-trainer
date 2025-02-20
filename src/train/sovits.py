@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import logging
 import traceback
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, List, Tuple
 import torch.distributed as dist
 import os
 from src.train.helper import TrainOutput, get_sovits_train_dir, train_logs_path
