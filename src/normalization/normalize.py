@@ -20,11 +20,13 @@ from src.easevoice.module.models import SynthesizerTrn
 
 
 class Normalize(object):
-    def __init__(self, processing_path: str):
+    def __init__(self, processing_path: str, predefine_output_path: str = ""):
         self.source_path = processing_path
         self.refinements_output_path = os.path.join(self.source_path, refinements_output, refinement_file)
         self.denoises_output_path = os.path.join(self.source_path, denoises_output)
-        self.output_path = os.path.join(self.source_path, random_choice())
+        if predefine_output_path == "":
+            predefine_output_path = random_choice()
+        self.output_path = os.path.join(self.source_path, predefine_output_path)
         os.makedirs(self.output_path, exist_ok=True)
         self.text_output_path = os.path.join(self.output_path, text_output_name)
         if os.path.exists(self.text_output_path):

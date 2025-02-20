@@ -33,7 +33,7 @@ def main():
         config = json.loads(config_content)
 
         params = NormalizeParams(**config)
-        service = NormalizeService(processing_path=params.output_dir)
+        service = NormalizeService(processing_path=params.output_dir, predefine_output_path=params.predefined_output_path)
         output = service.normalize()
         connector.write_response(output)
     except Exception as e:

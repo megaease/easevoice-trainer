@@ -10,10 +10,11 @@ from src.utils.response import EaseVoiceResponse, ResponseStatus
 @dataclass
 class NormalizeParams:
     output_dir: str
+    predefined_output_path: str = ""
 
 
 class NormalizeService(object):
-    def __init__(self, processing_path: str):
+    def __init__(self, processing_path: str, predefine_output_path: str = ""):
         self.processing_path = processing_path
 
     def normalize(self) -> EaseVoiceResponse:

@@ -31,6 +31,7 @@ from src.service.tensorboard import TensorBoardService
 from src.train.gpt import GPTTrainParams
 from src.train.helper import list_train_gpts, list_train_sovits, generate_random_name
 from src.train.sovits import SovitsTrainParams
+from src.utils.helper import random_choice
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
@@ -370,8 +371,9 @@ class NormalizeAPI:
             raise HTTPException(status_code=HTTPStatus.CONFLICT, detail={"error": "There is an another task running."})
 
         uid = str(uuid.uuid4())
+        request.predefined_output_path = random_choice()
         backtask_with_session_guard(uid, TaskType.normalize, asdict(request), start_task_with_subprocess, uid=uid, request=request, cmd_file=TaskCMD.normalize)
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalize started", uuid=str(uid))
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Normalize started", uuid=str(uid), data={"normalize_path": str(os.path.join(request.output_dir, request.predefined_output_path))})
 
     async def normalize_stop(self, uid: str):
         try:
@@ -517,6 +519,7 @@ async def lifespan_context(app: FastAPI) -> AsyncGenerator[None, None]:
     yield  # The application is running here
     # Stop TensorBoard when the app shuts down
     tensorboard_service.stop()
+
 
 # FastAPI app setup
 app = FastAPI(lifespan=lifespan_context)  # pyright: ignore
