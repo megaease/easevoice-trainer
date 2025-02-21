@@ -36,7 +36,6 @@ class Text2SemanticLightningModule(LightningModule):
             self.eval_dir = output_dir / "eval"
             self.eval_dir.mkdir(parents=True, exist_ok=True)
         self.connector = MultiProcessOutputConnector()
-        self._connector_step = 0
 
     def training_step(self, batch: Dict, batch_idx: int):  # pyright: ignore
         opt: Any = self.optimizers()
@@ -78,12 +77,12 @@ class Text2SemanticLightningModule(LightningModule):
             prog_bar=True,
             sync_dist=True,
         )
-        self.connector.write_loss(
-            step=self._connector_step,
-            loss=convert_tensor_to_python(loss),
-            other={"acc": convert_tensor_to_python(acc), "lr": convert_tensor_to_python(scheduler.get_last_lr()[0]), "epoch": self.current_epoch, }
-        )
-        self._connector_step += 1
+        if self.global_rank == 0:
+            self.connector.write_loss(
+                step=self.global_step,
+                loss=convert_tensor_to_python(loss),
+                other={"acc": convert_tensor_to_python(acc), "lr": convert_tensor_to_python(scheduler.get_last_lr()[0]), "epoch": self.current_epoch, }
+            )
 
     def validation_step(self, batch: Dict, batch_idx: int):
         return

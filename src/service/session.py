@@ -184,13 +184,16 @@ class SessionManager:
     def get_current_session_info(self):
         """Returns the current running session or last completed session."""
         if self.exist_session is not None:
+            # prevent update monitor metrics to current session
+            metrics = self._inject_monitor_metrics()
             session = self.session_list.get(self.exist_session, {})
-            session.update(self._inject_monitor_metrics())
-            return session
+            metrics.update(session)
+            return metrics
         if self.last_runned_session is not None:
+            metrics = self._inject_monitor_metrics()
             session = self.session_list.get(self.last_runned_session, {})
-            session.update(self._inject_monitor_metrics())
-            return session
+            metrics.update(session)
+            return metrics
         return {}
 
     @staticmethod
