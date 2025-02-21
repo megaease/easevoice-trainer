@@ -201,7 +201,7 @@ class SessionManager:
         session = dict()
         if torch.cuda.is_available():
             session["gpu_percentage"] = f"{torch.cuda.utilization()}%"
-            session["memory_allocated_percentage"] = f"{torch.cuda.memory_allocated() / min(torch.cuda.max_memory_allocated(), 1) * 100:.2f}%"
+            session["memory_allocated_percentage"] = f"{torch.cuda.memory_allocated() / max(torch.cuda.max_memory_allocated(), 1) * 100:.2f}%"
         session["cpu_percentage"] = f"{psutil.cpu_percent()}%"
         return {
             "monitor_metrics": session
