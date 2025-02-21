@@ -16,10 +16,11 @@ class NormalizeParams:
 class NormalizeService(object):
     def __init__(self, processing_path: str, predefine_output_path: str = ""):
         self.processing_path = processing_path
+        self.predefine_output_path = predefine_output_path
 
     def normalize(self) -> EaseVoiceResponse:
         try:
-            normalize = Normalize(self.processing_path)
+            normalize = Normalize(self.processing_path, predefine_output_path=self.predefine_output_path)
             text_resp = normalize.text()
             if text_resp.status == ResponseStatus.FAILED:
                 return text_resp
