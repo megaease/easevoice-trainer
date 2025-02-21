@@ -116,7 +116,10 @@ class GPTTrain(object):
         self.config["train"]["if_dpo"] = params.if_dpo
         self.config["train"]["if_save_latest"] = params.if_save_latest
         self.config["train"]["if_save_every_weights"] = params.if_save_every_weights
-        self.config["pretrained_s1"] = params.model_path
+        if params.model_path == "pretrained/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt":
+            self.config["pretrained_s1"] = gpt_pretrained_model_path
+        else:
+            self.config["pretrained_s1"] = params.model_path
         self.config["train"]["half_weights_save_dir"] = self.train_output
         self.config["train_semantic_path"] = os.path.join(self.train_input_dir, semantic_output)
         self.config["train_phoneme_path"] = os.path.join(self.train_input_dir, text_output_name)
