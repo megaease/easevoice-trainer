@@ -59,3 +59,4 @@ tensorboard
 multiprocess==0.70.17
 
 psutil~=6.1.1
+pynvml
