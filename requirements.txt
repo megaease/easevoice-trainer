@@ -34,7 +34,7 @@ ko_pron
 g2pk2~=0.0.3
 pyjyutping~=1.0.0
 cn2an~=0.5.23
-modelscope==1.10.0
+modelscope>=1.10.0
 sentencepiece
 Faster_Whisper
 funasr==1.0.27
@@ -60,3 +60,4 @@ multiprocess==0.70.17
 
 psutil~=6.1.1
 pynvml
+modelscope==1.10.0
