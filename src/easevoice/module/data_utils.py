@@ -94,7 +94,8 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
 
         print("skipped_phone: ", skipped_phone, ", skipped_dur: ", skipped_dur)
         print("total left: ", len(audiopaths_sid_text_new))
-        assert len(audiopaths_sid_text_new) > 1  # 至少能凑够batch size，这里todo
+        if len(audiopaths_sid_text_new) <= 1:
+            raise ValueError(f"data in {exp_dir} is all skipped, please check the data")
         self.audiopaths_sid_text = audiopaths_sid_text_new
         self.lengths = lengths
 
