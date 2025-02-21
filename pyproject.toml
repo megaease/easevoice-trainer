@@ -50,4 +50,5 @@ dependencies = [
     "multiprocess==0.70.17",
     "pynvml",
     "modelscope>=1.10.0",
+    "addict",
 ]
