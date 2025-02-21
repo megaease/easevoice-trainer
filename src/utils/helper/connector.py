@@ -39,14 +39,18 @@ class MultiProcessOutputConnector:
     Then main process can easily read data from stdout or stderr use this class.
     """
 
-    def __init__(self):
+    def __init__(self, printer: Optional[Any] = None):
         self._resp_prefix = "response-of-easevoice"
         self._loss_prefix = "loss-of-easevoice"
         self._log_prefix = "log-of-easevoice"
         self._session_data_prefix = "session-data-of-easevoice"
+        if printer is None:
+            self._printer = print
+        else:
+            self._printer = printer
 
     def _print(self, prefix: str, data: str):
-        print(f"{prefix} {data}", flush=True)
+        self._printer(f"{prefix} {data}", flush=True)
 
     def write_response(self, resp: EaseVoiceResponse):
         data = json.dumps(resp.to_dict()) # pyright: ignore
