@@ -1,27 +1,28 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
+import gc
+from typing import Any
+import tempfile
+import subprocess
+import os
+from src.utils import config
+from src.service.audio import AudioService
+from src.api.api import EaseVoiceRequest
+from src.service.normalize import NormalizeService
+from src.train.sovits import SovitsTrain, SovitsTrainParams
+import argparse
+import json
+import traceback
+from dataclasses import asdict
+from src.train.gpt import GPTTrainParams, GPTTrain
+from src.utils.helper.connector import ConnectorDataType, MultiProcessOutputConnector
+from src.utils.response import EaseVoiceResponse, ResponseStatus
+from src.rest.types import TaskCMD
 import sys
+
+import torch
 sys.path.append('.')
 sys.path.append('..')
-
-from src.rest.types import TaskCMD
-from src.utils.response import EaseVoiceResponse, ResponseStatus
-from src.utils.helper.connector import ConnectorDataType, MultiProcessOutputConnector
-from src.train.gpt import GPTTrainParams, GPTTrain
-from dataclasses import asdict
-import traceback
-import json
-import argparse
-from src.train.sovits import SovitsTrain, SovitsTrainParams
-from src.service.normalize import NormalizeService
-from src.api.api import EaseVoiceRequest
-from src.service.audio import AudioService
-from src.utils import config
-import os
-import subprocess
-import tempfile
-from typing import Any
-
 
 
 def _check_response(connector: MultiProcessOutputConnector, response: EaseVoiceResponse, step_name: str, current_step: int):
@@ -101,6 +102,11 @@ def main():
         _check_response(connector, resp, "Normalization", 5)
         normalize_path = resp.data["normalize_path"]  # pyright: ignore
 
+        # Free up memory
+        del audio_service
+        gc.collect()
+        torch.cuda.empty_cache()
+
         sovits_name = params.sovits_output_name
         sovits_params = SovitsTrainParams(train_input_dir=normalize_path, output_model_name=sovits_name)
         sovits_resp = _run_train(TaskCMD.tran_sovits, sovits_params)
@@ -113,8 +119,8 @@ def main():
         print(f"gpt resp of easy mode: {gpt_resp}")
         _check_response(connector, resp, "GPT Training", 7)
         connector.write_response(EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="FTraining GPT completed successfully", data={
-            "sovits_output": sovits_resp.data["model_path"], # pyright: ignore
-            "gpt_output": gpt_resp.data["model_path"], # pyright: ignore
+            "sovits_output": sovits_resp.data["model_path"],  # pyright: ignore
+            "gpt_output": gpt_resp.data["model_path"],  # pyright: ignore
         }))
     except Exception as e:
         print(traceback.format_exc(), e)
