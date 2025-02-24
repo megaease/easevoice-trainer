@@ -55,6 +55,8 @@ class Text2SemanticDataset(Dataset):
         self.semantic_data = pd.read_csv(
             semantic_path, delimiter="\t", encoding="utf-8"
         )
+        self._semantic_path = semantic_path
+        self._phoneme_path = phoneme_path
         # get dict
         self.path2 = phoneme_path  # "%s/2-name2text.txt"%exp_dir#phoneme_path
         self.path3 = "%s/3-bert" % (
@@ -174,6 +176,9 @@ class Text2SemanticDataset(Dataset):
 
         min_num = 100  # 20直接不补#30补了也不存ckpt
         leng = len(self.semantic_phoneme)
+        if leng == 0:
+            raise ValueError(f"no valid data in {self._semantic_path}, please check the data and try again")
+        
         if leng < min_num:
             tmp1 = self.semantic_phoneme
             tmp2 = self.item_names
