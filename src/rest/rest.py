@@ -3,7 +3,7 @@ import uuid
 from dataclasses import asdict
 from http import HTTPStatus
 
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from typing import AsyncGenerator
 
@@ -33,6 +33,62 @@ from src.train.helper import list_train_gpts, list_train_sovits, generate_random
 from src.train.sovits import SovitsTrainParams
 from src.utils.helper import random_choice
 from src.utils.response import EaseVoiceResponse, ResponseStatus
+
+
+class FrontendAssetsAPI:
+    """Class to handle serving static assets (JS, CSS, images) from /assets."""
+
+    def __init__(self, frontend_dir: str):
+        self.router = APIRouter()
+        self.frontend_dir = frontend_dir
+        self._register_routes()
+
+    def _register_routes(self):
+        """Register route to serve static assets."""
+        # Handle assets manually for `/assets/*`
+        self.router.add_api_route("/assets/{file_path:path}", self.serve_asset, methods=["GET"])
+
+    async def serve_asset(self, file_path: str) -> Response:
+        """Serve a static file from the `dist/assets` directory."""
+        asset_path = os.path.join(self.frontend_dir, "assets", file_path)
+
+        # Check if the file exists
+        if not os.path.exists(asset_path):
+            raise HTTPException(status_code=404, detail=f"Asset '{file_path}' not found")
+
+        # Return the file
+        return FileResponse(asset_path)
+
+class FrontendIndexAPI:
+    """Class to handle serving index.html for the root path."""
+
+    def __init__(self, frontend_dir: str):
+        self.router = APIRouter()
+        self.frontend_dir = frontend_dir
+        self._register_routes()
+
+    def _register_routes(self):
+        """Register routes to serve index.html."""
+        # Serve index.html for any route that is not `/assets`
+        self.router.add_api_route("/", self.serve_index, methods=["GET"])
+        #self.router.add_api_route("/{path:path}", self.serve_index, methods=["GET"])
+
+    async def serve_index(self, path: str = "") -> Response:
+        """Serve index.html for any request (except /assets)."""
+        # If the request is for /assets, let the FrontendAssetsAPI handle it
+        if path.startswith("assets/"):
+            return Response(status_code=404)
+
+        index_path = os.path.join(self.frontend_dir, "index.html")
+
+        if not os.path.exists(index_path):
+            return Response("index.html not found.", status_code=404)
+
+        # Read and return the index.html file
+        with open(index_path, "r") as f:
+            content = f.read()
+
+        return Response(content=content, media_type="text/html")
 
 
 class TensorBoardAPI:
@@ -531,6 +587,17 @@ async def lifespan_context(app: FastAPI) -> AsyncGenerator[None, None]:
 # FastAPI app setup
 app = FastAPI(lifespan=lifespan_context)  # pyright: ignore
 
+frontend_dir = os.path.join(os.getcwd(), "dist")
+if not os.path.exists(frontend_dir):
+    raise FileNotFoundError(f"Frontend build directory '{frontend_dir}' not found. Please build the frontend first.")
+
+frontend_assets_api = FrontendAssetsAPI(frontend_dir)
+app.include_router(frontend_assets_api.router)
+
+frontend_index_api = FrontendIndexAPI(frontend_dir)
+app.include_router(frontend_index_api.router)
+
+
 tb_log_dir = "tb_logs"
 tensorboard_service = TensorBoardService(tb_log_dir)
 tensorboard_api = TensorBoardAPI(tb_log_dir)
@@ -561,3 +628,15 @@ app.include_router(audio_api.router, prefix="/apis/v1")
 
 easevoice_api = EaseVoiceAPI()
 app.include_router(easevoice_api.router, prefix="/apis/v1")
+
+
+# Function to print all routing information
+# def print_routes(app: FastAPI):
+#     for route in app.routes:
+#         print(f"Path: {route.path}")
+#         print(f"Methods: {route.methods}")
+#         print(f"Endpoint: {route.endpoint.__name__}")
+#         print("-" * 40)
+#
+# # Call the function to print all routes
+# print_routes(app)
