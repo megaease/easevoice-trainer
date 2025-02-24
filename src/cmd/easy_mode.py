@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
+import sys
+
+sys.path.append('.')
+sys.path.append('..')
+
 import gc
 from typing import Any
 import tempfile
@@ -18,11 +23,7 @@ from src.train.gpt import GPTTrainParams, GPTTrain
 from src.utils.helper.connector import ConnectorDataType, MultiProcessOutputConnector
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 from src.rest.types import TaskCMD
-import sys
-
 import torch
-sys.path.append('.')
-sys.path.append('..')
 
 
 def _check_response(connector: MultiProcessOutputConnector, response: EaseVoiceResponse, step_name: str, current_step: int):
