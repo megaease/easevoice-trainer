@@ -104,11 +104,13 @@ def main():
         sovits_name = params.sovits_output_name
         sovits_params = SovitsTrainParams(train_input_dir=normalize_path, output_model_name=sovits_name)
         sovits_resp = _run_train(TaskCMD.tran_sovits, sovits_params)
+        print(f"sovits resp of easy mode: {sovits_resp}")
         _check_response(connector, resp, "Sovits Training", 6)
 
         gpt_name = params.gpt_output_name
         gpt_params = GPTTrainParams(train_input_dir=normalize_path, output_model_name=gpt_name)
         gpt_resp = _run_train(TaskCMD.train_gpt, gpt_params)
+        print(f"gpt resp of easy mode: {gpt_resp}")
         _check_response(connector, resp, "GPT Training", 7)
         connector.write_response(EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="FTraining GPT completed successfully", data={
             "sovits_output": sovits_resp.data["model_path"], # pyright: ignore
