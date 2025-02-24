@@ -1,25 +1,27 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
-import os
 import sys
-
 sys.path.append('.')
 sys.path.append('..')
 
-from src.service.audio import AudioService
-from src.api.api import EaseVoiceRequest
-from src.service.normalize import NormalizeService
-from src.train.helper import generate_random_name
-from src.train.sovits import SovitsTrain, SovitsTrainParams
-
-import argparse
-import json
-import traceback
-from dataclasses import asdict
-
-from src.train.gpt import GPTTrainParams, GPTTrain
-from src.utils.helper.connector import MultiProcessOutputConnector
+from src.rest.types import TaskCMD
 from src.utils.response import EaseVoiceResponse, ResponseStatus
+from src.utils.helper.connector import ConnectorDataType, MultiProcessOutputConnector
+from src.train.gpt import GPTTrainParams, GPTTrain
+from dataclasses import asdict
+import traceback
+import json
+import argparse
+from src.train.sovits import SovitsTrain, SovitsTrainParams
+from src.service.normalize import NormalizeService
+from src.api.api import EaseVoiceRequest
+from src.service.audio import AudioService
+from src.utils import config
+import os
+import subprocess
+import tempfile
+from typing import Any
+
 
 
 def _check_response(connector: MultiProcessOutputConnector, response: EaseVoiceResponse, step_name: str, current_step: int):
@@ -37,6 +39,24 @@ def _check_response(connector: MultiProcessOutputConnector, response: EaseVoiceR
         "current_step_description": f"{step_name} completed successfully",
         "progress": current_step / 7 * 100,
     })
+
+
+def _run_train(cmd_file: str, request: Any):
+    with tempfile.NamedTemporaryFile(mode="w+", encoding="utf-8", delete=False) as fp:
+        params = asdict(request)
+        params = json.dumps(params)
+        fp.write(params)
+        temp_file_path = fp.name
+
+    proc = subprocess.Popen(
+        [sys.executable, os.path.join(config.cmd_path, cmd_file), "-c", temp_file_path],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=config.base_path,
+    )
+    connector = MultiProcessOutputConnector()
+    for data in connector.read_data(proc):
+        if data.dataType == ConnectorDataType.RESP:
+            return data.response
+    return EaseVoiceResponse(ResponseStatus.FAILED, "Unknown error")
 
 
 def main():
@@ -82,17 +102,17 @@ def main():
         normalize_path = resp.data["normalize_path"]  # pyright: ignore
 
         sovits_name = params.sovits_output_name
-        sovits_output = SovitsTrain(SovitsTrainParams(train_input_dir=normalize_path, output_model_name=sovits_name)).train()
-        resp = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train sovits", data=asdict(sovits_output))
+        sovits_params = SovitsTrainParams(train_input_dir=normalize_path, output_model_name=sovits_name)
+        sovits_resp = _run_train(TaskCMD.tran_sovits, sovits_params)
         _check_response(connector, resp, "Sovits Training", 6)
 
         gpt_name = params.gpt_output_name
-        gpt_output = GPTTrain(GPTTrainParams(train_input_dir=normalize_path, output_model_name=gpt_name)).train()
-        resp_ease = EaseVoiceResponse(ResponseStatus.SUCCESS, "Finish train gpt", data=asdict(gpt_output))
-        _check_response(connector, resp_ease, "GPT Training", 7)
+        gpt_params = GPTTrainParams(train_input_dir=normalize_path, output_model_name=gpt_name)
+        gpt_resp = _run_train(TaskCMD.train_gpt, gpt_params)
+        _check_response(connector, resp, "GPT Training", 7)
         connector.write_response(EaseVoiceResponse(status=ResponseStatus.SUCCESS, message="FTraining GPT completed successfully", data={
-            "sovits_output": sovits_output.model_path,
-            "gpt_output": gpt_output.model_path,
+            "sovits_output": sovits_resp.data["model_path"], # pyright: ignore
+            "gpt_output": gpt_resp.data["model_path"], # pyright: ignore
         }))
     except Exception as e:
         print(traceback.format_exc(), e)
