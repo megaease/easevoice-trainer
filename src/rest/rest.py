@@ -2,8 +2,9 @@ import os
 import uuid
 from dataclasses import asdict
 from http import HTTPStatus
+import httpx
 
-from fastapi import FastAPI, APIRouter, HTTPException, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from typing import AsyncGenerator
 
@@ -101,22 +102,33 @@ class TensorBoardAPI:
     def _register_routes(self):
         """Register API routes."""
         self.router.add_api_route(
-            path="/tensorboard",
-            endpoint=self.view_tensorboard,
-            methods=["GET"],
-            response_class=HTMLResponse,
-            summary="View TensorBoard UI",
+            path="/apis/v1/tensorboard/{path:path}",
+            endpoint=self.proxy_tensorboard_request,
+            methods=["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH"],
+            summary="Proxy all TensorBoard requests",
         )
 
-    async def view_tensorboard(self):
-        """Serve the TensorBoard UI in an iframe."""
-        return f'''
-        <html>
-            <body>
-                <iframe src="http://localhost:6006" width="100%" height="1000px"></iframe>
-            </body>
-        </html>
-        '''
+    async def proxy_tensorboard_request(self, request: Request, path: str):
+        """Proxy requests to TensorBoard by trimming the prefix."""
+        # Build the new URL for TensorBoard by trimming the prefix '/apis/v1/tensorboard'
+        target_url = f"http://localhost:6006/{path}"
+
+        # Forward the request to TensorBoard and get the response
+        async with httpx.AsyncClient() as client:
+            method = request.method
+            data = await request.body()
+            headers = dict(request.headers)
+
+            # Make the request to TensorBoard
+            response = await client.request(
+                method,
+                target_url,
+                headers=headers,
+                data=data,
+            )
+
+            # Return the response from TensorBoard
+            return HTMLResponse(content=response.text, status_code=response.status_code)
 
 
 class NamespaceAPI:
@@ -599,7 +611,7 @@ app.include_router(frontend_index_api.router)
 
 tensorboard_service = TensorBoardService()
 tensorboard_api = TensorBoardAPI()
-app.include_router(tensorboard_api.router, prefix="/apis/v1")
+app.include_router(tensorboard_api.router)
 
 namespace_service = NamespaceService()
 namespace_api = NamespaceAPI(namespace_service)
