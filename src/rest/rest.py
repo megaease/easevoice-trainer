@@ -94,9 +94,8 @@ class FrontendIndexAPI:
 class TensorBoardAPI:
     """Class to encapsulate TensorBoard-related API endpoints."""
 
-    def __init__(self, log_dir: str):
+    def __init__(self):
         self.router = APIRouter()
-        self.log_dir = log_dir
         self._register_routes()
 
     def _register_routes(self):
@@ -598,9 +597,8 @@ frontend_index_api = FrontendIndexAPI(frontend_dir)
 app.include_router(frontend_index_api.router)
 
 
-tb_log_dir = "tb_logs"
-tensorboard_service = TensorBoardService(tb_log_dir)
-tensorboard_api = TensorBoardAPI(tb_log_dir)
+tensorboard_service = TensorBoardService()
+tensorboard_api = TensorBoardAPI()
 app.include_router(tensorboard_api.router, prefix="/apis/v1")
 
 namespace_service = NamespaceService()

@@ -1,11 +1,26 @@
 import subprocess
 import threading
+import tensorflow as tf
+import numpy as np
+
+tb_log_dir = "tb_logs"
+
+def get_tensorboard_log_dir(name: str) -> str:
+    """Get the TensorBoard log directory for a specific run.
+
+    Args:
+        name (str): Name of the run.
+
+    Returns:
+        str: Path to the TensorBoard log directory.
+    """
+    return f"{tb_log_dir}/{name}"
 
 class TensorBoardService:
     """Service to run TensorBoard as a background process."""
 
-    def __init__(self, log_dir: str):
-        self.log_dir = log_dir
+    def __init__(self):
+        self.log_dir = tb_log_dir
         self.tensorboard_process = None
 
     def run_tensorboard(self):
