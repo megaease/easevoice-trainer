@@ -51,4 +51,6 @@ dependencies = [
     "pynvml",
     "modelscope>=1.10.0",
     "addict",
+    "httpx>=0.28.1",
+    "tensorflow>=2.15.0",
 ]
