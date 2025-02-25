@@ -53,4 +53,5 @@ dependencies = [
     "addict",
     "httpx>=0.28.1",
     "tensorflow>=2.15.0",
+    "socksio>=1.0.0",
 ]
