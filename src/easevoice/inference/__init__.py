@@ -46,6 +46,7 @@ class InferenceTaskData:
     repetition_penalty: float = 1.3
     sovits_path: str = ""
     gpt_path: str = ""
+    output_dir: str = ""
 
 
 class Runner:

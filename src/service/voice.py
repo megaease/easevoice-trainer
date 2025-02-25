@@ -4,12 +4,12 @@ import io
 import numpy as np
 import soundfile as sf
 import torch
-
+import os
 
 from src.easevoice.inference import InferenceTaskData, Runner
 from src.logger import logger
 from src.service.session import SessionManager
-from src.train.helper import list_train_gpts, list_train_sovits
+from src.train.helper import generate_random_name, list_train_gpts, list_train_sovits
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 
 
@@ -29,19 +29,24 @@ class VoiceCloneService:
             torch.cuda.empty_cache()
 
     def clone(self, uuid: str, params: dict):
-        data = InferenceTaskData(**params)
-        data = self._update_task_path(data)
+        task = InferenceTaskData(**params)
+        task = self._update_task_path(task)
 
         self.session_manager.update_session_info(uuid, {"message": "voice clone started"})
-        items, seed = self.runner.inference(data)  # pyright: ignore
+        items, seed = self.runner.inference(task)  # pyright: ignore
         self.session_manager.update_session_info(uuid, {"message": "voice clone completed, start to write audio"})
 
         sampling_rate = items[0][0]
         data = np.concatenate([item[1] for item in items])
         buffer = io.BytesIO()
         sf.write(buffer, data, sampling_rate, format="WAV")
-        audio = base64.b64encode(buffer.getvalue()).decode("utf-8")
-        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice cloned successfully", {"sampling_rate": sampling_rate, "audio": audio})
+
+        filename = "voice_" + generate_random_name()
+        os.makedirs(task.output_dir, exist_ok=True)
+        path = os.path.join(task.output_dir, f"{filename}.wav")
+        with open(path, "wb") as f:
+            f.write(buffer.getvalue())
+        return EaseVoiceResponse(ResponseStatus.SUCCESS, "Voice cloned successfully", {"sampling_rate": sampling_rate, "output_path": path})
 
     def _update_task_path(self, data: InferenceTaskData):
         if data.gpt_path == "default":
