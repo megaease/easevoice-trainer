@@ -4,6 +4,7 @@ import traceback
 from typing import Any, List, Tuple
 import torch.distributed as dist
 import os
+from src.service.tensorboard import get_tensorboard_log_dir
 from src.train.helper import TrainOutput, get_sovits_train_dir, train_logs_path
 from src.utils import config
 from src.utils import helper
@@ -207,9 +208,9 @@ class SovitsTrain:
 
     def _run(self, rank, n_gpus, hps: TrainConfig):
         if rank == 0:
-            logger.info(hps)
-            writer = SummaryWriter(log_dir=hps.train.train_logs_dir)
-            writer_eval = SummaryWriter(log_dir=os.path.join(hps.train.train_logs_dir, "eval"))
+            logger.info("hps for train sovits", hps)
+            writer = SummaryWriter(log_dir=get_tensorboard_log_dir(hps.name))
+            writer_eval = SummaryWriter(log_dir=get_tensorboard_log_dir("eval_"+hps.name))
 
         dist.init_process_group(
             backend="gloo" if os.name == "nt" or not torch.cuda.is_available() else "nccl",
@@ -401,6 +402,12 @@ class SovitsTrain:
                 )
             scheduler_g.step()
             scheduler_d.step()
+
+        if rank == 0:
+            writer.flush()  # pyright: ignore
+            writer.close()  # pyright: ignore
+            writer_eval.flush()  # pyright: ignore
+            writer_eval.close()  # pyright: ignore
 
     def _train_and_evaluate(
             self, rank, epoch, hps: TrainConfig, nets, optims, schedulers, scaler, loaders, logger, writers

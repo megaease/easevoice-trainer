@@ -1,11 +1,14 @@
 import subprocess
 import threading
-import tensorflow as tf
-import numpy as np
+import os
+from typing import Optional
 
-tb_log_dir = "tb_logs"
+from src.utils import config
 
-def get_tensorboard_log_dir(name: str) -> str:
+tb_log_dir = config.tb_log_dir
+
+
+def get_tensorboard_log_dir(name: Optional[str]) -> str:
     """Get the TensorBoard log directory for a specific run.
 
     Args:
@@ -14,7 +17,11 @@ def get_tensorboard_log_dir(name: str) -> str:
     Returns:
         str: Path to the TensorBoard log directory.
     """
-    return f"{tb_log_dir}/{name}"
+    if name is None:
+        return tb_log_dir
+    else:
+        return os.path.join(tb_log_dir, name)
+
 
 class TensorBoardService:
     """Service to run TensorBoard as a background process."""

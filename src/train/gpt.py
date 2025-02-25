@@ -19,6 +19,7 @@ from pytorch_lightning.strategies import DDPStrategy  # pyright: ignore
 
 from src.easevoice.soundstorm.auto_reg.data.data_module import Text2SemanticDataModule
 from src.easevoice.soundstorm.auto_reg.models.t2s_lightning_module import Text2SemanticLightningModule
+from src.service.tensorboard import get_tensorboard_log_dir
 from src.train.helper import TrainOutput, get_gpt_train_dir, train_logs_path
 from src.utils.config import gpt_config_path, cfg, gpt_pretrained_model_path, semantic_output, text_output_name
 
@@ -140,7 +141,7 @@ class GPTTrain(object):
             every_n_epochs=self.config["train"]["save_every_n_epoch"],
             dirpath=self.train_ckpts_output,
         )
-        logger = TensorBoardLogger(name="log", save_dir=self.train_logs_output)
+        logger = TensorBoardLogger(name=params.output_model_name, save_dir=get_tensorboard_log_dir(None))
         os.environ["MASTER_ADDR"] = "localhost"
         self.trainer: Trainer = Trainer(
             max_epochs=self.config["train"]["epochs"],
