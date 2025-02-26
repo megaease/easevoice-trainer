@@ -60,7 +60,7 @@ class Namespace(BaseModel):
     """Namespace model."""
 
     name: str
-    createdAt: datetime
+    createdAt: int # Unix timestamp in milliseconds
     homePath: str
 
 
@@ -124,7 +124,7 @@ class FileMetadata(BaseModel):
     type: str
     fileName: str
     fileSize: int
-    modifiedAt: str  # RFC3339 format timestamp
+    modifiedAt: int # Unix timestamp in milliseconds
 
 
 class DirMetadata(BaseModel):

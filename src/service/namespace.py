@@ -22,7 +22,7 @@ class NamespaceService:
 
         os.makedirs(os.path.join(home_path, "voices"), exist_ok=True)
         os.makedirs(os.path.join(home_path, "outputs"), exist_ok=True)
-        namespace = {"name": name, "createdAt": datetime.now(timezone.utc).isoformat(), "homePath": home_path}
+        namespace = {"name": name, "createdAt": int(datetime.now(tz=timezone.utc).timestamp() * 1000), "homePath": home_path}
         self._save_namespace_metadata(namespace)
         return namespace
 

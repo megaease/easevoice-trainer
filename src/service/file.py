@@ -1,7 +1,6 @@
 import os
 import base64
 import shutil
-from datetime import datetime
 from typing import List, Dict
 
 
@@ -65,7 +64,7 @@ class FileService:
                 entry_info.update({
                     "fileName": entry.name,
                     "fileSize": stat.st_size,
-                    "modifiedAt": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    "modifiedAt": int(stat.st_mtime * 1000)
                 })
                 files.append(entry_info)
 
