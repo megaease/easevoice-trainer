@@ -1,6 +1,8 @@
 
 import dataclasses
 
+from pydantic import BaseModel
+
 from src.utils.config.config import GlobalCFG
 from src.utils.path import get_base_path
 from .preprocessor import TextPreprocessor
@@ -277,6 +279,8 @@ class TTS:
             raise ValueError("The model is version v1, please use the latest version model.")
         self.configs.save_configs()
 
+        if isinstance(hps, BaseModel):
+            hps = hps.model_dump()
         self.configs.filter_length = hps["data"]["filter_length"]
         self.configs.segment_size = hps["train"]["segment_size"]
         self.configs.sampling_rate = hps["data"]["sampling_rate"]

@@ -180,7 +180,7 @@ class SovitsTrain:
                 if "enc_q" in key:
                     continue
                 opt["weight"][key] = ckpts[key].half()
-            opt["config"] = hps
+            opt["config"] = hps.model_dump()
             opt["info"] = "%sepoch_%siteration" % (epoch, steps)
 
             path = os.path.join(hps.train.save_weight_dir, f"{name}.pth")
