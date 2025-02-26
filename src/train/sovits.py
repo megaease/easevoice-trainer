@@ -409,8 +409,6 @@ class SovitsTrain:
         if rank == 0:
             writer.flush()  # pyright: ignore
             writer.close()  # pyright: ignore
-            writer_eval.flush()  # pyright: ignore
-            writer_eval.close()  # pyright: ignore
 
     def _train_and_evaluate(
             self, rank, epoch, hps: TrainConfig, nets, optims, schedulers, scaler, loaders, logger, writer
