@@ -62,3 +62,7 @@ psutil~=6.1.1
 pynvml
 modelscope==1.10.0
 addict
+logger
+datasets
+simplejson
+sortedcontainers
