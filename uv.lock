@@ -720,11 +720,12 @@ wheels = [
 
 [[package]]
 name = "datasets"
-version = "2.14.5"
+version = "3.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
     { name = "dill" },
+    { name = "filelock" },
     { name = "fsspec", extra = ["http"] },
     { name = "huggingface-hub" },
     { name = "multiprocess" },
@@ -737,9 +738,9 @@ dependencies = [
     { name = "tqdm" },
     { name = "xxhash" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b7/9e/5a66567721e15d216739715c4c82ee15e1d65ee4bf8f5d1512f326e8c4de/datasets-2.14.5.tar.gz", hash = "sha256:b738a86540ab8e1a7806c8a3790b67be0056318d0c5d5a58a1b0dbdd76c0f568", size = 2179956 }
+sdist = { url = "https://files.pythonhosted.org/packages/73/0c/dc3d172104e78e68f7a60386664adbf61db5d10c2246b31ddad06c2d1cb3/datasets-3.3.2.tar.gz", hash = "sha256:20901a97da870fb80b407ccc45f034a7ac99accd07da897ed42f11641bdb8c6e", size = 564352 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/09/7e/fd4d6441a541dba61d0acb3c1fd5df53214c2e9033854e837a99dd9e0793/datasets-2.14.5-py3-none-any.whl", hash = "sha256:dd4155091034cba04d5a28711f2ed3944275ed15c5d0c5a2d0b6b9ea34a2bdfe", size = 519621 },
+    { url = "https://files.pythonhosted.org/packages/4c/37/22ef7675bef4ffe9577b937ddca2e22791534cbbe11c30714972a91532dc/datasets-3.3.2-py3-none-any.whl", hash = "sha256:fdaf3d5d70242621210b044e9b9b15a56e908bfc3e9d077bcf5605ac390f70bd", size = 485360 },
 ]
 
 [[package]]
@@ -834,7 +835,7 @@ requires-dist = [
     { name = "beartype", specifier = "==0.14.1" },
     { name = "cn2an" },
     { name = "ctranslate2", specifier = "==4.1.0" },
-    { name = "datasets", specifier = "==2.14.5" },
+    { name = "datasets", specifier = ">=2.15.0" },
     { name = "einops", specifier = "==0.6.0" },
     { name = "fastapi", specifier = ">=0.115.6" },
     { name = "faster-whisper" },

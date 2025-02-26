@@ -54,7 +54,7 @@ dependencies = [
     "tensorflow>=2.15.0",
     "socksio>=1.0.0",
     "logger",
-    "datasets==2.14.5",
+    "datasets>=2.15.0",
     "simplejson",
     "sortedcontainers",
 ]
