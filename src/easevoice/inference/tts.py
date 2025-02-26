@@ -118,7 +118,11 @@ class TTSConfig:
             return path
 
         self.t2s_weights_path = get_path("t2s_weights_path")
+        self.default_t2s_weights_path = global_config.gpt_path
+
         self.vits_weights_path = get_path("vits_weights_path")
+        self.default_vits_weights_path = global_config.sovits_path
+
         self.bert_base_path = get_path("bert_base_path")
         self.cnhuhbert_base_path = get_path("cnhuhbert_base_path")
 
@@ -223,8 +227,8 @@ class TTS:
         if sovits_path != self.current_sovits_path:
             if sovits_path == "":
                 # empty sovits path, use default path
-                if self.current_sovits_path != self.configs.vits_weights_path:
-                    self.current_sovits_path = self.configs.vits_weights_path
+                if self.current_sovits_path != self.configs.default_vits_weights_path:
+                    self.current_sovits_path = self.configs.default_vits_weights_path
                     self.init_vits_weights(self.current_sovits_path)
             else:
                 self.current_sovits_path = sovits_path
@@ -233,8 +237,8 @@ class TTS:
         if gpt_path != self.current_gpt_path:
             if gpt_path == "":
                 # empty gpt path, use default path
-                if self.current_gpt_path != self.configs.t2s_weights_path:
-                    self.current_gpt_path = self.configs.t2s_weights_path
+                if self.current_gpt_path != self.configs.default_t2s_weights_path:
+                    self.current_gpt_path = self.configs.default_t2s_weights_path
                     self.init_t2s_weights(self.current_gpt_path)
             else:
                 self.current_gpt_path = gpt_path
