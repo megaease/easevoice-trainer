@@ -214,7 +214,6 @@ class SovitsTrain:
         if rank == 0:
             logger.info("hps for train sovits", hps)
             writer = SummaryWriter(log_dir=get_tensorboard_log_dir(hps.name))
-            writer_eval = SummaryWriter(log_dir=get_tensorboard_log_dir("eval_"+hps.name))
 
         dist.init_process_group(
             backend="gloo" if os.name == "nt" or not torch.cuda.is_available() else "nccl",
@@ -389,7 +388,7 @@ class SovitsTrain:
                     scaler,
                     [train_loader, None],
                     logger,
-                    [writer, writer_eval],  # pyright: ignore
+                    writer,  # pyright: ignore
                 )
             else:
                 self._train_and_evaluate(
@@ -414,7 +413,7 @@ class SovitsTrain:
             writer_eval.close()  # pyright: ignore
 
     def _train_and_evaluate(
-            self, rank, epoch, hps: TrainConfig, nets, optims, schedulers, scaler, loaders, logger, writers
+            self, rank, epoch, hps: TrainConfig, nets, optims, schedulers, scaler, loaders, logger, writer
     ):
         global GLOBAL_STEP
         connector = MultiProcessOutputConnector()
@@ -422,8 +421,6 @@ class SovitsTrain:
         net_g, net_d = nets
         optim_g, optim_d = optims
         train_loader, eval_loader = loaders
-        if writers is not None:
-            writer, writer_eval = writers
 
         train_loader.batch_sampler.set_epoch(epoch)
 
@@ -540,7 +537,7 @@ class SovitsTrain:
                 logger.info(f"step: {GLOBAL_STEP}, loss: {convert_tensor_to_python(loss_gen_all)}")
 
             if rank == 0:
-                if GLOBAL_STEP % hps.train.log_interval == 0:
+                if GLOBAL_STEP % 5 == 0:
                     lr = optim_g.param_groups[0]["lr"]
                     losses = [loss_disc, loss_gen, loss_fm, loss_mel, kl_ssl, loss_kl]
                     logger.info(
