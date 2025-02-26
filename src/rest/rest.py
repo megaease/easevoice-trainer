@@ -21,7 +21,8 @@ from src.api.api import (
 )
 from src.logger import logger
 from src.rest.types import TaskType, TaskCMD
-from src.service.audio import AudioUVR5Params, AudioSlicerParams, AudioASRParams, AudioService, AudioDenoiseParams, AudioRefinementSubmitParams, AudioRefinementDeleteParams
+from src.service.audio import AudioUVR5Params, AudioSlicerParams, AudioASRParams, AudioService, AudioDenoiseParams, AudioRefinementSubmitParams, AudioRefinementDeleteParams, \
+    AudioRefinementReloadParams
 from src.service.file import FileService
 from src.service.namespace import NamespaceService
 from src.service.normalize import NormalizeParams
@@ -60,6 +61,7 @@ class FrontendAssetsAPI:
         # Return the file
         return FileResponse(asset_path)
 
+
 class FrontendIndexAPI:
     """Class to handle serving index.html for the root path."""
 
@@ -72,7 +74,7 @@ class FrontendIndexAPI:
         """Register routes to serve index.html."""
         # Serve index.html for any route that is not `/assets`
         self.router.add_api_route("/", self.serve_index, methods=["GET"])
-        #self.router.add_api_route("/{path:path}", self.serve_index, methods=["GET"])
+        # self.router.add_api_route("/{path:path}", self.serve_index, methods=["GET"])
 
     async def serve_index(self, path: str = "") -> Response:
         """Serve index.html for any request (except /assets)."""
@@ -469,6 +471,7 @@ class AudioAPI:
         self.router.get("/audio/refinement")(self.list_audio_refinement)
         self.router.post("/audio/refinement")(self.update_audio_refinement)
         self.router.delete("/audio/refinement")(self.delete_audio_refinement)
+        self.router.post("/audio/refinement/reload")(self.reload_audio_refinement)
 
     async def audio_uvr5(self, request: AudioUVR5Params):
         if session_manager.exist_running_session():
@@ -532,7 +535,7 @@ class AudioAPI:
 
     def list_audio_refinement(self, input_dir: str, output_dir: str):
         service = AudioService(source_dir=input_dir, output_dir=output_dir)
-        result = service.refinement_reload()
+        result = service.refinement_load_source()
         if isinstance(result, EaseVoiceResponse):
             return result
         logger.error(f"failed to list audio refinement: {result}")
@@ -552,6 +555,14 @@ class AudioAPI:
         if isinstance(result, EaseVoiceResponse):
             return result
         logger.error(f"failed to delete audio refinement: {result}")
+        raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
+
+    def reload_audio_refinement(self, params: AudioRefinementReloadParams):
+        service = AudioService(source_dir=params.source_dir, output_dir=params.output_dir)
+        result = service.refinement_reload_source()
+        if isinstance(result, EaseVoiceResponse):
+            return result
+        logger.error(f"failed to reload audio refinement: {result}")
         raise HTTPException(status_code=HTTPStatus.INTERNAL_SERVER_ERROR, detail=result)
 
 
@@ -608,7 +619,6 @@ app.include_router(frontend_assets_api.router)
 frontend_index_api = FrontendIndexAPI(frontend_dir)
 app.include_router(frontend_index_api.router)
 
-
 tensorboard_service = TensorBoardService()
 tensorboard_api = TensorBoardAPI()
 app.include_router(tensorboard_api.router)
@@ -638,7 +648,6 @@ app.include_router(audio_api.router, prefix="/apis/v1")
 
 easevoice_api = EaseVoiceAPI()
 app.include_router(easevoice_api.router, prefix="/apis/v1")
-
 
 # Function to print all routing information
 # def print_routes(app: FastAPI):

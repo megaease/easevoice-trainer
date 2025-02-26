@@ -38,16 +38,22 @@ class Refinement(object):
                 f.write(f"{value.source_file_path}|{value.language}|{value.text_content}\n")
 
     def submit_text(self, source_file_path: str, language: str, text_content: str):
+        """submit text to refinements.list"""
         self.source_file_content[source_file_path] = Labeling(source_file_path, language, text_content)
         self._save_file(self.output_file_path, self.source_file_content)
 
     def load_text(self) -> dict[str, Labeling]:
+        """load current source content from refinements.list"""
+        self.source_file_content = self._load_file(self.output_file_path)
+        return self.source_file_content
+
+    def reload_text(self):
+        """reload source file content from asr.list"""
         self.source_file_content = self._load_file(self.source_file_path)
+        self._save_file(self.output_file_path, self.source_file_content)
         return self.source_file_content
 
     def delete_text(self, source_file_path: str):
+        """delete source file content from refinements.list"""
         self.source_file_content.pop(source_file_path)
-        self._save_file(self.output_file_path, self.source_file_content)
-
-    def save_file(self):
         self._save_file(self.output_file_path, self.source_file_content)
