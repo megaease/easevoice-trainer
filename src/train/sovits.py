@@ -1,5 +1,6 @@
 from dataclasses import asdict, dataclass
 import logging
+from pickle import GLOBAL
 import traceback
 from typing import Any, List, Tuple
 import torch.distributed as dist
@@ -120,6 +121,9 @@ class TrainConfig(BaseModel):
     content_module: str
 
 
+GLOBAL_STEP = 0
+
+
 class SovitsTrain:
     def _update_hparams(self, hps: TrainConfig, params: SovitsTrainParams):
         hps.train.batch_size = params.batch_size
@@ -157,7 +161,6 @@ class SovitsTrain:
         hps = TrainConfig(**json_data)
         self.hps = self._update_hparams(hps, params)
         logger.info(f"train sovits with config: {self.hps}")
-        self.step = 0
         self.device = "cpu"
 
         warnings.filterwarnings("ignore")
@@ -207,6 +210,7 @@ class SovitsTrain:
         return TrainOutput(model_path=self.hps.train.output_dir)
 
     def _run(self, rank, n_gpus, hps: TrainConfig):
+        global GLOBAL_STEP
         if rank == 0:
             logger.info("hps for train sovits", hps)
             writer = SummaryWriter(log_dir=get_tensorboard_log_dir(hps.name))
@@ -333,11 +337,11 @@ class SovitsTrain:
                 net_g,
                 optim_g,
             )
-            self.step = (epoch_str - 1) * len(train_loader)
+            GLOBAL_STEP = (epoch_str - 1) * len(train_loader)
         except Exception as e:
             logger.warning(f"load failed, exception: {e}, use pretrained instead")
             epoch_str = 1
-            step = 0
+            GLOBAL_STEP = 0
             if hps.train.pretrained_s2G != "" and hps.train.pretrained_s2G != None and os.path.exists(hps.train.pretrained_s2G):
                 if rank == 0:
                     logger.info("loaded pretrained %s" % hps.train.pretrained_s2G)
@@ -412,6 +416,7 @@ class SovitsTrain:
     def _train_and_evaluate(
             self, rank, epoch, hps: TrainConfig, nets, optims, schedulers, scaler, loaders, logger, writers
     ):
+        global GLOBAL_STEP
         connector = MultiProcessOutputConnector()
         device = self.device
         net_g, net_d = nets
@@ -523,19 +528,19 @@ class SovitsTrain:
             scaler.step(optim_g)
             scaler.update()
 
-            if self.step % 10 == 0:
+            if GLOBAL_STEP % 10 == 0:
                 connector.write_loss(
-                    self.step,
+                    GLOBAL_STEP,
                     loss=convert_tensor_to_python(loss_gen_all),
                     other={
                         "loss/g/total": convert_tensor_to_python(loss_gen_all),
                         "loss/d/total": convert_tensor_to_python(loss_disc_all),
                         "learning_rate": convert_tensor_to_python(optim_g.param_groups[0]["lr"]),
                     })
-                logger.info(f"step: {self.step}, loss: {convert_tensor_to_python(loss_gen_all)}")
+                logger.info(f"step: {GLOBAL_STEP}, loss: {convert_tensor_to_python(loss_gen_all)}")
 
             if rank == 0:
-                if self.step % hps.train.log_interval == 0:
+                if GLOBAL_STEP % hps.train.log_interval == 0:
                     lr = optim_g.param_groups[0]["lr"]
                     losses = [loss_disc, loss_gen, loss_fm, loss_mel, kl_ssl, loss_kl]
                     logger.info(
@@ -560,27 +565,12 @@ class SovitsTrain:
                         }
                     )
 
-                    image_dict = {
-                        "slice/mel_org": helper.plot_spectrogram_to_numpy(
-                            y_mel[0].data.cpu().numpy()
-                        ),
-                        "slice/mel_gen": helper.plot_spectrogram_to_numpy(
-                            y_hat_mel[0].data.cpu().numpy()
-                        ),
-                        "all/mel": helper.plot_spectrogram_to_numpy(
-                            mel[0].data.cpu().numpy()
-                        ),
-                        "all/stats_ssl": helper.plot_spectrogram_to_numpy(
-                            stats_ssl[0].data.cpu().numpy()
-                        ),
-                    }
                     helper.summarize(
                         writer=writer,  # pyright: ignore
-                        global_step=self.step,
-                        images=image_dict,
+                        global_step=GLOBAL_STEP,
                         scalars=scalar_dict,
                     )
-            self.step += 1
+            GLOBAL_STEP += 1
         if epoch % hps.train.save_every_epoch == 0 and rank == 0:
             if not hps.train.if_save_latest:
                 ckpt.save_checkpoint(
@@ -589,7 +579,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.train.train_logs_dir, f"G_{self.step}.pth"
+                        hps.train.train_logs_dir, f"G_{GLOBAL_STEP}.pth"
                     ),
                 )
                 ckpt.save_checkpoint(
@@ -598,7 +588,7 @@ class SovitsTrain:
                     hps.train.learning_rate,
                     epoch,
                     os.path.join(
-                        hps.train.train_logs_dir, f"D_{self.step}.pth"
+                        hps.train.train_logs_dir, f"D_{GLOBAL_STEP}.pth"
                     ),
                 )
             else:
@@ -627,9 +617,9 @@ class SovitsTrain:
                     ckpts = net_g.state_dict()
                 msg = self._save_epoch(
                     ckpts,
-                    hps.name + f"_e{epoch}_s{self.step}",
+                    hps.name + f"_e{epoch}_s{GLOBAL_STEP}",
                     epoch,
-                    self.step,
+                    GLOBAL_STEP,
                     hps,
                 )
                 logger.info(f"saving ckpt {hps.name}_e{epoch}:{msg}")
