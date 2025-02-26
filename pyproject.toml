@@ -47,7 +47,6 @@ dependencies = [
     "pandas",
     "tensorboard",
     "psutil>=6.1.1",
-    "multiprocess==0.70.17",
     "pynvml",
     "modelscope>=1.10.0",
     "addict",
@@ -55,7 +54,7 @@ dependencies = [
     "tensorflow>=2.15.0",
     "socksio>=1.0.0",
     "logger",
-    "datasets",
+    "datasets==2.14.5",
     "simplejson",
     "sortedcontainers",
 ]
