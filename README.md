@@ -12,6 +12,13 @@ Although EaseVoice Trainer takes inspiration from GPT-SoVITS, we chose not to di
 - Scalability: Built with scalability in mind, making it suitable for both small-scale experiments and large-scale production.
 - Integrate Tensorboard: We have integrated Tensorboard for real-time monitoring and visualization of training progress.
 
+## Screenshorts
+
+![voice-clone](./docs/images/voice-clone.png)
+![basic-model-training](./docs/images/basic-model-training.png)
+![advanced-model-training](./docs/images/advanced-model-training.png)
+![tensorboard](./docs/images/tensorboard.png)
+
 ## Getting Started
 
 ### Local Run
