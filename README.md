@@ -1,5 +1,7 @@
 # EaseVoice Trainer
 
+[中文文档](./README.zh-CN.md)
+
 EaseVoice Trainer is a backend project designed to streamline and enhance the training process for voice synthesis and transformation. It is built upon the foundation of [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS), inheriting its core concepts while introducing various improvements to make the system more accessible, elegant, and user-friendly.
 
 Although EaseVoice Trainer takes inspiration from GPT-SoVITS, we chose not to directly fork the original repository due to significant design differences and unique objectives. Our focus is on creating a refined, modular system tailored to specific use cases and improving maintainability.
