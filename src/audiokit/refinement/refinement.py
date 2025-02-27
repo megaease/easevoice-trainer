@@ -15,6 +15,7 @@ class Refinement(object):
         self.source_file_path = source_file_path
         self.output_file_path = output_file_path
         self.source_file_content: dict[str, Labeling] = dict()
+        self.load_text()
 
     @staticmethod
     def _load_file(file_path: str) -> dict[str, Labeling]:
@@ -55,5 +56,6 @@ class Refinement(object):
 
     def delete_text(self, source_file_path: str):
         """delete source file content from refinements.list"""
+        print(self.source_file_content.keys())
         self.source_file_content.pop(source_file_path)
         self._save_file(self.output_file_path, self.source_file_content)
