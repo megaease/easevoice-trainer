@@ -67,12 +67,12 @@ class Converter(UltimateConverter):
 
         g2pw_pinyin = self._g2pw(han)
 
-        if not g2pw_pinyin:  # g2pw 不支持的汉字改为使用 pypinyin 原有逻辑
+        if not g2pw_pinyin:  # g2pw not support chinese char, use pypinyin
             return super(Converter, self).convert(
                 han, Style.TONE, heteronym, errors, strict, **kwargs)
 
         for i, item in enumerate(g2pw_pinyin[0]):
-            if item is None:  # g2pw 不支持的汉字改为使用 pypinyin 原有逻辑
+            if item is None:  # g2pw not support chinese char, use pypinyin
                 py = super(Converter, self).convert(
                     han[i], Style.TONE, heteronym, errors, strict, **kwargs)
                 pinyins.extend(py)

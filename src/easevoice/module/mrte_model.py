@@ -106,7 +106,6 @@ class MELEncoder(nn.Module):
         self.proj = nn.Conv1d(hidden_channels, out_channels, 1)
 
     def forward(self, x):
-        # print(x.shape,x_lengths.shape)
         x = self.pre(x)
         x = self.enc(x)
         x = self.proj(x)

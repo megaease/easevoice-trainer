@@ -106,14 +106,14 @@ def replace_consecutive_punctuation(text):
 
 
 def mix_text_normalize(text):
-    # 不排除英文的文本格式化
+    # not exclude english text norm
     # https://github.com/PaddlePaddle/PaddleSpeech/tree/develop/paddlespeech/t2s/frontend/zh_normalization
     sentences = TEXT_NORMALIZER.normalize(text)
     dest_text = ""
     for sentence in sentences:
         dest_text += replace_punctuation_with_en(sentence)
 
-    # 避免重复标点引起的参考泄露
+    # prevent leak caused by duplicated punctuation
     dest_text = replace_consecutive_punctuation(dest_text)
     return dest_text
 
@@ -125,7 +125,7 @@ def text_normalize(text):
     for sentence in sentences:
         dest_text += replace_punctuation(sentence)
 
-    # 避免重复标点引起的参考泄露
+    # prevent leak caused by duplicated punctuation
     dest_text = replace_consecutive_punctuation(dest_text)
     return dest_text
 
@@ -142,18 +142,17 @@ def _merge_erhua(initials: list[str],
         if i == len(finals) - 1 and word[i] == "儿" and phn == 'er1':
             finals[i] = 'er2'
 
-    # 发音
     if word not in MUST_ERHUA and (word in NOT_ERHUA or
                                    pos in {"a", "j", "nr"}):
         return initials, finals
 
-    # "……" 等情况直接返回
+    # meet "……" return
     if len(finals) != len(word):
         return initials, finals
 
     assert len(finals) == len(word)
 
-    # 与前一个字发同音
+    # same as previous
     new_initials = []
     new_finals = []
     for i, phn in enumerate(finals):
@@ -210,7 +209,6 @@ def _g2p(segments):
             finals = sum(finals, [])
             print("pypinyin结果", initials, finals)
         else:
-            # g2pw采用整句推理
             pinyins = G2PW.lazy_pinyin(seg, neutral_tone_with_five=True, style=Style.TONE3)  # pyright: ignore
 
             pre_word_length = 0
@@ -225,7 +223,7 @@ def _g2p(segments):
 
                 word_pinyins = pinyins[pre_word_length:now_word_length]
 
-                # 多音字消歧
+                # chars with multi voice
                 word_pinyins = correct_pronunciation(word, word_pinyins)
 
                 for pinyin in word_pinyins:
@@ -238,7 +236,7 @@ def _g2p(segments):
 
                 pre_word_length = now_word_length
                 sub_finals = TONE_MODIFIER.modified_tone(word, pos, sub_finals)
-                # 儿化
+                # erhua
                 sub_initials, sub_finals = _merge_erhua(sub_initials, sub_finals, word, pos)
                 initials.append(sub_initials)
                 finals.append(sub_finals)
@@ -262,7 +260,7 @@ def _g2p(segments):
                 assert tone in "12345"
 
                 if c:
-                    # 多音节
+                    # multi syllable
                     v_rep_map = {
                         "uei": "ui",
                         "iou": "iu",
@@ -271,7 +269,7 @@ def _g2p(segments):
                     if v_without_tone in v_rep_map.keys():
                         pinyin = c + v_rep_map[v_without_tone]
                 else:
-                    # 单音节
+                    # single syllable
                     pinyin_rep_map = {
                         "ing": "ying",
                         "i": "yi",

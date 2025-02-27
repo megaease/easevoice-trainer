@@ -54,11 +54,6 @@ class Encoder(nn.Module):
         self.kernel_size = kernel_size
         self.p_dropout = p_dropout
         self.window_size = window_size
-        # if isflow:
-        #  cond_layer = torch.nn.Conv1d(256, 2*hidden_channels*n_layers, 1)
-        #  self.cond_pre = torch.nn.Conv1d(hidden_channels, 2*hidden_channels, 1)
-        #  self.cond_layer = weight_norm(cond_layer, name='weight')
-        #  self.gin_channels = 256
         self.cond_layer_idx = self.n_layers
         self.spk_emb_linear = nn.Linear(256, self.hidden_channels)
         if "gin_channels" in kwargs:
@@ -99,25 +94,6 @@ class Encoder(nn.Module):
                 )
             )
             self.norm_layers_2.append(LayerNorm(hidden_channels))
-
-    # def forward(self, x, x_mask, g=None):
-    #     attn_mask = x_mask.unsqueeze(2) * x_mask.unsqueeze(-1)
-    #     x = x * x_mask
-    #     for i in range(self.n_layers):
-    #         if i == self.cond_layer_idx and g is not None:
-    #             g = self.spk_emb_linear(g.transpose(1, 2))
-    #             g = g.transpose(1, 2)
-    #             x = x + g
-    #             x = x * x_mask
-    #         y = self.attn_layers[i](x, x, attn_mask)
-    #         y = self.drop(y)
-    #         x = self.norm_layers_1[i](x + y)
-
-    #         y = self.ffn_layers[i](x, x_mask)
-    #         y = self.drop(y)
-    #         x = self.norm_layers_2[i](x + y)
-    #     x = x * x_mask
-    #     return x
 
     def forward(self, x, x_mask):
         attn_mask = x_mask.unsqueeze(2) * x_mask.unsqueeze(-1)
@@ -193,7 +169,6 @@ class MultiHeadAttention(nn.Module):
         k = self.conv_k(c)
         v = self.conv_v(c)
 
-        # x, self.attn = self.attention(q, k, v, mask=attn_mask)
         x, _ = self.attention(q, k, v, mask=attn_mask)
 
         x = self.conv_o(x)
@@ -332,12 +307,6 @@ class FFN(nn.Module):
         self.p_dropout = p_dropout
         self.activation = activation
         self.causal = causal
-
-        # 从上下文看这里一定是 False
-        # if causal:
-        #     self.padding = self._causal_padding
-        # else:
-        #     self.padding = self._same_padding
 
         self.conv_1 = nn.Conv1d(in_channels, filter_channels, kernel_size)
         self.conv_2 = nn.Conv1d(filter_channels, out_channels, kernel_size)

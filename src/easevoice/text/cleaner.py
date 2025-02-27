@@ -57,7 +57,7 @@ def clean_special(text, language, special_s, target_symbol):
     symbols = SYMBOLS
 
     """
-    特殊静音段sp符号处理
+    Special silent segment sp symbol processing
     """
     text = text.replace(special_s, ",")
     language_module = LANGUAGE_MAP[language]

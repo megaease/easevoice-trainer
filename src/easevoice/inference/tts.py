@@ -1,10 +1,7 @@
 
-import dataclasses
-
 from pydantic import BaseModel
 
 from src.utils.config.config import GlobalCFG
-from src.utils.path import get_base_path
 from .preprocessor import TextPreprocessor
 from .segmentation import SPLITS
 from src.easevoice.module.mel_processing import spectrogram_torch
@@ -16,7 +13,6 @@ from src.easevoice.feature_extractor.cnhubert import CNHubert
 from src.easevoice.soundstorm.auto_reg.models.t2s_lightning_module import Text2SemanticLightningModule
 from transformers import AutoModelForMaskedLM, AutoTokenizer
 import yaml
-import torch.nn.functional as F
 import torch
 import numpy as np
 from typing import List, Optional, Tuple, Union
@@ -47,10 +43,6 @@ def set_seed(seed: int):
         if torch.cuda.is_available():
             torch.cuda.manual_seed(seed)
             torch.cuda.manual_seed_all(seed)
-            # torch.backends.cudnn.deterministic = True
-            # torch.backends.cudnn.benchmark = False
-            # torch.backends.cudnn.enabled = True
-            # 开启后会影响精度
             torch.backends.cuda.matmul.allow_tf32 = False
             torch.backends.cudnn.allow_tf32 = False
     except Exception as e:
@@ -75,18 +67,19 @@ class TTSConfig:
     default_configs = {
         "default": _get_default_configs(),
     }
+
+    # "all_zh": all chinese
+    # "en": all english
+    # "all_ja": all japanese
+    # "all_yue": all yue chinese
+    # "all_ko": all korean
+    # "zh": chinese and english
+    # "ja": japanese and english
+    # "yue": yue and english
+    # "ko": korean and english
+    # "auto": multi languages
+    # "auto_yue": multi languages with yue
     languages: list = ["auto", "auto_yue", "en", "zh", "ja", "yue", "ko", "all_zh", "all_ja", "all_yue", "all_ko"]
-    # "all_zh",#全部按中文识别
-    # "en",#全部按英文识别#######不变
-    # "all_ja",#全部按日文识别
-    # "all_yue",#全部按中文识别
-    # "all_ko",#全部按韩文识别
-    # "zh",#按中英混合识别####不变
-    # "ja",#按日英混合识别####不变
-    # "yue",#按粤英混合识别####不变
-    # "ko",#按韩英混合识别####不变
-    # "auto",#多语种启动切分识别语种
-    # "auto_yue",#多语种启动切分识别语种
 
     def __init__(self, configs: Union[dict, str, None] = None):  # pyright: ignore
         global_config = GlobalCFG()
@@ -251,7 +244,6 @@ class TTS:
         self.init_vits_weights(self.configs.vits_weights_path)
         self.init_bert_weights(self.configs.bert_base_path)
         self.init_cnhuhbert_weights(self.configs.cnhuhbert_base_path)
-        # self.enable_half_precision(self.configs.is_half)
 
     def init_cnhuhbert_weights(self, base_path: str):
         logger.info(f"Loading CNHuBERT weights from {base_path}")
@@ -434,7 +426,7 @@ class TTS:
                 zero_wav_torch = zero_wav_torch.half()
 
             wav16k = torch.cat([wav16k, zero_wav_torch])
-            hubert_feature = self.cnhuhbert_model.model(wav16k.unsqueeze(0))[
+            hubert_feature = self.cnhuhbert_model.model(wav16k.unsqueeze(0))[ # pyright: ignore
                 "last_hidden_state"
             ].transpose(
                 1, 2
@@ -487,7 +479,6 @@ class TTS:
             batch_index_list_len = 0
             pos = 0
             while pos < index_and_len_list.shape[0]:
-                # batch_index_list.append(index_and_len_list[pos:min(pos+batch_size,len(index_and_len_list))])
                 pos_end = min(pos+batch_size, index_and_len_list.shape[0])
                 while pos < pos_end:
                     batch = index_and_len_list[pos:pos_end, 1].astype(np.float32)
@@ -512,7 +503,6 @@ class TTS:
             item_list = [data[idx] for idx in index_list]
             phones_list = []
             phones_len_list = []
-            # bert_features_list = []
             all_phones_list = []
             all_phones_len_list = []
             all_bert_features_list = []
@@ -525,13 +515,11 @@ class TTS:
                         .to(dtype=precision, device=device)
                     all_phones = torch.LongTensor(prompt_data["phones"]+item["phones"]).to(device)
                     phones = torch.LongTensor(item["phones"]).to(device)
-                    # norm_text = prompt_data["norm_text"]+item["norm_text"]
                 else:
                     all_bert_features = item["bert_features"]\
                         .to(dtype=precision, device=device)
                     phones = torch.LongTensor(item["phones"]).to(device)
                     all_phones = phones
-                    # norm_text = item["norm_text"]
 
                 all_bert_max_len = max(all_bert_max_len, all_bert_features.shape[-1])
                 all_phones_max_len = max(all_phones_max_len, all_phones.shape[-1])
@@ -548,22 +536,6 @@ class TTS:
             all_bert_features_batch = all_bert_features_list
 
             max_len = max(all_bert_max_len, all_phones_max_len)
-            # phones_batch = self.batch_sequences(phones_list, axis=0, pad_value=0, max_length=max_len)
-            # 直接对phones和bert_features进行pad。（padding策略会影响T2S模型生成的结果，但不直接影响复读概率。影响复读概率的主要因素是mask的策略）
-            # all_phones_batch = self.batch_sequences(all_phones_list, axis=0, pad_value=0, max_length=max_len)
-            # all_bert_features_batch = all_bert_features_list
-            # all_bert_features_batch = torch.zeros((len(all_bert_features_list), 1024, max_len), dtype=precision, device=device)
-            # for idx, item in enumerate(all_bert_features_list):
-            #     all_bert_features_batch[idx, :, : item.shape[-1]] = item
-
-            # #### 先对phones进行embedding、对bert_features进行project，再pad到相同长度，（padding策略会影响T2S模型生成的结果，但不直接影响复读概率。影响复读概率的主要因素是mask的策略）
-            # all_phones_list = [self.t2s_model.model.ar_text_embedding(item.to(self.t2s_model.device)) for item in all_phones_list]
-            # all_phones_list = [F.pad(item,(0,0,0,max_len-item.shape[0]),value=0) for item in all_phones_list]
-            # all_phones_batch = torch.stack(all_phones_list, dim=0)
-
-            # all_bert_features_list = [self.t2s_model.model.bert_proj(item.to(self.t2s_model.device).transpose(0, 1)) for item in all_bert_features_list]
-            # all_bert_features_list = [F.pad(item,(0,0,0,max_len-item.shape[0]), value=0) for item in all_bert_features_list]
-            # all_bert_features_batch = torch.stack(all_bert_features_list, dim=0)
 
             batch = {
                 "phones": phones_batch,
@@ -712,7 +684,7 @@ class TTS:
             prompt_text = prompt_text.strip("\n")
             if (prompt_text[-1] not in SPLITS):
                 prompt_text += "。" if prompt_lang != "en" else "."
-            print("实际输入的参考文本:", prompt_text)
+            print(f"final prompt text is: {prompt_text}")
             if self.prompt_cache["prompt_text"] != prompt_text:
                 self.prompt_cache["prompt_text"] = prompt_text
                 self.prompt_cache["prompt_lang"] = prompt_lang
@@ -789,7 +761,6 @@ class TTS:
                         continue
 
                 batch_phones: List[torch.LongTensor] = item["phones"]
-                # batch_phones:torch.LongTensor = item["phones"]
                 batch_phones_len: torch.LongTensor = item["phones_len"]
                 all_phoneme_ids: torch.LongTensor = item["all_phones"]
                 all_phoneme_lens: torch.LongTensor = item["all_phones_len"]
@@ -822,21 +793,7 @@ class TTS:
 
                 batch_audio_fragment = []
 
-                # ## vits并行推理 method 1
-                # pred_semantic_list = [item[-idx:] for item, idx in zip(pred_semantic_list, idx_list)]
-                # pred_semantic_len = torch.LongTensor([item.shape[0] for item in pred_semantic_list]).to(self.configs.device)
-                # pred_semantic = self.batch_sequences(pred_semantic_list, axis=0, pad_value=0).unsqueeze(0)
-                # max_len = 0
-                # for i in range(0, len(batch_phones)):
-                #     max_len = max(max_len, batch_phones[i].shape[-1])
-                # batch_phones = self.batch_sequences(batch_phones, axis=0, pad_value=0, max_length=max_len)
-                # batch_phones = batch_phones.to(self.configs.device)
-                # batch_audio_fragment = (self.vits_model.batched_decode(
-                #         pred_semantic, pred_semantic_len, batch_phones, batch_phones_len,refer_audio_spec
-                #     ))
-
                 if speed_factor == 1.0:
-                    # ## vits并行推理 method 2
                     pred_semantic_list = [item[-idx:] for item, idx in zip(pred_semantic_list, idx_list)]  # pyright: ignore
                     upsample_rate = math.prod(self.vits_model.upsample_rates)
                     audio_frag_idx = [pred_semantic_list[i].shape[0]*2*upsample_rate for i in range(0, len(pred_semantic_list))]
@@ -849,16 +806,15 @@ class TTS:
                     audio_frag_end_idx.insert(0, 0)
                     batch_audio_fragment = [_batch_audio_fragment[audio_frag_end_idx[i-1]:audio_frag_end_idx[i]] for i in range(1, len(audio_frag_end_idx))]
                 else:
-                    # ## vits串行推理
                     for i, idx in enumerate(idx_list):  # pyright: ignore
                         phones = batch_phones[i].unsqueeze(0).to(self.configs.device)
-                        _pred_semantic = (pred_semantic_list[i][-idx:].unsqueeze(0).unsqueeze(0))   # .unsqueeze(0)#mq要多unsqueeze一次
+                        _pred_semantic = (pred_semantic_list[i][-idx:].unsqueeze(0).unsqueeze(0)) 
                         audio_fragment = (self.vits_model.decode(
                             _pred_semantic, phones, refer_audio_spec, speed=speed_factor
                         ).detach()[0, 0, :])
                         batch_audio_fragment.append(
                             audio_fragment
-                        )  # 试试重建不带上prompt部分
+                        )
 
                 t5 = ttime()
                 t_45 += t5 - t4
@@ -895,10 +851,10 @@ class TTS:
 
         except Exception as e:
             traceback.print_exc()
-            # 必须返回一个空音频, 否则会导致显存不释放。
+            # must return an empty audio, otherwise it will cause the memory not to be released.
             yield self.configs.sampling_rate, np.zeros(int(self.configs.sampling_rate),
                                                        dtype=np.int16)
-            # 重置模型, 否则会导致显存释放不完全。
+            # reset the model, otherwise it will cause the memory not to be released.
             del self.t2s_model
             del self.vits_model
             self.t2s_model = None  # pyright: ignore
@@ -911,7 +867,7 @@ class TTS:
 
     def empty_cache(self):
         try:
-            gc.collect()  # 触发gc的垃圾回收。避免内存一直增长。
+            gc.collect()
             if "cuda" in str(self.configs.device):
                 torch.cuda.empty_cache()
             elif str(self.configs.device) == "mps":
@@ -935,7 +891,8 @@ class TTS:
 
         for i, batch in enumerate(audio):
             for j, audio_fragment in enumerate(batch):
-                max_audio = torch.abs(audio_fragment).max()  # 简单防止16bit爆音
+                # prevent 16bit overflow
+                max_audio = torch.abs(audio_fragment).max() 
                 if max_audio > 1:
                     audio_fragment /= max_audio
                 audio_fragment: torch.Tensor = torch.cat([audio_fragment, zero_wav], dim=0)
@@ -944,38 +901,8 @@ class TTS:
         if split_bucket:
             audio = self.recovery_order(audio, batch_index_list)  # pyright: ignore
         else:
-            # audio = [item for batch in audio for item in batch]
             audio = sum(audio, [])  # pyright: ignore
 
         audio = np.concatenate(audio, 0)  # pyright: ignore
         audio = (audio * 32768).astype(np.int16)  # pyright: ignore
-
-        # try:
-        #     if speed_factor != 1.0:
-        #         audio = speed_change(audio, speed=speed_factor, sr=int(sr))
-        # except Exception as e:
-        #     print(f"Failed to change speed of audio: \n{e}")
-
         return sr, audio  # pyright: ignore
-
-
-def speed_change(input_audio: np.ndarray, speed: float, sr: int):
-    # 将 NumPy 数组转换为原始 PCM 流
-    raw_audio = input_audio.astype(np.int16).tobytes()
-
-    # 设置 ffmpeg 输入流
-    input_stream = ffmpeg.input('pipe:', format='s16le', acodec='pcm_s16le', ar=str(sr), ac=1)
-
-    # 变速处理
-    output_stream = input_stream.filter('atempo', speed)
-
-    # 输出流到管道
-    out, _ = (
-        output_stream.output('pipe:', format='s16le', acodec='pcm_s16le')
-        .run(input=raw_audio, capture_stdout=True, capture_stderr=True)
-    )
-
-    # 将管道输出解码为 NumPy 数组
-    processed_audio = np.frombuffer(out, np.int16)
-
-    return processed_audio

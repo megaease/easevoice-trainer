@@ -1,7 +1,6 @@
 # modified from https://github.com/yangdongchao/SoundStorm/blob/master/soundstorm/s1/AR/models/t2s_model.py
 # reference: https://github.com/lifeiteng/vall-e
 import torch
-from tqdm import tqdm
 
 from torch import nn
 from torch.nn import functional as F

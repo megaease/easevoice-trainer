@@ -1,4 +1,3 @@
-from typing import Optional
 import torch.nn as nn
 from transformers import (
     Wav2Vec2FeatureExtractor,
@@ -29,5 +28,5 @@ class CNHubert(nn.Module):
         input_values = self.feature_extractor(
             x, return_tensors="pt", sampling_rate=16000
         ).input_values.to(x.device)
-        feats = self.model(input_values)["last_hidden_state"]
+        feats = self.model(input_values)["last_hidden_state"]  # pyright: ignore
         return feats

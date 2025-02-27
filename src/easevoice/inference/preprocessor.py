@@ -71,8 +71,7 @@ class TextPreprocessor:
             return []
         if (text[0] not in SPLITS and len(get_first(text)) < 4):
             text = "。" + text if lang != "en" else "." + text
-        print(("final target input:"))
-        print(text)
+        print(f"final target input: {text}")
 
         seg_method = get_split_method(text_split_method)
         text = seg_method(text)
@@ -86,16 +85,16 @@ class TextPreprocessor:
         texts = []
 
         for text in _texts:
-            # 解决输入目标文本的空行导致报错的问题
+            # fix empty line in target text
             if (len(text.strip()) == 0):
                 continue
             if not re.sub("\W+", "", text):
-                # 检测一下，如果是纯符号，就跳过。
+                # if it's pure punctuation, skip
                 continue
             if (text[-1] not in SPLITS):
                 text += "。" if lang != "en" else "."
 
-            # 解决句子过长导致Bert报错的问题
+            # fix the problem that the sentence is too long to cause Bert error
             if (len(text) > 510):
                 texts.extend(split_big_text(text))
             else:
@@ -115,7 +114,7 @@ class TextPreprocessor:
                 LangSegment.setfilters(["en"])
                 formattext = " ".join(tmp["text"] for tmp in LangSegment.getTexts(text))  # pyright: ignore
             else:
-                # 因无法区别中日韩文汉字,以用户输入为准
+                # can't distinguish between Chinese, Japanese, and Korean characters, based on user input
                 formattext = text
             while "  " in formattext:
                 formattext = formattext.replace("  ", " ")
@@ -156,11 +155,9 @@ class TextPreprocessor:
                     if tmp["lang"] == "en":  # pyright: ignore
                         langlist.append(tmp["lang"])  # pyright: ignore
                     else:
-                        # 因无法区别中日韩文汉字,以用户输入为准
+                        # can't distinguish between Chinese, Japanese, and Korean characters, based on user input
                         langlist.append(language)
                     textlist.append(tmp["text"])  # pyright: ignore
-            # print(textlist)
-            # print(langlist)
             phones_list = []
             bert_list = []
             norm_text_list = []
@@ -215,7 +212,7 @@ class TextPreprocessor:
     def filter_text(self, texts):
         _text = []
         if all(text in [None, " ", "\n", ""] for text in texts):
-            raise ValueError(("请输入有效文本"))
+            raise ValueError(("All texts are empty"))
         for text in texts:
             if text in [None, " ", ""]:
                 pass

@@ -9,7 +9,7 @@ from . import modules
 from . import attentions_onnx as attentions
 
 from torch.nn import Conv1d, ConvTranspose1d, Conv2d
-from torch.nn.utils import weight_norm, remove_weight_norm, spectral_norm
+from torch.nn.utils import weight_norm, remove_weight_norm, spectral_norm  # pyright: ignore
 from .commons import init_weights, get_padding
 from .quantize import ResidualVectorQuantizer
 from ..text.symbols import SYMBOLS
@@ -846,20 +846,10 @@ class SynthesizerTrn(nn.Module):
             upsample_kernel_sizes,
             gin_channels=gin_channels,
         )
-        # self.enc_q = PosteriorEncoder(
-        #     spec_channels,
-        #     inter_channels,
-        #     hidden_channels,
-        #     5,
-        #     1,
-        #     16,
-        #     gin_channels=gin_channels,
-        # )
         self.flow = ResidualCouplingBlock(
             inter_channels, hidden_channels, 5, 1, 4, gin_channels=gin_channels
         )
 
-        # self.version=os.environ.get("version","v1")
         if self.version == "v1":
             self.ref_enc = modules.MelStyleEncoder(spec_channels, style_vector_dim=gin_channels)
         else:

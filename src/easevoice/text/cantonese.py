@@ -160,10 +160,10 @@ def jyuping_to_initials_finals_tones(jyuping_syllables):
                     break
     assert len(initials_finals) == len(tones)
 
-    # 魔改为辅音+带音调的元音
+    # Modified to use a consonant + vowel with tone
     phones = []
     for a, b in zip(initials_finals, tones):
-        if (b not in [-1, 0]):  # 防止粤语和普通话重合开头加Y，如果是标点，不加。
+        if (b not in [-1, 0]):  # Prevent adding an initial 'Y' when Cantonese and Mandarin overlap; if it's punctuation, don't add it.
             todo = "%s%s" % (a, b)
         else:
             todo = a

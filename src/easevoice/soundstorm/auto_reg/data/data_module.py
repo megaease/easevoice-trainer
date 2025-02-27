@@ -35,12 +35,6 @@ class Text2SemanticDataModule(LightningDataModule):
             pad_val=self.config["data"]["pad_val"],
         )
         self._dev_dataset = self._train_dataset
-        # self._dev_dataset = Text2SemanticDataset(
-        #     phoneme_path=self.dev_phoneme_path,
-        #     semantic_path=self.dev_semantic_path,
-        #     max_sample=self.config['data']['max_eval_sample'],
-        #     max_sec=self.config['data']['max_sec'],
-        #     pad_val=self.config['data']['pad_val'])
 
     def train_dataloader(self):
         batch_size = self.config["train"]["batch_size"]//2 if self.config["train"].get("if_dpo", False) == True else self.config["train"]["batch_size"]
@@ -67,7 +61,6 @@ class Text2SemanticDataModule(LightningDataModule):
             prefetch_factor=16,
         )
 
-    # 这个会使用到嘛？
     def test_dataloader(self):
         return DataLoader(
             self._dev_dataset,

@@ -1,4 +1,4 @@
-from torch.nn.utils import remove_weight_norm, weight_norm
+from torch.nn.utils import remove_weight_norm, weight_norm # pyright: ignore
 import torch.nn as nn
 import math
 import torch

@@ -91,40 +91,6 @@ class Text2SemanticLightningModule(LightningModule):
     def validation_step(self, batch: Dict, batch_idx: int):
         return
 
-    # # get loss
-    # loss, acc = self.model.forward(
-    #     batch['phoneme_ids'], batch['phoneme_ids_len'],
-    #     batch['semantic_ids'], batch['semantic_ids_len'],
-    #     batch['bert_feature']
-    # )
-    #
-    # self.log(
-    #     "val_total_loss",
-    #     loss,
-    #     on_step=True,
-    #     on_epoch=True,
-    #     prog_bar=True,
-    #     sync_dist=True)
-    # self.log(
-    #     f"val_top_{self.top_k}_acc",
-    #     acc,
-    #     on_step=True,
-    #     on_epoch=True,
-    #     prog_bar=True,
-    #     sync_dist=True)
-    #
-    # # get infer output
-    # semantic_len = batch['semantic_ids'].size(1)
-    # prompt_len = min(int(semantic_len * 0.5), 150)
-    # prompt = batch['semantic_ids'][:, :prompt_len]
-    # pred_semantic = self.model.infer(batch['phoneme_ids'],
-    #                                  batch['phoneme_ids_len'], prompt,
-    #                                  batch['bert_feature']
-    #                                  )
-    # save_name = f'semantic_toks_{batch_idx}.pt'
-    # save_path = os.path.join(self.eval_dir, save_name)
-    # torch.save(pred_semantic.detach().cpu(), save_path)
-
     def configure_optimizers(self):
         model_parameters = self.model.parameters()
         parameters_names = []

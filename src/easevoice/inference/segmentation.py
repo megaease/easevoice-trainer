@@ -10,25 +10,20 @@ SPLITS = {"，", "。", "？", "！", ",", ".", "?", "!", "~", ":", "：", "—"
 
 
 def split_big_text(text, max_len=510):
-    # 定义全角和半角标点符号
     punctuation = "".join(SPLITS)
 
-    # 切割文本
     segments = re.split('([' + punctuation + '])', text)
 
-    # 初始化结果列表和当前片段
     result = []
     current_segment = ''
 
     for segment in segments:
-        # 如果当前片段加上新的片段长度超过max_len，就将当前片段加入结果列表，并重置当前片段
         if len(current_segment + segment) > max_len:
             result.append(current_segment)
             current_segment = segment
         else:
             current_segment += segment
 
-    # 将最后一个片段加入结果列表
     if current_segment:
         result.append(current_segment)
 
@@ -44,7 +39,7 @@ def _split(todo_text):
     todo_texts = []
     while 1:
         if i_split_head >= len_text:
-            break  # 结尾一定有标点，所以直接跳出即可，最后一段在上次已加入
+            break
         if todo_text[i_split_head] in SPLITS:
             i_split_head += 1
             todo_texts.append(todo_text[i_split_tail:i_split_head])
@@ -142,8 +137,7 @@ def split_by_50_chars(inp):
             tmp_str = ""
     if tmp_str != "":
         opts.append(tmp_str)
-    # print(opts)
-    if len(opts) > 1 and len(opts[-1]) < 50:  # 如果最后一个太短了，和前一个合一起
+    if len(opts) > 1 and len(opts[-1]) < 50:
         opts[-2] = opts[-2] + opts[-1]
         opts = opts[:-1]
     opts = [item for item in opts if not set(item).issubset(PUNCTUATION)]

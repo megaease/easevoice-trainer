@@ -114,10 +114,6 @@ def logits_to_probs(
     top_p: Optional[int] = None,
     repetition_penalty: float = 1.0,
 ):
-    # if previous_tokens is not None:
-    #     previous_tokens = previous_tokens.squeeze()
-    # print(logits.shape,previous_tokens.shape)
-    # pdb.set_trace()
     if previous_tokens is not None and repetition_penalty != 1.0:
         previous_tokens = previous_tokens.long()
         score = torch.gather(logits, dim=1, index=previous_tokens)

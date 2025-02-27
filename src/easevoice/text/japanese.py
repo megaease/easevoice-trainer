@@ -21,7 +21,7 @@ def init():
         userdict_csv = os.path.join(base_path, "userdict.csv")
         userdict_bin = os.path.join(base_path, "user.dict")
         userdict_hash = os.path.join(base_path, "userdict.md5")
-        # 如果没有用户词典，就生成一个；如果有，就检查md5，如果不一样，就重新生成
+        # If there is no user dictionary, generate one; if there is, check the md5, and if it is different, regenerate it
         if os.path.exists(userdict_csv):
             if not os.path.exists(userdict_bin) or get_hash(userdict_csv) != open(userdict_hash, "r", encoding='utf-8').read():
                 pyopenjtalk.mecab_dict_index(userdict_csv, userdict_bin)
@@ -123,7 +123,7 @@ def preprocess_jap(text, with_prosody=False):
                 text += p.split(" ")
 
         if i < len(marks):
-            if marks[i] == " ":  # 防止意外的UNK
+            if marks[i] == " ": # Prevent unexpected UNK
                 continue
             text += [marks[i].replace(" ", "")]
     return text
@@ -132,7 +132,7 @@ def preprocess_jap(text, with_prosody=False):
 def text_normalize(text):
     # todo: jap text normalize
 
-    # 避免重复标点引起的参考泄露
+    # Avoid reference leakage caused by repeated punctuation
     text = replace_consecutive_punctuation(text)
     return text
 

@@ -68,7 +68,7 @@ class DictLoader:
                     line = line.strip()
                     word_split = line.split(" ")
                     word = word_split[0].lower()
-                    # 自定义发音词直接覆盖字典
+                    # Custom pronunciation words directly overwrite the dictionary
                     g2p_dict[word] = [word_split[1:]]
 
                 line_index = line_index + 1
@@ -124,7 +124,7 @@ def replace_consecutive_punctuation(text):
 
 def text_normalize(text):
     # todo: eng text normalize
-    # 适配中文及 g2p_en 标点
+    # Adapt to Chinese and g2p_en punctuation
     rep_map = {
         "[;:：，；]": ",",
         '["’]': "'",
@@ -135,8 +135,9 @@ def text_normalize(text):
     for p, r in rep_map.items():
         text = re.sub(p, r, text)
 
-    # 来自 g2p_en 文本格式化处理
-    # 增加大写兼容
+
+    # g2p_en text formatting
+    # Add uppercase compatibility
     text = unicode(text)
     text = normalize_numbers(text)
     text = ''.join(char for char in unicodedata.normalize('NFD', text)
@@ -145,7 +146,7 @@ def text_normalize(text):
     text = re.sub(r"(?i)i\.e\.", "that is", text)
     text = re.sub(r"(?i)e\.g\.", "for example", text)
 
-    # 避免重复标点引起的参考泄露
+    # Avoid reference leakage caused by repeated punctuation
     text = replace_consecutive_punctuation(text)
 
     return text
@@ -164,19 +165,19 @@ class EnglishG2p(G2p):
 
         self.word_tokenize = TweetTokenizer().tokenize
 
-        # 分词初始化
+        # init word segment
         wordsegment.load()
 
-        # 扩展过时字典, 添加姓名字典
+        # Expand outdated dictionary, add name dictionary
         manager = DictLoader()
         self.cmu = manager.dict
         self.namedict = manager.namedict
 
-        # 剔除读音错误的几个缩写
+        # Eliminate several abbreviations with incorrect pronunciation
         for word in ["AE", "AI", "AR", "IOS", "HUD", "OS"]:
             del self.cmu[word.lower()]
 
-        # 修正多音字
+        # Fix polyphonic characters
         self.homograph2features["read"] = (['R', 'IY1', 'D'], ['R', 'EH1', 'D'], 'VBP')
         self.homograph2features["complex"] = (['K', 'AH0', 'M', 'P', 'L', 'EH1', 'K', 'S'], ['K', 'AA1', 'M', 'P', 'L', 'EH0', 'K', 'S'], 'JJ')
         logger.info("Finishing loading English G2P model")
@@ -189,30 +190,30 @@ class EnglishG2p(G2p):
         # steps
         prons = []
         for o_word, pos in tokens:
-            # 还原 g2p_en 小写操作逻辑
+            # Restore g2p_en lowercase operation logic
             word = o_word.lower()
 
             if re.search("[a-z]", word) is None:
                 pron = [word]
-            # 先把单字母推出去
+            # Push out single letters first
             elif len(word) == 1:
-                # 单读 A 发音修正, 这里需要原格式 o_word 判断大写
+                # Single reading A pronunciation correction, here you need the original format o_word to determine capitalization
                 if o_word == "A":
                     pron = ['EY1']
                 else:
                     pron = self.cmu[word][0]
-            # g2p_en 原版多音字处理
+            # g2p_en original polyphonic word processing
             elif word in self.homograph2features:  # Check homograph
                 pron1, pron2, pos1 = self.homograph2features[word]
                 if pos.startswith(pos1):
                     pron = pron1
-                # pos1比pos长仅出现在read
+                # pos1 is longer than pos and only appears in read
                 elif len(pos) < len(pos1) and pos == pos1[:len(pos)]:
                     pron = pron1
                 else:
                     pron = pron2
             else:
-                # 递归查找预测
+                # Recursively search for predictions
                 pron = self.qryword(o_word)
 
             prons.extend(pron)
@@ -223,19 +224,19 @@ class EnglishG2p(G2p):
     def qryword(self, o_word):
         word = o_word.lower()
 
-        # 查字典, 单字母除外
+        # Look up the dictionary, except single letters
         if len(word) > 1 and word in self.cmu:  # lookup CMU dict
             return self.cmu[word][0]
 
-        # 单词仅首字母大写时查找姓名字典
+        # Search the name dictionary when only the first letter of the word is capitalized
         if o_word.istitle() and word in self.namedict:
             return self.namedict[word][0]
 
-        # oov 长度小于等于 3 直接读字母
+        # oov length is less than or equal to 3, read letters directly
         if len(word) <= 3:
             phones = []
             for w in word:
-                # 单读 A 发音修正, 此处不存在大写的情况
+                # Pronunciation correction for single reading A, there is no capitalization here
                 if w == "a":
                     phones.extend(['EY1'])
                 elif not w.isalpha():
@@ -244,30 +245,30 @@ class EnglishG2p(G2p):
                     phones.extend(self.cmu[w][0])
             return phones
 
-        # 尝试分离所有格
+        # Try to separate possessives
         if re.match(r"^([a-z]+)('s)$", word):
             phones = self.qryword(word[:-2])[:]
-            # P T K F TH HH 无声辅音结尾 's 发 ['S']
+            # P T K F TH HH Silent consonant ending 's is pronounced ['S']
             if phones[-1] in ['P', 'T', 'K', 'F', 'TH', 'HH']:
                 phones.extend(['S'])
-            # S Z SH ZH CH JH 擦声结尾 's 发 ['IH1', 'Z'] 或 ['AH0', 'Z']
+            # S Z SH ZH CH JH The fricative ending 's is pronounced as ['IH1', 'Z'] or ['AH0', 'Z']
             elif phones[-1] in ['S', 'Z', 'SH', 'ZH', 'CH', 'JH']:
                 phones.extend(['AH0', 'Z'])
-            # B D G DH V M N NG L R W Y 有声辅音结尾 's 发 ['Z']
+            # B D G DH V M N NG L R W Y Voiced consonant ending 's is pronounced ['Z']
             # AH0 AH1 AH2 EY0 EY1 EY2 AE0 AE1 AE2 EH0 EH1 EH2 OW0 OW1 OW2 UH0 UH1 UH2 IY0 IY1 IY2 AA0 AA1 AA2 AO0 AO1 AO2
-            # ER ER0 ER1 ER2 UW0 UW1 UW2 AY0 AY1 AY2 AW0 AW1 AW2 OY0 OY1 OY2 IH IH0 IH1 IH2 元音结尾 's 发 ['Z']
+            # ER ER0 ER1 ER2 UW0 UW1 UW2 AY0 AY1 AY2 AW0 AW1 AW2 OY0 OY1 OY2 IH IH0 IH1 IH2 vowels ending in 's are pronounced ['Z']
             else:
                 phones.extend(['Z'])
             return phones
 
-        # 尝试进行分词，应对复合词
+        # Try to segment words and deal with compound words
         comps = wordsegment.segment(word.lower())
 
-        # 无法分词的送回去预测
+        # Send words that cannot be segmented back for prediction
         if len(comps) == 1:
             return self.predict(word)
 
-        # 可以分词的递归处理
+        # Recursive processing that can be divided into words
         return [phone for comp in comps for phone in self.qryword(comp)]
 
 
@@ -275,7 +276,7 @@ _EnglishG2p = EnglishG2p()
 
 
 def g2p(text):
-    # g2p_en 整段推理，剔除不存在的arpa返回
+    # g2p_en The entire reasoning, excluding non-existent arpa returns
     phone_list = _EnglishG2p(text)
     phones = [ph if ph != "<unk>" else "UNK" for ph in phone_list if ph not in [" ", "<pad>", "UW", "</s>", "<s>"]]
 

@@ -1,11 +1,11 @@
 import contextlib
-from torch.cuda.amp import autocast
+from torch.cuda.amp import autocast  # pyright: ignore
 from ..text.symbols import SYMBOLS
 from src.easevoice.module.quantize import ResidualVectorQuantizer
 from src.easevoice.module.mrte_model import MRTE
 from src.easevoice.module.commons import init_weights, get_padding
-from torch.nn.utils import weight_norm, remove_weight_norm, spectral_norm
-from torch.nn import Conv1d, ConvTranspose1d, AvgPool1d, Conv2d
+from torch.nn.utils import weight_norm, remove_weight_norm, spectral_norm  # pyright: ignore
+from torch.nn import Conv1d, ConvTranspose1d, Conv2d
 from src.easevoice.module import attentions
 from src.easevoice.module import modules
 from src.easevoice.module import commons

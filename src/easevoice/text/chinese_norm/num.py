@@ -30,7 +30,7 @@ UNITS = OrderedDict({
 
 COM_QUANTIFIERS = '(处|台|架|枚|趟|幅|平|方|堵|间|床|株|批|项|例|列|篇|栋|注|亩|封|艘|把|目|套|段|人|所|朵|匹|张|座|回|场|尾|条|个|首|阙|阵|网|炮|顶|丘|棵|只|支|袭|辆|挑|担|颗|壳|窠|曲|墙|群|腔|砣|座|客|贯|扎|捆|刀|令|打|手|罗|坡|山|岭|江|溪|钟|队|单|双|对|出|口|头|脚|板|跳|枝|件|贴|针|线|管|名|位|身|堂|课|本|页|家|户|层|丝|毫|厘|分|钱|两|斤|担|铢|石|钧|锱|忽|(千|毫|微)克|毫|厘|(公)分|分|寸|尺|丈|里|寻|常|铺|程|(千|分|厘|毫|微)米|米|撮|勺|合|升|斗|石|盘|碗|碟|叠|桶|笼|盆|盒|杯|钟|斛|锅|簋|篮|盘|桶|罐|瓶|壶|卮|盏|箩|箱|煲|啖|袋|钵|年|月|日|季|刻|时|周|天|秒|分|小时|旬|纪|岁|世|更|夜|春|夏|秋|冬|代|伏|辈|丸|泡|粒|颗|幢|堆|条|根|支|道|面|片|张|颗|块|元|(亿|千万|百万|万|千|百)|(亿|千万|百万|万|千|百|美|)元|(亿|千万|百万|万|千|百|十|)吨|(亿|千万|百万|万|千|百|)块|角|毛|分)'
 
-# 分数表达式
+# fraction re
 RE_FRAC = re.compile(r'(-?)(\d+)/(\d+)')
 
 
@@ -51,7 +51,7 @@ def replace_frac(match) -> str:
     return result
 
 
-# 百分数表达式
+# percentage re
 RE_PERCENTAGE = re.compile(r'(-?)(\d+(\.\d+)?)%')
 
 
@@ -70,8 +70,7 @@ def replace_percentage(match) -> str:
     return result
 
 
-# 整数表达式
-# 带负号的整数 -10
+# integer re, include negative
 RE_INTEGER = re.compile(r'(-)' r'(\d+)')
 
 
@@ -90,8 +89,7 @@ def replace_negative_num(match) -> str:
     return result
 
 
-# 编号-无符号整形
-# 00078
+# number without sign, 00078
 RE_DEFAULT_NUM = re.compile(r'\d{3}\d*')
 
 
@@ -106,9 +104,7 @@ def replace_default_num(match):
     return verbalize_digit(number, alt_one=True)
 
 
-# 加减乘除
-# RE_ASMD = re.compile(
-#     r'((-?)((\d+)(\.\d+)?)|(\.(\d+)))([\+\-\×÷=])((-?)((\d+)(\.\d+)?)|(\.(\d+)))')
+# add, sub, mul, divide
 RE_ASMD = re.compile(
     r'((-?)((\d+)(\.\d+)?[⁰¹²³⁴⁵⁶⁷⁸⁹ˣʸⁿ]*)|(\.\d+[⁰¹²³⁴⁵⁶⁷⁸⁹ˣʸⁿ]*)|([A-Za-z][⁰¹²³⁴⁵⁶⁷⁸⁹ˣʸⁿ]*))([\+\-\×÷=])((-?)((\d+)(\.\d+)?[⁰¹²³⁴⁵⁶⁷⁸⁹ˣʸⁿ]*)|(\.\d+[⁰¹²³⁴⁵⁶⁷⁸⁹ˣʸⁿ]*)|([A-Za-z][⁰¹²³⁴⁵⁶⁷⁸⁹ˣʸⁿ]*))')
 
@@ -131,7 +127,7 @@ def replace_asmd(match) -> str:
     return result
 
 
-# 次方专项
+# power
 RE_POWER = re.compile(r'[⁰¹²³⁴⁵⁶⁷⁸⁹ˣʸⁿ]+')
 
 power_map = {
@@ -164,10 +160,7 @@ def replace_power(match) -> str:
     return result
 
 
-# 数字表达式
-# 纯小数
 RE_DECIMAL_NUM = re.compile(r'(-?)((\d+)(\.\d+))' r'|(\.(\d+))')
-# 正整数 + 量词
 RE_POSITIVE_QUANTIFIERS = re.compile(r"(\d+)([多余几\+])?" + COM_QUANTIFIERS)
 RE_NUMBER = re.compile(r'(-?)((\d+)(\.\d+)?)' r'|(\.(\d+))')
 
@@ -210,16 +203,13 @@ def replace_number(match) -> str:
     return result
 
 
-# 范围表达式
-# match.group(1) and match.group(8) are copy from RE_NUMBER
-
 RE_RANGE = re.compile(
     r"""
-    (?<![\d\+\-\×÷=])      # 使用反向前瞻以确保数字范围之前没有其他数字和操作符
-    ((-?)((\d+)(\.\d+)?))  # 匹配范围起始的负数或正数（整数或小数）
-    [-~]                   # 匹配范围分隔符
-    ((-?)((\d+)(\.\d+)?))  # 匹配范围结束的负数或正数（整数或小数）
-    (?![\d\+\-\×÷=])       # 使用正向前瞻以确保数字范围之后没有其他数字和操作符
+    (?<![\d\+\-\×÷=])      # Use negative lookbehind to ensure no digits or operators appear before the numeric range
+    ((-?)((\d+)(\.\d+)?))  # Match the starting number of the range (negative or positive, integer or decimal)
+    [-~]                   # Match the range separator (for example, '-' or '~')
+    ((-?)((\d+)(\.\d+)?))  # Match the ending number of the range (negative or positive, integer or decimal)
+    (?![\d\+\-\×÷=])       # Use positive lookahead to ensure no digits or operators appear after the numeric range
     """, re.VERBOSE)
 
 
@@ -237,7 +227,6 @@ def replace_range(match) -> str:
     return result
 
 
-# ~至表达式
 RE_TO_RANGE = re.compile(
     r'((-?)((\d+)(\.\d+)?)|(\.(\d+)))(%|°C|℃|度|摄氏度|cm2|cm²|cm3|cm³|cm|db|ds|kg|km|m2|m²|m³|m3|ml|m|mm|s)[~]((-?)((\d+)(\.\d+)?)|(\.(\d+)))(%|°C|℃|度|摄氏度|cm2|cm²|cm3|cm³|cm|db|ds|kg|km|m2|m²|m³|m3|ml|m|mm|s)')
 

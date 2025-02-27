@@ -5,13 +5,10 @@ import torch
 import torch.utils.data
 from tqdm import tqdm
 
-from . import commons
 from .mel_processing import spectrogram_torch
 from src.easevoice.text import cleaned_text_to_sequence
 import torch.nn.functional as F
 from ...utils.audio import load_audio
-version = os.environ.get('version', None)
-# ZeroDivisionError fixed by Tybost (https://github.com/RVC-Boss/GPT-SoVITS/issues/79)
 
 
 class TextAudioSpeakerLoader(torch.utils.data.Dataset):
@@ -29,7 +26,7 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
         assert os.path.exists(self.path2)
         assert os.path.exists(self.path4)
         assert os.path.exists(self.path5)
-        names4 = set([name[:-3] for name in list(os.listdir(self.path4))])  # 去除.pt后缀
+        names4 = set([name[:-3] for name in list(os.listdir(self.path4))])  # remove .pt suffix
         names5 = set(os.listdir(self.path5))
         self.phoneme_data = {}
         with open(self.path2, "r", encoding="utf8") as f:
@@ -120,8 +117,9 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
         return (ssl, spec, wav, text)
 
     def get_audio(self, filename):
-        audio_array = load_audio(filename, self.sampling_rate)  # load_audio的方法是已经归一化到-1~1之间的，不用再/32768
-        audio = torch.FloatTensor(audio_array)  # /32768
+        # load_audio already normalizes to -1~1
+        audio_array = load_audio(filename, self.sampling_rate)
+        audio = torch.FloatTensor(audio_array)
         audio_norm = audio
         audio_norm = audio_norm.unsqueeze(0)
         spec = spectrogram_torch(audio_norm, self.filter_length, self.sampling_rate, self.hop_length, self.win_length,
@@ -134,7 +132,6 @@ class TextAudioSpeakerLoader(torch.utils.data.Dataset):
         return sid
 
     def __getitem__(self, index):
-        # with torch.no_grad():
         return self.get_audio_text_speaker_pair(self.audiopaths_sid_text[index])
 
     def __len__(self):

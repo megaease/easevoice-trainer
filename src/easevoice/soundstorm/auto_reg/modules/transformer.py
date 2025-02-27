@@ -204,9 +204,6 @@ class TransformerEncoderLayer(nn.Module):
     ) -> None:
         factory_kwargs = {"device": device, "dtype": dtype}
         super(TransformerEncoderLayer, self).__init__()
-        # print(233333333333,d_model,nhead)
-        # import os
-        # os._exit(2333333)
         self.self_attn = MultiheadAttention(
             d_model,  # 512 16
             nhead,
@@ -325,10 +322,6 @@ class TransformerEncoderLayer(nn.Module):
         key_padding_mask: Optional[Tensor],
         cache=None,
     ) -> Tensor:
-        # print(x.shape,attn_mask.shape,key_padding_mask)
-        # torch.Size([1, 188, 512]) torch.Size([188, 188]) None
-        # import os
-        # os._exit(23333)
         x = self.self_attn(
             x,
             x,

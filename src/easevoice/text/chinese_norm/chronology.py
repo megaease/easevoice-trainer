@@ -27,12 +27,12 @@ def _time_num2str(num_string: str) -> str:
     return result
 
 
-# 时刻表达式
+# time re
 RE_TIME = re.compile(r'([0-1]?[0-9]|2[0-3])'
                      r':([0-5][0-9])'
                      r'(:([0-5][0-9]))?')
 
-# 时间范围，如8:30-12:30
+# time range, like 8:30-12:30
 RE_TIME_RANGE = re.compile(r'([0-1]?[0-9]|2[0-3])'
                            r':([0-5][0-9])'
                            r'(:([0-5][0-9]))?'
@@ -108,7 +108,7 @@ def replace_date(match) -> str:
     return result
 
 
-# 用 / 或者 - 分隔的 YY/MM/DD 或者 YY-MM-DD 日期
+# use / or - to split date, like YY/MM/DD or YY-MM-DD
 RE_DATE2 = re.compile(
     r'(\d{4})([- /.])(0[1-9]|1[012])\2(0[1-9]|[12][0-9]|3[01])')
 
