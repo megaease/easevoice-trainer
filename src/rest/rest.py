@@ -4,7 +4,7 @@ from dataclasses import asdict
 from http import HTTPStatus
 import httpx
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from typing import AsyncGenerator
 
@@ -344,10 +344,10 @@ class VoiceCloneAPI:
         self.router.post("/voiceclone/clone")(self.clone)
         self.router.get("/voiceclone/models")(self.get_available_models)
 
-    async def get_available_models(self):
+    async def get_available_models(self, project_dir: str):
         try:
-            gpts = ["default"] + list(list_train_gpts().keys())
-            sovits = ["default"] + list(list_train_sovits().keys())
+            gpts = ["default"] + list(list_train_gpts(project_dir).keys())
+            sovits = ["default"] + list(list_train_sovits(project_dir).keys())
             return {"gpts": gpts, "sovits": sovits}
         except Exception as e:
             logger.error(f"failed to get available models: {e}")

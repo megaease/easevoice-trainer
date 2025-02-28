@@ -33,10 +33,6 @@ wav_output = "5-wav32k"
 semantic_output = "6-name2semantic.tsv"
 s2config_path = os.path.join(base_path, "configs", "s2.json")
 gpt_config_path = os.path.join(base_path, "configs", "gpt.yaml")
-train_gpt_logs_output = "gpt_logs"
-train_sovits_logs_output = "sovits_logs"
-all_gpt_train_output_dir = os.path.join(base_path, model_root, "gpt_train")
-all_sovits_train_output_dir = os.path.join(base_path, model_root, "sovits_train")
 gpt_pretrained_model_path = os.path.join(normalize_root, "gsv-v2final-pretrained", "s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt")
 sovits_pretrained_model_path = os.path.join(normalize_root, "gsv-v2final-pretrained", "s2G2333k.pth")
 cfg = config.GlobalCFG()
@@ -47,7 +43,3 @@ os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 CPU = "cpu"
-
-
-os.makedirs(all_gpt_train_output_dir, exist_ok=True)
-os.makedirs(all_sovits_train_output_dir, exist_ok=True)

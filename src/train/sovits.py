@@ -47,6 +47,7 @@ class SovitsTrainParams:
     gpu_ids: str = "0"
     train_input_dir: str = ""
     output_model_name: str = ""
+    project_dir: str = ""
 
 
 class TrainHparams(BaseModel):
@@ -138,7 +139,7 @@ class SovitsTrain:
 
         # path
         hps.data.exp_dir = params.train_input_dir
-        hps.train.output_dir = get_sovits_train_dir(params.output_model_name)
+        hps.train.output_dir = get_sovits_train_dir(params.project_dir, params.output_model_name)
         hps.train.train_logs_dir = os.path.join(hps.train.output_dir, train_logs_path)
         hps.train.save_weight_dir = hps.train.output_dir
         os.makedirs(hps.train.output_dir, exist_ok=True)

@@ -36,6 +36,7 @@ class GPTTrainParams:
     model_path: str = gpt_pretrained_model_path
     train_input_dir: str = ""
     output_model_name: str = ""
+    project_dir: str = ""
 
 
 class GPTCheckpoint(ModelCheckpoint):
@@ -101,7 +102,7 @@ class GPTTrain(object):
             self.config = yaml.load(data, Loader=yaml.FullLoader)
 
         self.train_input_dir = params.train_input_dir
-        self.train_output = get_gpt_train_dir(params.output_model_name)
+        self.train_output = get_gpt_train_dir(params.project_dir, params.output_model_name)
         self.train_logs_output = os.path.join(self.train_output, train_logs_path)
         self.train_ckpts_output = os.path.join(str(self.train_logs_output), "ckpt")
         os.makedirs(self.train_output, exist_ok=True)
