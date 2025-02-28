@@ -397,7 +397,7 @@ class TrainAPI:
         # Note: it could not be empty, because the training processing has multiple processes, each process could generate a model name
         if params.output_model_name == "":
             params.output_model_name = "gpt_" + generate_random_name()
-        model_path = get_gpt_train_dir(params.output_model_name)
+        model_path = get_gpt_train_dir(params.project_dir, params.output_model_name)
 
         backtask_with_session_guard(uid, TaskType.train_gpt, asdict(params), start_task_with_subprocess, uid=uid, request=params, cmd_file=TaskCMD.train_gpt)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "GPT training started", uuid=str(uid), data={"model_path": model_path})
@@ -408,7 +408,7 @@ class TrainAPI:
         # Note: it could not be empty, because the training processing has multiple processes, each process could generate a model name
         if params.output_model_name == "":
             params.output_model_name = "sovits_" + generate_random_name()
-        model_path = get_sovits_train_dir(params.output_model_name)
+        model_path = get_sovits_train_dir(params.project_dir, params.output_model_name)
         uid = str(uuid.uuid4())
         backtask_with_session_guard(uid, TaskType.train_sovits, asdict(params), start_task_with_subprocess, uid=uid, request=params, cmd_file=TaskCMD.tran_sovits)
         return EaseVoiceResponse(ResponseStatus.SUCCESS, "Sovits training started", uuid=uid, data={"model_path": model_path})

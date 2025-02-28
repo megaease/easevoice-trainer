@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from src.logger import logger
+
 train_logs_path = "logs"
 
 
@@ -33,25 +35,33 @@ def get_sovits_train_dir(project_dir: str, name: Optional[str]):
 
 
 def list_train_gpts(project_dir: str):
-    all_gpts = Path(_get_all_gpt_train_output_dir(project_dir))
-    res = {}
-    for dir in all_gpts.iterdir():
-        if dir.is_dir():
-            for file in dir.iterdir():
-                if file.is_file() and file.name.endswith(".ckpt"):
-                    res[f"{dir.name}/{file.name}"] = str(file)
-    return res
+    try:
+        all_gpts = Path(_get_all_gpt_train_output_dir(project_dir))
+        res = {}
+        for dir in all_gpts.iterdir():
+            if dir.is_dir():
+                for file in dir.iterdir():
+                    if file.is_file() and file.name.endswith(".ckpt"):
+                        res[f"{dir.name}/{file.name}"] = str(file)
+        return res
+    except Exception as e:
+        logger.warning(f"list_train_gpts failed: {e}")
+        return {}
 
 
 def list_train_sovits(project_dir: str):
-    all_sovits = Path(_get_all_sovits_train_output_dir(project_dir))
-    res = {}
-    for dir in all_sovits.iterdir():
-        if dir.is_dir():
-            for file in dir.iterdir():
-                if file.is_file() and file.name.endswith(".pth"):
-                    res[f"{dir.name}/{file.name}"] = str(file)
-    return res
+    try:
+        all_sovits = Path(_get_all_sovits_train_output_dir(project_dir))
+        res = {}
+        for dir in all_sovits.iterdir():
+            if dir.is_dir():
+                for file in dir.iterdir():
+                    if file.is_file() and file.name.endswith(".pth"):
+                        res[f"{dir.name}/{file.name}"] = str(file)
+        return res
+    except Exception as e:
+        logger.warning(f"list_train_sovits failed: {e}")
+        return {}
 
 
 @dataclass
