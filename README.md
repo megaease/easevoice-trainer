@@ -23,6 +23,10 @@ Although EaseVoice Trainer takes inspiration from GPT-SoVITS, we chose not to di
 
 ## Getting Started
 
+### Pretrained Models
+
+As in GPT-SoVITS, you can download [Pretrained Models](https://github.com/RVC-Boss/GPT-SoVITS#pretrained-models), and then put them into the `models` directory.
+
 ### Local Run
 
 Before using EaseVoice Trainer, ensure you have the following installed:
