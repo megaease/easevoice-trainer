@@ -171,6 +171,18 @@ class NamespaceAPI:
             status_code=204,  # No body in response
             summary="Delete a namespace",
         )
+        self.router.add_api_route(
+            path="/namespaces-root",
+            endpoint=self.get_namespaces_root,
+            methods=["GET"],
+            summary="Get namespaces root directory",
+        )
+        self.router.add_api_route(
+            path="/namespaces-root",
+            endpoint=self.set_namespaces_root,
+            methods=["POST"],
+            summary="Set namespaces root directory",
+        )
 
     async def list_namespaces(self):
         """List all namespaces."""
@@ -201,6 +213,17 @@ class NamespaceAPI:
             self.namespace_service.delete_namespace(name)
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))
+
+    async def get_namespaces_root(self):
+        """Get namespaces root directory."""
+        return self.namespace_service.get_namespaces_root_metadata()
+
+    async def set_namespaces_root(self, request: dict):
+        """Set namespaces root directory."""
+        try:
+            self.namespace_service.set_namespaces_root(request["namespaces-root"])
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
 
 class FileAPI:

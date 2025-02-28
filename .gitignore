@@ -179,3 +179,5 @@ models/**
 !models/pretrained/.gitkeep
 
 tb_logs/
+.namespaces_root.metadata.json
+easevoice_trainer_namespaces/
