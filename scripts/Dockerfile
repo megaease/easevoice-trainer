@@ -13,15 +13,18 @@ RUN apt-get update --yes && \
     rm -rf /var/lib/apt/lists/*
 
 # Install pnpm
-RUN curl -fsSL https://get.pnpm.io/install.sh | sh -
+RUN export SHELL=/bin/bash && curl -fsSL https://get.pnpm.io/install.sh | sh -
 
 # Install statics
 WORKDIR /root
 RUN git clone https://github.com/megaease/easevoice-trainer-portal.git
 RUN cd easevoice-trainer-portal && echo 'use-node-version=22.14.0' >> ~/.npmrc
-RUN cd easevoice-trainer-portal && pnpm install && pnpm build
+RUN cd easevoice-trainer-portal && /root/.local/share/pnpm/pnpm install && /root/.local/share/pnpm/pnpm build
 
 FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04 AS runtime
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ENV DEBIAN_FRONTEND noninteractive SHELL=/bin/bash
 
 # Install some basic utilities
 RUN apt-get update --yes && \
@@ -75,10 +78,31 @@ RUN pip install torch==2.4.0+cu124 torchvision==0.19.0+cu124 \
 WORKDIR /megaease
 RUN git clone https://github.com/megaease/easevoice-trainer.git
 COPY --from=builder /root/easevoice-trainer-portal/dist /megaease/easevoice-trainer/src/dist
-RUN pip install -r /megaease/easevoice-trainer/requirements.txt && \
-    pip install uv && \ rm -rf ~/.cache/pip
+RUN pip install -r /megaease/easevoice-trainer/requirements.txt
+
+RUN apt-get install git-lfs -y && git lfs install
+RUN mkdir -p /megaease/easevoice-trainer/models
+RUN cd /megaease/easevoice-trainer/models && \
+    git clone https://huggingface.co/lj1995/GPT-SoVITS && \
+    git clone https://huggingface.co/Delik/uvr5_weights && \
+    git clone https://www.modelscope.cn/iic/speech_frcrn_ans_cirm_16k.git && \
+    git clone https://huggingface.co/lucasjin/punc_ct-transformer_zh-cn-common-vocab272727-pytorch && \
+    git clone https://huggingface.co/manyeyes/speech_fsmn_vad_zh-cn-16k-common-onnx && \
+    git clone https://www.modelscope.cn/iic/speech_fsmn_vad_zh-cn-16k-common-pytorch.git && \
+    git clone https://www.modelscope.cn/iic/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch.git && \
+    mv GPT-SoVITS /megaease/easevoice-trainer/models/pretrained && \
+    mv uvr5_weights /megaease/easevoice-trainer/models/uvr5_weights && \
+    mkdir -p /megaease/easevoice-trainer/models/asr&& \
+    mv speech_fsmn_vad_zh-cn-16k-common-onnx /megaease/easevoice-trainer/models/asr/speech_fsmn_vad_zh-cn-16k-common-onnx && \
+    mv speech_fsmn_vad_zh-cn-16k-common-pytorch /megaease/easevoice-trainer/models/asr/speech_fsmn_vad_zh-cn-16k-common-pytorch && \
+    mv punc_ct-transformer_zh-cn-common-vocab272727-pytorch /megaease/easevoice-trainer/models/asr/punc_ct-transformer_zh-cn-common-vocab272727-pytorch && \
+    mv speech_frcrn_ans_cirm_16k /megaease/easevoice-trainer/models/asr/speech_frcrn_ans_cirm_16k && \
+    mv speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch /megaease/easevoice-trainer/models/asr/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch
+
 
 COPY start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
+
+EXPOSE 8000
 
 CMD ["/usr/local/bin/start.sh"]
