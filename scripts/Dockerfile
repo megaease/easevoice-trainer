@@ -77,14 +77,17 @@ RUN pip install torch==2.4.0+cu124 torchvision==0.19.0+cu124 \
 
 WORKDIR /megaease
 RUN git clone https://github.com/megaease/easevoice-trainer.git
-COPY --from=builder /root/easevoice-trainer-portal/dist /megaease/easevoice-trainer/src/dist
 RUN pip install -r /megaease/easevoice-trainer/requirements.txt
 
-RUN apt-get install git-lfs -y && git lfs install
+RUN apt-get update --yes && apt-get install git-lfs -y && git lfs install && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /megaease/easevoice-trainer/models
 RUN cd /megaease/easevoice-trainer/models && \
-    git clone https://huggingface.co/lj1995/GPT-SoVITS -o pretrained && \
-    git clone https://huggingface.co/Delik/uvr5_weights
+    git clone https://huggingface.co/lj1995/GPT-SoVITS && \
+    git clone https://huggingface.co/Delik/uvr5_weights && \
+    rm -rf /megaease/easevoice-trainer/models/pretrained && \
+    mv /megaease/easevoice-trainer/models/GPT-SoVITS /megaease/easevoice-trainer/models/pretrained
+
+COPY --from=builder /root/easevoice-trainer-portal/dist /megaease/easevoice-trainer/dist
 
 COPY start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh

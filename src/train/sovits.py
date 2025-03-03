@@ -1,10 +1,30 @@
-from dataclasses import asdict, dataclass
 import logging
-from pickle import GLOBAL
-import traceback
-from typing import Any, List, Tuple
-import torch.distributed as dist
 import os
+import traceback
+import warnings
+from collections import OrderedDict
+from dataclasses import dataclass
+from random import randint
+from typing import Any, List, Tuple
+
+import torch
+import torch.distributed as dist
+import torch.multiprocessing as mp
+from pydantic import BaseModel
+from torch.cuda.amp.autocast_mode import autocast
+from torch.cuda.amp.grad_scaler import GradScaler
+from torch.nn import functional as F
+from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard.writer import SummaryWriter
+from tqdm import tqdm
+
+from src.easevoice.module import commons
+from src.easevoice.module.data_utils import TextAudioSpeakerLoader, TextAudioSpeakerCollate, DistributedBucketSampler
+from src.easevoice.module.losses import generator_loss, discriminator_loss, feature_loss, kl_loss
+from src.easevoice.module.mel_processing import mel_spectrogram_torch, spec_to_mel_torch
+from src.easevoice.module.models import SynthesizerTrn, MultiPeriodDiscriminator
+from src.logger import logger
 from src.service.tensorboard import get_tensorboard_log_dir
 from src.train.helper import TrainOutput, get_sovits_train_dir, train_logs_path
 from src.utils import config
@@ -12,26 +32,6 @@ from src.utils import helper
 from src.utils.helper import convert_tensor_to_python, load_json
 from src.utils.helper.connector import MultiProcessOutputConnector
 from src.utils.path import ckpt
-from random import randint
-from tqdm import tqdm
-from torch.cuda.amp.grad_scaler import GradScaler
-from torch.cuda.amp.autocast_mode import autocast
-from torch.nn.parallel import DistributedDataParallel as DDP
-import torch.multiprocessing as mp
-from torch.utils.tensorboard.writer import SummaryWriter
-from torch.utils.data import DataLoader
-from torch.nn import functional as F
-import torch
-import warnings
-from collections import OrderedDict
-from pydantic import BaseModel
-
-from src.easevoice.module import commons
-from src.logger import logger
-from src.easevoice.module.mel_processing import mel_spectrogram_torch, spec_to_mel_torch
-from src.easevoice.module.losses import generator_loss, discriminator_loss, feature_loss, kl_loss
-from src.easevoice.module.models import SynthesizerTrn, MultiPeriodDiscriminator
-from src.easevoice.module.data_utils import TextAudioSpeakerLoader, TextAudioSpeakerCollate, DistributedBucketSampler
 
 
 @dataclass
