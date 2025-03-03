@@ -3,9 +3,11 @@
 import os
 
 import torch
+from huggingface_hub import snapshot_download
+
+from src.utils.path import get_base_path
 from ..helper import str2bool
 from ...logger import logger
-from src.utils.path import get_base_path
 
 
 class GlobalCFG(object):
@@ -45,13 +47,17 @@ class GlobalCFG(object):
 
     def _init_model_paths(self):
         base_path = get_base_path()
-        default_dir = os.path.join(base_path, "models", "pretrained")
-        logger.info(f"Default pretrained models directory: {default_dir}")
-        if not os.path.exists(default_dir):
-            logger.warning(f"Default pretrained models directory {default_dir} not exist, please consider to download it before use.")
+        pretrained_dir = os.path.join(base_path, "models", "pretrained")
+        logger.info(f"Default pretrained models directory: {pretrained_dir}")
+        if not os.path.exists(pretrained_dir):
+            snapshot_download("lj1995/GPT-SoVITS", resume_download=True, local_dir=pretrained_dir)
+        asr_dir = os.path.join(base_path, "models", "uvr5_weights")
+        logger.info(f"Default asr models directory: {asr_dir}")
+        if not os.path.exists(asr_dir):
+            snapshot_download("Delik/uvr5_weights", resume_download=True, local_dir=asr_dir)
 
-        self.gpt_path: str = os.environ.get("gpt_path", os.path.join(default_dir, "gsv-v2final-pretrained", "s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"))
-        self.bert_path: str = os.environ.get("bert_path", os.path.join(default_dir, "chinese-roberta-wwm-ext-large"))
+        self.gpt_path: str = os.environ.get("gpt_path", os.path.join(pretrained_dir, "gsv-v2final-pretrained", "s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"))
+        self.bert_path: str = os.environ.get("bert_path", os.path.join(pretrained_dir, "chinese-roberta-wwm-ext-large"))
 
-        self.cnhubert_path: str = os.environ.get("cnhubert_path", os.path.join(default_dir, "chinese-hubert-base"))
-        self.sovits_path: str = os.environ.get("sovits_path", os.path.join(default_dir, "gsv-v2final-pretrained", "s2G2333k.pth"))
+        self.cnhubert_path: str = os.environ.get("cnhubert_path", os.path.join(pretrained_dir, "chinese-hubert-base"))
+        self.sovits_path: str = os.environ.get("sovits_path", os.path.join(pretrained_dir, "gsv-v2final-pretrained", "s2G2333k.pth"))

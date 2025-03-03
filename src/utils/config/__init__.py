@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding=utf8 -*-
-import os.path
 
 from .config import *
-from src.utils.path import get_base_path
 
 base_path = get_base_path()
 model_root = "models"

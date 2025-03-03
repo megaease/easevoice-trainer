@@ -60,8 +60,12 @@ psutil~=6.1.1
 pynvml
 modelscope==1.10.0
 addict
-logger
+logger~=1.4
 datasets>=2.15.0
 simplejson
 sortedcontainers
-httpx
+httpx~=0.28.1
+
+OpenCC~=1.1.9
+inflect~=7.5.0
+huggingface-hub~=0.29.1

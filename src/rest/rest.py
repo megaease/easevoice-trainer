@@ -671,14 +671,3 @@ app.include_router(audio_api.router, prefix="/apis/v1")
 
 easevoice_api = EaseVoiceAPI()
 app.include_router(easevoice_api.router, prefix="/apis/v1")
-
-# Function to print all routing information
-# def print_routes(app: FastAPI):
-#     for route in app.routes:
-#         print(f"Path: {route.path}")
-#         print(f"Methods: {route.methods}")
-#         print(f"Endpoint: {route.endpoint.__name__}")
-#         print("-" * 40)
-#
-# # Call the function to print all routes
-# print_routes(app)

@@ -83,22 +83,8 @@ RUN pip install -r /megaease/easevoice-trainer/requirements.txt
 RUN apt-get install git-lfs -y && git lfs install
 RUN mkdir -p /megaease/easevoice-trainer/models
 RUN cd /megaease/easevoice-trainer/models && \
-    git clone https://huggingface.co/lj1995/GPT-SoVITS && \
-    git clone https://huggingface.co/Delik/uvr5_weights && \
-    git clone https://www.modelscope.cn/iic/speech_frcrn_ans_cirm_16k.git && \
-    git clone https://huggingface.co/lucasjin/punc_ct-transformer_zh-cn-common-vocab272727-pytorch && \
-    git clone https://huggingface.co/manyeyes/speech_fsmn_vad_zh-cn-16k-common-onnx && \
-    git clone https://www.modelscope.cn/iic/speech_fsmn_vad_zh-cn-16k-common-pytorch.git && \
-    git clone https://www.modelscope.cn/iic/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch.git && \
-    mv GPT-SoVITS /megaease/easevoice-trainer/models/pretrained && \
-    mv uvr5_weights /megaease/easevoice-trainer/models/uvr5_weights && \
-    mkdir -p /megaease/easevoice-trainer/models/asr&& \
-    mv speech_fsmn_vad_zh-cn-16k-common-onnx /megaease/easevoice-trainer/models/asr/speech_fsmn_vad_zh-cn-16k-common-onnx && \
-    mv speech_fsmn_vad_zh-cn-16k-common-pytorch /megaease/easevoice-trainer/models/asr/speech_fsmn_vad_zh-cn-16k-common-pytorch && \
-    mv punc_ct-transformer_zh-cn-common-vocab272727-pytorch /megaease/easevoice-trainer/models/asr/punc_ct-transformer_zh-cn-common-vocab272727-pytorch && \
-    mv speech_frcrn_ans_cirm_16k /megaease/easevoice-trainer/models/asr/speech_frcrn_ans_cirm_16k && \
-    mv speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch /megaease/easevoice-trainer/models/asr/speech_seaco_paraformer_large_asr_nat-zh-cn-16k-common-vocab8404-pytorch
-
+    git clone https://huggingface.co/lj1995/GPT-SoVITS -o pretrained && \
+    git clone https://huggingface.co/Delik/uvr5_weights
 
 COPY start.sh /usr/local/bin/start.sh
 RUN chmod +x /usr/local/bin/start.sh
