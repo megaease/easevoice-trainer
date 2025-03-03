@@ -160,5 +160,6 @@ class CreateTaskRequest(BaseModel):
 class EaseVoiceRequest:
     """Request model for creating a new namespace."""
     source_dir: str
+    project_dir: str = ""
     gpt_output_name: str = ""
     sovits_output_name: str = ""
