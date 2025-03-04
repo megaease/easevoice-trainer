@@ -78,8 +78,15 @@ RUN pip install torch==2.4.0+cu124 torchvision==0.19.0+cu124 \
 WORKDIR /megaease
 RUN git clone https://github.com/megaease/easevoice-trainer.git
 RUN pip install -r /megaease/easevoice-trainer/requirements.txt
+RUN pip install httpx[socks] && \
+    pip install pip-system-certs
 
-RUN apt-get update --yes && apt-get install git-lfs -y && git lfs install && rm -rf /var/lib/apt/lists/*
+RUN apt-get update --yes && \
+    apt install -y locales && \
+    locale-gen en_US.UTF-8 && \
+    update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8 && \
+    apt-get install git-lfs -y && git lfs install && rm -rf /var/lib/apt/lists/*
+
 RUN mkdir -p /megaease/easevoice-trainer/models
 RUN cd /megaease/easevoice-trainer/models && \
     git clone https://huggingface.co/lj1995/GPT-SoVITS && \

@@ -4,6 +4,10 @@ echo "Starting trainer..."
 
 
 cd /megaease/easevoice-trainer
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+git config --global core.quotepath false
+
 python src/main.py &
 
 echo "Starting Jupyter Lab..."
