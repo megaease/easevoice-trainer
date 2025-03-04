@@ -49,12 +49,15 @@ class GlobalCFG(object):
         base_path = get_base_path()
         pretrained_dir = os.path.join(base_path, "models", "pretrained")
         logger.info(f"Default pretrained models directory: {pretrained_dir}")
-        if not os.path.exists(pretrained_dir):
-            snapshot_download("lj1995/GPT-SoVITS", resume_download=True, local_dir=pretrained_dir)
-        asr_dir = os.path.join(base_path, "models", "uvr5_weights")
-        logger.info(f"Default asr models directory: {asr_dir}")
-        if not os.path.exists(asr_dir):
-            snapshot_download("Delik/uvr5_weights", resume_download=True, local_dir=asr_dir)
+        try:
+            if not os.path.exists(os.path.join(pretrained_dir, "gsv-v2final-pretrained")):
+                snapshot_download("lj1995/GPT-SoVITS", resume_download=True, local_dir=pretrained_dir)
+            uvr5_dir = os.path.join(base_path, "models", "uvr5_weights")
+            logger.info(f"Default uvr5 models directory: {uvr5_dir}")
+            if not os.path.exists(uvr5_dir):
+                snapshot_download("Delik/uvr5_weights", resume_download=True, local_dir=uvr5_dir)
+        except Exception as e:
+            print(e)
 
         self.gpt_path: str = os.environ.get("gpt_path", os.path.join(pretrained_dir, "gsv-v2final-pretrained", "s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"))
         self.bert_path: str = os.environ.get("bert_path", os.path.join(pretrained_dir, "chinese-roberta-wwm-ext-large"))
