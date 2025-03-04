@@ -197,17 +197,17 @@ class SovitsTrain:
 
     def train(self):
         n_gpus = 1
-        os.environ["MASTER_ADDR"] = "localhost"
-        os.environ["MASTER_PORT"] = str(randint(20000, 55555))
-
-        mp.spawn(  # pyright: ignore
-            self._run,
-            nprocs=n_gpus,
-            args=(
-                n_gpus,
-                self.hps,
-            ),
-        )
+        # os.environ["MASTER_ADDR"] = "localhost"
+        # os.environ["MASTER_PORT"] = str(randint(20000, 55555))
+        # mp.spawn(  # pyright: ignore
+        #     self._run,
+        #     nprocs=n_gpus,
+        #     args=(
+        #         n_gpus,
+        #         self.hps,
+        #     ),
+        # )
+        self._run(0, n_gpus, self.hps)
         return TrainOutput(model_path=self.hps.train.output_dir)
 
     def _run(self, rank, n_gpus, hps: TrainConfig):
