@@ -4,11 +4,12 @@ import json
 import shutil
 from datetime import datetime, timezone
 from typing import List, Optional
+from src.logger import logger
 
 class NamespaceService:
     """Manages namespaces on the filesystem."""
 
-    def __init__(self, base_dir: Optional[str] = None):
+    def __init__(self):
         ns_root = os.getenv("EASEVOICE_TRAINER_NAMESPACES_ROOT", os.path.join(os.getcwd(), "easevoice_trainer_namespaces"))
 
         # Fixed path to the metadata file for the namespaces root.
@@ -71,8 +72,8 @@ class NamespaceService:
             if os.path.isdir(namespace_path):
                 try:
                     namespaces.append(self._load_namespace_metadata(name))
-                except FileNotFoundError:
-                    pass
+                except FileNotFoundError as e:
+                    logger.warning(f"Namespace {name} metadata not found: {e}", exc_info=True)
         return namespaces
 
     def update_namespace(self, old_name: str, new_name: str) -> dict:
@@ -110,6 +111,6 @@ class NamespaceService:
     def _load_namespace_metadata(self, name: str) -> dict:
         metadata_path = self._namespace_metadata_path(name)
         if not os.path.exists(metadata_path):
-            raise ValueError("Namespace not found")
+            raise FileNotFoundError(f"Namespace metadata in {metadata_path} not found")
         with open(metadata_path, "r") as f:
             return json.load(f)
