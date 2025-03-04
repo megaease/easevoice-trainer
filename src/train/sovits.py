@@ -197,8 +197,8 @@ class SovitsTrain:
 
     def train(self):
         n_gpus = 1
-        # os.environ["MASTER_ADDR"] = "localhost"
-        # os.environ["MASTER_PORT"] = str(randint(20000, 55555))
+        os.environ["MASTER_ADDR"] = "localhost"
+        os.environ["MASTER_PORT"] = str(randint(30000, 55555))
         # mp.spawn(  # pyright: ignore
         #     self._run,
         #     nprocs=n_gpus,
