@@ -630,7 +630,7 @@ async def lifespan_context(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 # FastAPI app setup
-app = FastAPI(lifespan=lifespan_context)  # pyright: ignore
+app = FastAPI(lifespan=lifespan_context, redirect_slashes=False)  # pyright: ignore
 
 frontend_dir = os.path.join(os.getcwd(), "dist")
 if not os.path.exists(frontend_dir):
