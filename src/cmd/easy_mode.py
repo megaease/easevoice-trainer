@@ -2,6 +2,7 @@
 # -*- encoding=utf8 -*-
 import sys
 
+
 sys.path.append('.')
 sys.path.append('..')
 
@@ -10,20 +11,22 @@ from typing import Any
 import tempfile
 import subprocess
 import os
-from src.utils import config
-from src.service.audio import AudioService
-from src.api.api import EaseVoiceRequest
-from src.service.normalize import NormalizeService
-from src.train.sovits import SovitsTrain, SovitsTrainParams
 import argparse
 import json
 import traceback
+import torch
+
+from src.utils import config
+from src.utils.helper import random_choice
+from src.service.audio import AudioService
+from src.api.api import EaseVoiceRequest
+from src.service.normalize import NormalizeService
+from src.train.sovits import SovitsTrainParams
 from dataclasses import asdict
-from src.train.gpt import GPTTrainParams, GPTTrain
+from src.train.gpt import GPTTrainParams
 from src.utils.helper.connector import ConnectorDataType, MultiProcessOutputConnector
 from src.utils.response import EaseVoiceResponse, ResponseStatus
 from src.rest.types import TaskCMD
-import torch
 
 
 def _check_response(connector: MultiProcessOutputConnector, response: EaseVoiceResponse, step_name: str, current_step: int):
@@ -86,7 +89,7 @@ def main():
             "current_step_description": "Prepare for starting EaseVoice",
         }
         connector.write_session_data(session_data)
-        output_dir = os.path.join(params.source_dir, "easy_mode")
+        output_dir = os.path.join(params.source_dir, f"easy_mode_{random_choice()}")
         os.makedirs(output_dir, exist_ok=True)
 
         audio_service = AudioService(source_dir=params.source_dir, output_dir=str(output_dir))
