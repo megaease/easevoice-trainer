@@ -55,14 +55,14 @@ class VoiceCloneService:
             data.sovits_path = ""
 
         if data.gpt_path != "":
-            gpts = list_train_gpts()
+            gpts = list_train_gpts(data.project_dir)
             if data.gpt_path in gpts:
                 data.gpt_path = gpts[data.gpt_path]
             else:
                 logger.error(f"failed to find gpt model for {data.gpt_path}")
                 raise ValueError(f"failed to find gpt model for {data.gpt_path}")
         if data.sovits_path != "":
-            sovits = list_train_sovits()
+            sovits = list_train_sovits(data.project_dir)
             if data.sovits_path in sovits:
                 data.sovits_path = sovits[data.sovits_path]
             else:

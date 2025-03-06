@@ -59,6 +59,8 @@ class NamespaceService:
         os.makedirs(os.path.join(home_path, "outputs"), exist_ok=True)
         os.makedirs(os.path.join(home_path, "training-audios"), exist_ok=True)
         os.makedirs(os.path.join(home_path, "models"), exist_ok=True)
+        os.makedirs(os.path.join(home_path, "models", "sovits_train"), exist_ok=True)
+        os.makedirs(os.path.join(home_path, "models", "gpt_train"), exist_ok=True)
 
         namespace = {"name": name, "createdAt": int(datetime.now(tz=timezone.utc).timestamp() * 1000), "homePath": home_path}
         self._save_namespace_metadata(namespace)

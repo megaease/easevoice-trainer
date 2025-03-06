@@ -213,7 +213,7 @@ class SovitsTrain:
     def _run(self, rank, n_gpus, hps: TrainConfig):
         global GLOBAL_STEP
         if rank == 0:
-            logger.info("hps for train sovits", hps)
+            logger.info(f"hps for train sovits {hps}")
             writer = SummaryWriter(log_dir=get_tensorboard_log_dir(hps.name))
 
         dist.init_process_group(

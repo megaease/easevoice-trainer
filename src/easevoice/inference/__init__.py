@@ -45,6 +45,7 @@ class InferenceTaskData:
     sovits_path: str = ""
     gpt_path: str = ""
     output_dir: str = ""
+    project_dir: str = ""
 
 
 class Runner:
