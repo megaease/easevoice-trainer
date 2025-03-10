@@ -37,6 +37,20 @@ EaseVoice Trainer 是一个旨在简化和增强语音合成与转换训练过�
 uv run src/main.py
 ```
 
+### 使用 Docker 运行
+1. 打包 Docker 镜像
+```
+cd scripts/Dockerfile
+docker build -t megaease/easevoice-trainer . 
+```
+
+2. 运行 Docker 容器
+```
+docker run -p 8000:8000 megaease/easevoice-trainer
+```
+
+在浏览器访问 `http://localhost:8000` 即可。
+
 ## 社区
 
 我们欢迎社区的贡献！无论是修复 bug、添加新功能，还是改进文档，都欢迎提交 pull request 或者打开 issue。

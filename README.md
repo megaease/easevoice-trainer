@@ -39,6 +39,21 @@ We leverage uv for robust and efficient project management. To start the server 
 uv run src/main.py
 ```
 
+### Run with Docker
+
+1. Build the Docker image
+```
+cd scripts/Dockerfile
+docker build -t megaease/easevoice-trainer . 
+```
+
+2. Run the Docker Container
+```
+docker run -p 8000:8000 megaease/easevoice-trainer
+```
+
+This command ensures that the application running inside the container on port 8000 is accessible locally via http://localhost:8000.
+
 ## Community
 
 We welcome contributions from the community! Whether it’s fixing bugs, adding new features, or improving documentation, feel free to submit a pull request or open an issue.
