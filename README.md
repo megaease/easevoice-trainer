@@ -9,6 +9,8 @@ Although EaseVoice Trainer takes inspiration from GPT-SoVITS, we chose not to di
 ## Key Features
 
 - User-Friendly Design: Simplified workflows and intuitive configurations make it easier for users to deploy and manage.
+- Stability: ensuring consistent and reliable performance in the process of cloing and training.
+- Training Observability: offering comprehensive monitoring tools, providing clear insights into progress of cloning and training with performance metrics.
 - Clean Architecture: We have split the project into separate frontend and backend repositories for better modularity and maintainability. The portal repository is at [EaseVoice Trainer Frontend](https://github.com/megaease/easevoice-trainer-portal).
 - RESTful API: The backend provides a RESTful API for easy integration with other services and applications.
 - Scalability: Built with scalability in mind, making it suitable for both small-scale experiments and large-scale production.
