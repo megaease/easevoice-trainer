@@ -1,5 +1,7 @@
 # EaseVoice Trainer
 
+更生动的视频介绍: [英文版本](https://www.youtube.com/watch?v=Rfv8hXFct00), [中文版本](https://www.bilibili.com/video/BV1uaoDYVEbc/).
+
 EaseVoice Trainer 是一个旨在简化和增强语音合成与转换训练过程的后端项目。它基于 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 的基础，继承了其核心概念，同时引入了多项改进，使系统更加易用、优雅和用户友好。
 
 尽管 EaseVoice Trainer 受到 GPT-SoVITS 的启发，但我们选择不直接 fork 原始仓库，因为设计理念上存在较大差异，并且有独特的目标。我们的重点是创建一个精细化的、模块化的系统，专门针对特定用例，并提高可维护性。
@@ -40,13 +42,16 @@ uv run src/main.py
 ```
 
 ### 使用 Docker 运行
+
 1. 打包 Docker 镜像
+
 ```
 cd scripts/Dockerfile
-docker build -t megaease/easevoice-trainer . 
+docker build -t megaease/easevoice-trainer .
 ```
 
 2. 运行 Docker 容器
+
 ```
 docker run -p 8000:8000 megaease/easevoice-trainer
 ```
