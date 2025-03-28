@@ -2,6 +2,11 @@
 
 [中文文档](./README.zh-CN.md)
 
+<a href="https://github.com/megaease/easevoice-trainer">
+    <img src="./docs/images/logo.svg"
+        alt="EaseVoice Logo" title="EaseVoice" height="175" width="175" align="right"/>
+</a>
+
 EaseVoice Trainer is a backend project designed to streamline and enhance the training process for voice synthesis and transformation. It is built upon the foundation of [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS), inheriting its core concepts while introducing various improvements to make the system more accessible, elegant, and user-friendly.
 
 Although EaseVoice Trainer takes inspiration from GPT-SoVITS, we chose not to directly fork the original repository due to significant design differences and unique objectives. Our focus is on creating a refined, modular system tailored to specific use cases and improving maintainability.
@@ -44,17 +49,19 @@ uv run src/main.py
 ### Run with Docker
 
 1. Build the Docker image
+
 ```
 cd scripts/Dockerfile
-docker build -t megaease/easevoice-trainer . 
+docker build -t megaease/easevoice-trainer .
 ```
 
 2. Run the Docker Container
+
 ```
 docker run -p 8000:8000 megaease/easevoice-trainer
 ```
 
-This command ensures that the application running inside the container on port 8000 is accessible locally via http://localhost:8000.
+This command ensures that the application running inside the container on port 8000 is accessible locally via <http://localhost:8000>.
 
 ## Community
 
