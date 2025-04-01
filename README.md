@@ -51,7 +51,7 @@ uv run src/main.py
 1. Build the Docker image
 
 ```
-cd scripts/Dockerfile
+cd scripts
 docker build -t megaease/easevoice-trainer .
 ```
 
