@@ -29,7 +29,7 @@ dependencies = [
     "onnxruntime==1.17.1",
     "torchmetrics==1.6.0",
     "opencc",
-    "pyopenjtalk>=0.3.4",
+    "pyopenjtalk==0.3.4",
     "nltk",
     "wordsegment",
     "g2p_en",
