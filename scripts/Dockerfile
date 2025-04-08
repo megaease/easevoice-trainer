@@ -75,6 +75,9 @@ RUN pip install torch==2.4.0+cu124 torchvision==0.19.0+cu124 \
     --extra-index-url https://download.pytorch.org/whl/cu124 && \
     rm -rf ~/.cache/pip
 
+RUN pip install cmake && cmake --version
+ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
+
 WORKDIR /megaease
 RUN git clone https://github.com/megaease/easevoice-trainer.git
 RUN pip install -r /megaease/easevoice-trainer/requirements.txt
