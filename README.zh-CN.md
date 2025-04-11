@@ -1,6 +1,15 @@
 # EaseVoice Trainer
 
-更生动的视频介绍: [英文版本](https://www.youtube.com/watch?v=Rfv7hXFct00), [中文版本](https://www.bilibili.com/video/BV1uaoDYVEbc/).
+视频介绍:
+
+[![English Version Video](https://img.youtube.com/vi/Rfv7hXFct00/0.jpg)](https://www.youtube.com/watch?v=Rfv7hXFct00)
+
+<a href="https://github.com/megaease/easevoice-trainer">
+    <img src="./docs/images/logo.svg"
+        alt="EaseVoice Logo" title="EaseVoice" height="175" width="175" align="right"/>
+</a>
+
+[中文文档](./README.zh-CN.md) 和 [中文介绍视频](https://www.bilibili.com/video/BV1uaoDYVEbc/).
 
 EaseVoice Trainer 是一个旨在简化和增强语音合成与转换训练过程的后端项目。它基于 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 的基础，继承了其核心概念，同时引入了多项改进，使系统更加易用、优雅和用户友好。
 
