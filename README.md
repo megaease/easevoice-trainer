@@ -7,7 +7,7 @@
         alt="EaseVoice Logo" title="EaseVoice" height="175" width="175" align="right"/>
 </a>
 
-More vivid video introduction: [English Version Video](https://www.youtube.com/watch?v=Rfv8hXFct00), [Chinese Version Video](https://www.bilibili.com/video/BV1uaoDYVEbc/).
+More vivid video introduction: [English Version Video](https://www.youtube.com/watch?v=Rfv7hXFct00), [Chinese Version Video](https://www.bilibili.com/video/BV1uaoDYVEbc/).
 
 EaseVoice Trainer is a backend project designed to streamline and enhance the training process for voice synthesis and transformation. It is built upon the foundation of [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS), inheriting its core concepts while introducing various improvements to make the system more accessible, elegant, and user-friendly.
 
