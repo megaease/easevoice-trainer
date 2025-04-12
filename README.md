@@ -1,9 +1,5 @@
 # EaseVoice Trainer
 
-Video introduction:
-
-[![English Version Video](https://img.youtube.com/vi/Rfv7hXFct00/0.jpg)](https://www.youtube.com/watch?v=Rfv7hXFct00)
-
 <a href="https://github.com/megaease/easevoice-trainer">
     <img src="./docs/images/logo.svg"
         alt="EaseVoice Logo" title="EaseVoice" height="175" width="175" align="right"/>
@@ -24,6 +20,10 @@ Although EaseVoice Trainer takes inspiration from GPT-SoVITS, we chose not to di
 - RESTful API: The backend provides a RESTful API for easy integration with other services and applications.
 - Scalability: Built with scalability in mind, making it suitable for both small-scale experiments and large-scale production.
 - Integrate Tensorboard: We have integrated Tensorboard for real-time monitoring and visualization of training progress.
+
+## Video introduction:
+
+[![English Version Video](./docs/images/cover_v3.png)](https://www.youtube.com/watch?v=Rfv7hXFct00)
 
 ## Screenshorts
 
