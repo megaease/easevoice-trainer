@@ -1,9 +1,5 @@
 # EaseVoice Trainer
 
-视频介绍:
-
-[![English Version Video](https://img.youtube.com/vi/Rfv7hXFct00/0.jpg)](https://www.youtube.com/watch?v=Rfv7hXFct00)
-
 <a href="https://github.com/megaease/easevoice-trainer">
     <img src="./docs/images/logo.svg"
         alt="EaseVoice Logo" title="EaseVoice" height="175" width="175" align="right"/>
@@ -24,6 +20,10 @@ EaseVoice Trainer 是一个旨在简化和增强语音合成与转换训练过�
 - **RESTful API**：后端提供 RESTful API，方便与其他服务和应用程序集成。
 - **可扩展性**：系统设计时考虑到了可扩展性，适用于小规模实验和大规模生产。
 - **集成 Tensorboard**：我们集成了 Tensorboard，用于实时监控和可视化训练进度。
+
+## 视频介绍
+
+[![English Version Video](./docs/images/cover_v3.png)](https://www.youtube.com/watch?v=Rfv7hXFct00)
 
 ## 截图
 
