@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "EaseVoice Trainer"
 readme = "README.md"
 requires-python = ">=3.9"
+# run "uv pip install whl/LangSegment-0.3.5-py3-none-any.whl" after "uv sync"
 dependencies = [
+    "py3langid==0.2.2",
     "audioread==3.0.0",
     "beartype==0.14.1",
     "einops==0.6.0",
@@ -23,7 +25,6 @@ dependencies = [
     "transformers",
     "ffmpeg-python",
     "uvicorn>=0.34.0",
-    "LangSegment>=0.2.0",
     "pypinyin",
     "jieba_fast",
     "onnxruntime==1.17.1",
