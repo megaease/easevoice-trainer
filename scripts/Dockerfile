@@ -97,6 +97,13 @@ RUN cd /megaease/easevoice-trainer/models && \
     rm -rf /megaease/easevoice-trainer/models/pretrained && \
     mv /megaease/easevoice-trainer/models/GPT-SoVITS /megaease/easevoice-trainer/models/pretrained
 
+RUN mkdir -p /megaease/easevoice-trainer/src/easevoice/text/data/chinese
+RUN cd /megaease/easevoice-trainer/src/easevoice/text/data/chinese && \
+    wget -O G2PWModel_1.1.zip https://huggingface.co/L-jasmine/GPT_Sovits/resolve/main/G2PWModel_1.1.zip && \
+    unzip G2PWModel_1.1.zip && \
+    mv G2PWModel_1.1 G2PWModel && \
+    rm G2PWModel_1.1.zip
+
 COPY --from=builder /root/easevoice-trainer-portal/dist /megaease/easevoice-trainer/dist
 
 COPY start.sh /usr/local/bin/start.sh
