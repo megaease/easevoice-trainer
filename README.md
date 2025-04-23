@@ -47,6 +47,8 @@ Before using EaseVoice Trainer, ensure you have the following installed:
 We leverage uv for robust and efficient project management. To start the server using uv:
 
 ```bash
+uv sync
+uv pip install whl/LangSegment-0.3.5-py3-none-any.whl
 uv run src/main.py
 ```
 

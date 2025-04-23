@@ -47,6 +47,8 @@ EaseVoice Trainer 是一个旨在简化和增强语音合成与转换训练过�
 我们利用 uv 进行高效的项目管理。要使用 uv 启动服务器，请运行以下命令：
 
 ```bash
+uv sync
+uv pip install whl/LangSegment-0.3.5-py3-none-any.whl
 uv run src/main.py
 ```
 
