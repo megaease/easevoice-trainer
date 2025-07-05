@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 # run "uv pip install whl/LangSegment-0.3.5-py3-none-any.whl" after "uv sync"
 dependencies = [
+    "langsegment",
     "py3langid==0.2.2",
     "audioread==3.0.0",
     "beartype==0.14.1",
@@ -59,3 +60,6 @@ dependencies = [
     "simplejson",
     "sortedcontainers",
 ]
+
+[tool.uv.sources]
+langsegment = { path = "./whl/LangSegment-0.3.5-py3-none-any.whl"}
